@@ -10,6 +10,7 @@ web-platform/.tmp-chrome-*/
 
 # Generated visual verification screenshots
 *.png
+*.zip
 
 # Dependency/build folders for future web/mobile work
 node_modules/
