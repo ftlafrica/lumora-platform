@@ -15,17 +15,28 @@ Admin preview entry: open `admin.html` or `index.html#admin-preview`.
 - Welcome screen
 - Fresh centered chat
 - Active chat thread
-- Sidebar navigation
+- Responsive sidebar navigation with mobile drawer
+- Consumer modes: AI Chat, Translate, Voice Circle, Market Mode, Classroom, Creator Studio
 - Profile and Language Passport
-- Login/sign-up profile capture
+- Login/sign-up flow with guest start
 - Language and tone controls
-- Theme and font-size settings
-- Premium plans
-- Personal user dashboard
+- Theme, font-size, memory, privacy, voice, and model-route settings
+- Premium plan selection with Free, Plus, Pro, and Teams
+- Personal user dashboard with plan usage, language passport, activity, and preferences
 - Seed-admin-gated enterprise Admin Console
 - Hugging Face model registry prototype
 - Local simulated model routing
 - LocalStorage persistence
+
+## Consumer Web Flow
+
+1. `#welcome` introduces Lumora and routes users to guest mode, signup, plans, or the app map.
+2. `#auth` supports sign up, login, Language Passport fields, and guest continuation.
+3. `#fresh` gives a centered first prompt before a conversation starts.
+4. Prompt chips or the send button create a new chat thread and route to `#chat`.
+5. The sidebar exposes Lumora modes and recent conversations without cluttering the chat surface.
+6. `#plans` updates the user's selected plan and returns them to `#dashboard`.
+7. `#dashboard` shows safe user-facing information only.
 
 ## Admin Separation
 

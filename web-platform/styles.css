@@ -452,6 +452,19 @@ button {
   padding: 10px 12px;
 }
 
+.feature-btn strong,
+.feature-btn small {
+  display: block;
+}
+
+.feature-btn small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: .74rem;
+  font-weight: 760;
+  line-height: 1.32;
+}
+
 .feature-btn.active,
 .recent-btn.active,
 .option-btn.active {
@@ -599,6 +612,31 @@ button {
   justify-content: center;
   gap: 10px;
   margin-top: 18px;
+}
+
+.mode-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.mode-pill {
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--soft);
+  background: rgba(245, 242, 234, .045);
+  font-size: .78rem;
+  font-weight: 850;
+}
+
+.mode-pill.active {
+  color: #050506;
+  border-color: rgba(255, 209, 102, .62);
+  background: linear-gradient(135deg, #fff0a3, var(--gold-hot));
 }
 
 .messages {
@@ -830,6 +868,30 @@ body.sheet-open .sheet {
   background: rgba(5, 5, 6, .23);
 }
 
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(245, 242, 234, .04);
+}
+
+.auth-tabs button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 14px;
+  color: var(--muted);
+  background: transparent;
+  font-weight: 900;
+}
+
+.auth-tabs button.active {
+  color: #050506;
+  background: linear-gradient(135deg, #fff0a3, var(--gold-hot));
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -872,6 +934,10 @@ body.sheet-open .sheet {
 .plan-card.featured {
   border-color: rgba(255, 209, 102, .5);
   background: linear-gradient(180deg, rgba(255, 209, 102, .12), rgba(245, 242, 234, .04));
+}
+
+.plan-card.current {
+  outline: 2px solid rgba(0, 245, 212, .26);
 }
 
 .price {
@@ -949,6 +1015,36 @@ body.sheet-open .sheet {
 
 .user-dashboard-grid {
   width: 100%;
+}
+
+.dashboard-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 180px));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.compact-action {
+  width: auto;
+  min-height: 42px;
+  margin-top: 14px;
+  padding: 0 14px;
+}
+
+.usage-bar {
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(245, 242, 234, .055);
+}
+
+.usage-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--gold), var(--cyan));
+  box-shadow: 0 0 18px rgba(255, 209, 102, .24);
 }
 
 .admin-card,
@@ -1259,8 +1355,8 @@ body.sheet-open .sheet {
   .welcome-shell,
   .auth-shell,
   .plans-shell {
-    width: min(334px, calc(100dvw - 56px));
-    max-width: 334px;
+    width: min(420px, calc(100dvw - 24px));
+    max-width: 420px;
     min-height: auto;
     border-radius: 26px;
     overflow: hidden;
@@ -1315,8 +1411,8 @@ body.sheet-open .sheet {
   }
 
   .fresh-inner {
-    width: min(334px, calc(100dvw - 56px));
-    max-width: 334px;
+    width: min(420px, calc(100dvw - 28px));
+    max-width: 420px;
     text-align: left;
   }
 
@@ -1333,8 +1429,8 @@ body.sheet-open .sheet {
   }
 
   .messages {
-    width: min(350px, calc(100dvw - 40px));
-    max-width: 350px;
+    width: min(430px, calc(100dvw - 24px));
+    max-width: 430px;
     margin: 0;
   }
 
@@ -1344,8 +1440,8 @@ body.sheet-open .sheet {
   }
 
   .composer-wrap {
-    width: min(350px, calc(100dvw - 40px));
-    max-width: 350px;
+    width: min(430px, calc(100dvw - 24px));
+    max-width: 430px;
     padding: 8px 0 12px;
     margin-left: 12px;
   }
@@ -1382,6 +1478,10 @@ body.sheet-open .sheet {
     width: 100%;
   }
 
+  .mode-row {
+    justify-content: flex-start;
+  }
+
   .prompt-row .chip {
     width: 100%;
     min-width: 0;
@@ -1406,6 +1506,10 @@ body.sheet-open .sheet {
   .auth-form,
   .plans-shell {
     padding: 18px;
+  }
+
+  .dashboard-actions {
+    grid-template-columns: 1fr;
   }
 
   .plans-hero {

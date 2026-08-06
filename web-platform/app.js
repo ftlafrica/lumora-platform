@@ -25,6 +25,17 @@ const PLANS = [
   { name: "Teams", tag: "Organizations", price: "Custom", desc: "For companies, schools, language groups, and governments.", features: ["Shared workspaces", "Admin analytics", "API access", "Priority language support"] }
 ];
 
+const PLAN_LIMITS = { Free: 20, Plus: 200, Pro: 1000, Teams: 5000 };
+
+const MODES = [
+  { id: "chat", label: "AI Chat", desc: "Natural multilingual conversation", prompt: "Ask in any African language, or mix naturally..." },
+  { id: "translate", label: "Translate", desc: "Preserve meaning, dialect, and tone", prompt: "Paste text to translate while keeping the local feeling..." },
+  { id: "voice", label: "Voice Circle", desc: "Speak, transcribe, translate, reply", prompt: "Describe the voice task you want Lumora to handle..." },
+  { id: "market", label: "Market Mode", desc: "Customer replies, pricing, product copy", prompt: "Write a business or customer message with the right tone..." },
+  { id: "classroom", label: "Classroom", desc: "Explain lessons with local examples", prompt: "Ask Lumora to teach a topic simply with familiar examples..." },
+  { id: "creator", label: "Creator Studio", desc: "Captions, scripts, posts, campaigns", prompt: "Create content for social, video, or community channels..." }
+];
+
 const SEED_ADMIN_CODE = "LUMORA-SEED-2026";
 
 const ADMIN_MODULES = [
@@ -57,6 +68,9 @@ const DEFAULT_STATE = {
   activeChatId: "demo",
   drawerOpen: false,
   sheet: null,
+  isSignedIn: false,
+  authMode: "signup",
+  activeMode: "chat",
   adminUnlocked: false,
   user: {
     name: "Murewa Oyetoro",
@@ -72,7 +86,15 @@ const DEFAULT_STATE = {
     theme: "midnight",
     fontScale: 1,
     voiceMode: true,
-    showModelRoute: true
+    showModelRoute: true,
+    memoryEnabled: true,
+    privacyMode: false
+  },
+  usage: {
+    messagesToday: 4,
+    voiceMinutes: 1.5,
+    corrections: 0,
+    savedPrompts: 3
   },
   chats: [
     {
@@ -107,6 +129,7 @@ function mergeState(base, saved) {
     ...saved,
     user: { ...base.user, ...(saved.user || {}) },
     settings: { ...base.settings, ...(saved.settings || {}) },
+    usage: { ...base.usage, ...(saved.usage || {}) },
     chats: saved.chats && saved.chats.length ? saved.chats : base.chats
   };
 }
@@ -133,14 +156,33 @@ function routeTo(route, params = {}) {
 }
 
 function currentChat() {
-  return state.chats.find(chat => chat.id === state.activeChatId) || state.chats[0];
+  return state.chats.find(chat => chat.id === state.activeChatId) || null;
 }
 
-function createChat() {
+function modeById(id = state.activeMode) {
+  return MODES.find(mode => mode.id === id) || MODES[0];
+}
+
+function createChat(title = "New conversation", routeAfterCreate = true) {
   const id = `chat-${Date.now()}`;
-  state.chats.unshift({ id, title: "New conversation", messages: [] });
+  state.chats.unshift({ id, title, mode: state.activeMode, messages: [] });
   state.activeChatId = id;
-  routeTo("chat", { chatId: id });
+  if (routeAfterCreate) routeTo("chat", { chatId: id });
+  return state.chats[0];
+}
+
+function startFreshChat() {
+  state.activeChatId = null;
+  routeTo("fresh");
+}
+
+function setMode(modeId) {
+  state.activeMode = modeId;
+  state.drawerOpen = false;
+  state.sheet = null;
+  saveState();
+  routeTo("fresh");
+  setTimeout(() => showToast(`${modeById(modeId).label} ready.`), 40);
 }
 
 function selectRouteForPrompt(text) {
@@ -156,9 +198,10 @@ function generateReply(text) {
   const bridge = state.user.bridgeLanguage;
   const tone = state.user.tone;
   const route = selectRouteForPrompt(text);
+  const mode = modeById();
   return {
-    meta: `Lumora - ${tone} tone - ${language} + ${bridge}`,
-    text: `I hear you. I would answer this in a ${tone.toLowerCase()} way, keeping ${language} feeling natural and using ${bridge} only where it helps. For now this web build is using a local simulated response, but the planned route is: ${route}.`,
+    meta: `Lumora - ${mode.label} - ${tone} tone - ${language} + ${bridge}`,
+    text: `I hear you. I would handle this as ${mode.label.toLowerCase()}, keeping ${language} natural and using ${bridge} only where it helps. For now this web build is using a local simulated response, but the planned model path is: ${route}.`,
     route
   };
 }
@@ -168,16 +211,19 @@ function sendMessage() {
   if (!input || !input.value.trim()) return;
   const text = input.value.trim();
   let chat = currentChat();
-  if (!chat) {
-    createChat();
-    chat = currentChat();
+  if (!chat || state.route === "fresh") {
+    chat = createChat(text.slice(0, 42), false);
+    state.route = "chat";
   }
-  chat.messages.push({ role: "user", meta: `${state.user.mainLanguage} + ${state.user.bridgeLanguage}`, text });
+  chat.mode = state.activeMode;
+  chat.messages.push({ role: "user", meta: `${state.user.mainLanguage} + ${state.user.bridgeLanguage} - ${modeById().label}`, text });
   const reply = generateReply(text);
   chat.messages.push({ role: "ai", meta: reply.meta, text: reply.text, route: reply.route });
   chat.title = text.slice(0, 42);
+  state.usage.messagesToday += 1;
   input.value = "";
   saveState();
+  if (location.hash.slice(1) !== "chat") history.pushState(null, "", "#chat");
   render();
   setTimeout(() => {
     const scroller = document.querySelector(".chat-stage");
@@ -208,6 +254,15 @@ function updateSetting(key, value) {
   state.settings[key] = value;
   saveState();
   render();
+}
+
+function signOut() {
+  state.isSignedIn = false;
+  state.sheet = null;
+  state.drawerOpen = false;
+  saveState();
+  routeTo("welcome");
+  setTimeout(() => showToast("Signed out of this local prototype."), 40);
 }
 
 function showToast(message) {
@@ -242,7 +297,7 @@ function welcomeView() {
             <h1 class="hero-title">Speak as you are.<span class="mobile-break"></span> Lumora understands.</h1>
             <p class="hero-lead">A calm, futuristic AI chat for African languages, dialects, tone, voice, and everyday context. Start simple, then open deeper tools only when you need them.</p>
             <div class="hero-actions">
-              <button class="primary" data-route="fresh">Continue to Lumora</button>
+              <button class="primary" data-action="guest-start">Continue to Lumora</button>
               <button class="secondary" data-route="auth">Create account</button>
             </div>
           </div>
@@ -258,13 +313,13 @@ function welcomeView() {
             <div class="mini-top">${brand("Ready")}</div>
             <div class="prompt-preview" data-route="fresh">Ask in Yoruba, Pidgin, Swahili, Arabic, French, English, or mix naturally...</div>
             <div class="quick-grid">
-              <button class="chip" data-route="fresh">Chat</button>
+              <button class="chip" data-action="guest-start">Chat</button>
               <button class="chip" data-route="plans">Plans</button>
               <button class="chip" data-route="auth">Profile</button>
             </div>
           </div>
           <div class="quick-grid">
-            <button class="primary" data-route="fresh">Continue to Lumora</button>
+            <button class="primary" data-action="guest-start">Continue to Lumora</button>
             <button class="secondary" data-route="auth">Create account</button>
             <button class="tertiary" data-route="plans">View plans</button>
           </div>
@@ -299,8 +354,11 @@ function sidebar() {
         </div>
         <div class="section-label">Workspace</div>
         <nav class="nav-list">
-          <button class="feature-btn ${state.route === "fresh" ? "active" : ""}" data-route="fresh">+ New chat</button>
-          <button class="feature-btn ${state.route === "chat" ? "active" : ""}" data-route="chat">AI Chat</button>
+          <button class="feature-btn ${state.route === "fresh" ? "active" : ""}" data-action="new-chat">+ New chat</button>
+          ${MODES.map(mode => `<button class="feature-btn ${state.activeMode === mode.id ? "active" : ""}" data-mode="${mode.id}"><strong>${mode.label}</strong><small>${mode.desc}</small></button>`).join("")}
+        </nav>
+        <div class="section-label">Account</div>
+        <nav class="nav-list">
           <button class="feature-btn" data-sheet="language">Language and Tone</button>
           <button class="feature-btn" data-sheet="settings">Settings</button>
           <button class="feature-btn ${state.route === "dashboard" ? "active" : ""}" data-route="dashboard">Dashboard</button>
@@ -313,7 +371,7 @@ function sidebar() {
       </div>
       <button class="profile-mini" data-sheet="profile">
         <span class="avatar">${initials(state.user.name)}</span>
-        <span><strong>${state.user.name}</strong><small>${state.user.plan} plan</small></span>
+        <span><strong>${state.isSignedIn ? state.user.name : "Guest profile"}</strong><small>${state.user.plan} plan - ${state.user.mainLanguage}</small></span>
       </button>
     </aside>
   `;
@@ -321,6 +379,7 @@ function sidebar() {
 
 function chatChrome(stage, options = {}) {
   const showBottomComposer = options.showBottomComposer !== false;
+  const mode = modeById();
   return appShell(`
     <main class="view chat-layout">
       ${sidebar()}
@@ -328,12 +387,12 @@ function chatChrome(stage, options = {}) {
         <header class="topbar">
           <div class="chat-thread-head">
             <button class="pill mobile-menu" data-action="drawer"><span class="hamburger"><span></span></span></button>
-            <div><strong>Lumora</strong><small>Neon Baobab</small></div>
+            <div><strong>Lumora</strong><small>${mode.label}</small></div>
           </div>
           <div class="top-actions">
             <button class="pill language" data-sheet="language">${state.user.mainLanguage} - ${state.user.bridgeLanguage}</button>
             <button class="pill gold hide-mobile" data-route="plans">Upgrade</button>
-            <button class="pill" data-sheet="profile">Profile</button>
+            <button class="pill" data-sheet="profile">${state.isSignedIn ? initials(state.user.name) : "Guest"}</button>
           </div>
         </header>
         <section class="chat-stage">${stage}</section>
@@ -344,17 +403,21 @@ function chatChrome(stage, options = {}) {
 }
 
 function freshView() {
+  const mode = modeById();
   return chatChrome(`
     <div class="fresh-center">
       <div class="fresh-inner">
-        <p class="eyebrow">Lumora Chat</p>
-        <h1>What should we shape<span class="mobile-break"></span> in your language today?</h1>
+        <p class="eyebrow">${mode.label}</p>
+        <h1>${state.isSignedIn ? `Welcome back, ${state.user.name.split(" ")[0]}.` : "What should we shape"}<span class="mobile-break"></span> in your language today?</h1>
         ${composer(true)}
+        <div class="mode-row">
+          ${MODES.map(item => `<button class="mode-pill ${state.activeMode === item.id ? "active" : ""}" data-mode="${item.id}">${item.label}</button>`).join("")}
+        </div>
         <div class="prompt-row">
-          <button class="chip" data-prompt="Explain artificial intelligence in a respectful Yoruba and English mix.">Explain in my dialect</button>
-          <button class="chip" data-prompt="Translate this customer reply while keeping the tone natural.">Translate with tone</button>
-          <button class="chip" data-prompt="Write a WhatsApp market reply for a customer asking for discount.">Write a market reply</button>
-          <button class="chip" data-prompt="Teach me photosynthesis with local examples.">Teach me simply</button>
+          <button class="chip" data-prompt="Explain artificial intelligence in a respectful Yoruba and English mix." data-autosend="true">Explain in my dialect</button>
+          <button class="chip" data-prompt="Translate this customer reply while keeping the tone natural." data-autosend="true">Translate with tone</button>
+          <button class="chip" data-prompt="Write a WhatsApp market reply for a customer asking for discount." data-autosend="true">Write a market reply</button>
+          <button class="chip" data-prompt="Teach me photosynthesis with local examples." data-autosend="true">Teach me simply</button>
         </div>
       </div>
     </div>
@@ -386,11 +449,12 @@ function messageTemplate(message) {
 }
 
 function composer(centered = false) {
+  const mode = modeById();
   return `
     <footer class="composer-wrap ${centered ? "center-composer" : ""}">
       <section class="chat-composer">
         <button class="icon-btn" data-sheet="language">+</button>
-        <textarea id="composerInput" class="composer-input" rows="1" placeholder="Ask in any African language, or mix naturally..."></textarea>
+        <textarea id="composerInput" class="composer-input" rows="1" placeholder="${mode.prompt}"></textarea>
         <button class="icon-btn voice-btn" data-action="voice">V</button>
         <button class="send-btn" data-action="send">^</button>
       </section>
@@ -399,31 +463,36 @@ function composer(centered = false) {
 }
 
 function authView() {
+  const isLogin = state.authMode === "login";
   return appShell(`
     <main class="view auth-view">
       <section class="auth-shell">
         <div class="auth-story">
-          ${brand("Profile setup")}
+          ${brand(isLogin ? "Welcome back" : "Profile setup")}
           <div>
             <p class="eyebrow">Language Passport</p>
-            <h1>Your AI should know how you speak.</h1>
-            <p class="hero-lead">Create a profile with country, city, main language, bridge language, tone, and access preferences. This becomes the foundation for future Android and iOS personalization.</p>
+            <h1>${isLogin ? "Return to your language workspace." : "Your AI should know how you speak."}</h1>
+            <p class="hero-lead">${isLogin ? "Sign in to continue your conversations, language profile, plan, and saved preferences." : "Create a profile with country, city, main language, bridge language, tone, and access preferences. This becomes the foundation for future Android and iOS personalization."}</p>
           </div>
           <button class="tertiary" data-route="welcome">Back to welcome</button>
         </div>
-        <form class="auth-form" data-action="save-profile">
+        <form class="auth-form" data-action="${isLogin ? "login" : "save-profile"}">
+          <div class="auth-tabs">
+            <button type="button" class="${!isLogin ? "active" : ""}" data-auth-mode="signup">Sign up</button>
+            <button type="button" class="${isLogin ? "active" : ""}" data-auth-mode="login">Log in</button>
+          </div>
           <div class="form-grid">
-            ${field("name", "Full name", state.user.name)}
+            ${isLogin ? "" : field("name", "Full name", state.user.name)}
             ${field("email", "Email", state.user.email, "email")}
-            ${field("country", "Country", state.user.country)}
-            ${field("city", "City", state.user.city)}
-            ${selectField("mainLanguage", "Main language", state.user.mainLanguage, LANGUAGES)}
-            ${selectField("bridgeLanguage", "Bridge language", state.user.bridgeLanguage, LANGUAGES)}
-            ${selectField("tone", "Default tone", state.user.tone, TONES)}
+            ${isLogin ? "" : field("country", "Country", state.user.country)}
+            ${isLogin ? "" : field("city", "City", state.user.city)}
+            ${isLogin ? "" : selectField("mainLanguage", "Main language", state.user.mainLanguage, LANGUAGES)}
+            ${isLogin ? "" : selectField("bridgeLanguage", "Bridge language", state.user.bridgeLanguage, LANGUAGES)}
+            ${isLogin ? "" : selectField("tone", "Default tone", state.user.tone, TONES)}
             ${field("password", "Password", "", "password")}
           </div>
-          <button class="primary" type="submit">Create Lumora account</button>
-          <button class="secondary" type="button" data-route="fresh">Continue as guest</button>
+          <button class="primary" type="submit">${isLogin ? "Log in to Lumora" : "Create Lumora account"}</button>
+          <button class="secondary" type="button" data-action="guest-start">Continue as guest</button>
         </form>
       </section>
     </main>
@@ -458,32 +527,48 @@ function plansView() {
 
 function planTemplate(plan) {
   const price = plan.price.includes("/") ? plan.price.replace("/", "<span>/") + "</span>" : plan.price;
+  const isCurrent = state.user.plan === plan.name;
   return `
-    <article class="plan-card ${plan.featured ? "featured" : ""}">
+    <article class="plan-card ${plan.featured ? "featured" : ""} ${isCurrent ? "current" : ""}">
       <span class="tag">${plan.tag}</span>
       <h2>${plan.name}</h2>
       <div class="price">${price}</div>
       <p class="hero-lead">${plan.desc}</p>
       <ul>${plan.features.map(item => `<li>${item}</li>`).join("")}</ul>
-      <button class="cta" data-plan="${plan.name}">${plan.name === "Teams" ? "Request Teams access" : `Choose ${plan.name}`}</button>
+      <button class="cta" data-plan="${plan.name}">${isCurrent ? "Current plan" : plan.name === "Teams" ? "Request Teams access" : `Choose ${plan.name}`}</button>
     </article>
   `;
 }
 
 function dashboardView() {
-  const chat = currentChat();
+  const chat = currentChat() || state.chats[0];
+  const planLimit = PLAN_LIMITS[state.user.plan] || PLAN_LIMITS.Free;
+  const usagePercent = Math.min(100, Math.round((state.usage.messagesToday / planLimit) * 100));
   return chatChrome(`
     <div class="messages">
       <section class="admin-card wide">
         <p class="eyebrow">Personal Dashboard</p>
-        <h1>Your Lumora activity and language profile.</h1>
-        <p class="hero-lead">This dashboard contains safe user-facing information only. Enterprise operations, payments, visitors, security, infrastructure, and model controls live in the separate seed-admin console.</p>
+        <h1>${state.isSignedIn ? state.user.name.split(" ")[0] : "Guest"}, your Lumora workspace is ready.</h1>
+        <p class="hero-lead">This dashboard contains safe user-facing information only: plan, usage, language passport, saved chats, and preferences.</p>
+        <div class="dashboard-actions">
+          <button class="primary" data-action="new-chat">Start new chat</button>
+          <button class="secondary" data-route="plans">Manage plan</button>
+        </div>
       </section>
       <div class="admin-grid user-dashboard-grid">
         ${metric("Current plan", state.user.plan)}
+        ${metric("Messages today", `${state.usage.messagesToday}/${planLimit}`)}
+        ${metric("Voice minutes", `${state.usage.voiceMinutes}`)}
+        ${metric("Corrections", state.usage.corrections)}
+        <section class="admin-card wide">
+          <h2>Plan usage</h2>
+          <div class="usage-bar"><span style="width:${usagePercent}%"></span></div>
+          <p class="hero-lead">${usagePercent}% of today's ${state.user.plan} message allowance used in this prototype.</p>
+        </section>
         ${metric("Main language", state.user.mainLanguage)}
         ${metric("Bridge language", state.user.bridgeLanguage)}
         ${metric("Default tone", state.user.tone)}
+        ${metric("Memory", state.settings.memoryEnabled ? "On" : "Off")}
         <section class="admin-card wide">
           <h2>Language Passport</h2>
           <div class="table">
@@ -491,6 +576,7 @@ function dashboardView() {
             <div class="table-row"><strong>Location</strong><span>${state.user.city}, ${state.user.country}</span><span>Context</span></div>
             <div class="table-row"><strong>Preference</strong><span>${state.user.mainLanguage} + ${state.user.bridgeLanguage}</span><span>${state.user.tone}</span></div>
           </div>
+          <button class="secondary compact-action" data-route="auth">Edit Language Passport</button>
         </section>
         <section class="admin-card wide">
           <h2>Recent activity</h2>
@@ -499,11 +585,6 @@ function dashboardView() {
             <div class="table-row"><strong>Saved conversations</strong><span>${state.chats.length}</span><span>Local</span></div>
             <div class="table-row"><strong>Model route display</strong><span>${state.settings.showModelRoute ? "Enabled" : "Hidden"}</span><span>Setting</span></div>
           </div>
-        </section>
-        <section class="admin-card wide restricted-card">
-          <h2>Restricted admin access</h2>
-          <p class="hero-lead">Leadership, dev, finance, support, security, moderation, and operations roles use a separate seed-admin-gated console.</p>
-          <button class="secondary" data-route="admin">Open Admin Access Gate</button>
         </section>
       </div>
     </div>
@@ -657,6 +738,8 @@ function settingsSheet() {
     <label class="setting-field"><span>Font size</span><div class="range-row"><input name="fontScale" type="range" min=".9" max="1.18" step=".02" value="${state.settings.fontScale}"><strong>${Math.round(state.settings.fontScale * 100)}%</strong></div></label>
     <button class="option-btn ${state.settings.voiceMode ? "active" : ""}" data-toggle="voiceMode">Voice mode ${state.settings.voiceMode ? "on" : "off"}</button>
     <button class="option-btn ${state.settings.showModelRoute ? "active" : ""}" data-toggle="showModelRoute">Model route display ${state.settings.showModelRoute ? "on" : "off"}</button>
+    <button class="option-btn ${state.settings.memoryEnabled ? "active" : ""}" data-toggle="memoryEnabled">Memory ${state.settings.memoryEnabled ? "on" : "off"}</button>
+    <button class="option-btn ${state.settings.privacyMode ? "active" : ""}" data-toggle="privacyMode">Private mode ${state.settings.privacyMode ? "on" : "off"}</button>
   `;
 }
 
@@ -672,6 +755,8 @@ function profileSheet() {
     </div>
     <button class="primary" data-route="auth">Edit profile</button>
     <button class="secondary" data-route="plans">Manage plan</button>
+    <button class="secondary" data-route="dashboard">Open dashboard</button>
+    <button class="tertiary" data-action="sign-out">${state.isSignedIn ? "Sign out" : "Leave guest session"}</button>
   `;
 }
 
@@ -721,18 +806,34 @@ function render() {
 function bindEvents() {
   document.querySelectorAll("[data-route]").forEach(item => item.addEventListener("click", () => routeTo(item.dataset.route)));
   document.querySelectorAll("[data-sheet]").forEach(item => item.addEventListener("click", () => openSheet(item.dataset.sheet)));
+  document.querySelectorAll("[data-mode]").forEach(item => item.addEventListener("click", () => setMode(item.dataset.mode)));
+  document.querySelectorAll("[data-auth-mode]").forEach(item => item.addEventListener("click", () => {
+    state.authMode = item.dataset.authMode;
+    saveState();
+    render();
+  }));
   document.querySelectorAll("[data-chat]").forEach(item => item.addEventListener("click", () => routeTo("chat", { chatId: item.dataset.chat })));
   document.querySelectorAll("[data-prompt]").forEach(item => item.addEventListener("click", () => {
     const input = document.querySelector("#composerInput");
     if (input) input.value = item.dataset.prompt;
+    if (item.dataset.autosend === "true") sendMessage();
   }));
   document.querySelectorAll("[data-action]").forEach(item => item.addEventListener("click", event => {
     const action = item.dataset.action;
     if (action === "close") closeOverlays();
     if (action === "drawer") { state.drawerOpen = true; saveState(); render(); }
+    if (action === "new-chat") startFreshChat();
+    if (action === "guest-start") {
+      state.isSignedIn = false;
+      state.drawerOpen = false;
+      state.sheet = null;
+      saveState();
+      routeTo("fresh");
+    }
     if (action === "send") sendMessage();
     if (action === "voice") showToast("Voice capture prototype is ready for ASR integration.");
     if (action === "correction") { closeOverlays(); setTimeout(() => showToast("Correction submitted for review."), 40); }
+    if (action === "sign-out") signOut();
     if (action === "preview-admin") {
       state.adminUnlocked = true;
       saveState();
@@ -749,8 +850,8 @@ function bindEvents() {
   document.querySelectorAll("[data-plan]").forEach(item => item.addEventListener("click", () => {
     state.user.plan = item.dataset.plan;
     saveState();
-    showToast(`${item.dataset.plan} plan selected.`);
-    render();
+    routeTo("dashboard");
+    setTimeout(() => showToast(`${item.dataset.plan} plan selected.`), 40);
   }));
   document.querySelectorAll("[data-user]").forEach(item => item.addEventListener("change", () => updateUser(item.dataset.user, item.value)));
   document.querySelectorAll("[data-setting]").forEach(item => item.addEventListener("change", () => updateSetting(item.dataset.setting, item.value)));
@@ -760,9 +861,19 @@ function bindEvents() {
     event.preventDefault();
     const data = new FormData(form);
     ["name", "email", "country", "city", "mainLanguage", "bridgeLanguage", "tone"].forEach(key => state.user[key] = data.get(key) || state.user[key]);
+    state.isSignedIn = true;
     saveState();
     routeTo("fresh");
     setTimeout(() => showToast("Profile saved. Language Passport is active."), 40);
+  }));
+  document.querySelectorAll("form[data-action='login']").forEach(form => form.addEventListener("submit", event => {
+    event.preventDefault();
+    const data = new FormData(form);
+    state.user.email = data.get("email") || state.user.email;
+    state.isSignedIn = true;
+    saveState();
+    routeTo("fresh");
+    setTimeout(() => showToast("Welcome back. Your Lumora workspace is ready."), 40);
   }));
   document.querySelectorAll("form[data-action='seed-admin']").forEach(form => form.addEventListener("submit", event => {
     event.preventDefault();
@@ -804,6 +915,14 @@ function boot() {
 
 window.addEventListener("hashchange", () => {
   const hashRoute = location.hash.slice(1);
+  if (hashRoute === "admin-preview") {
+    state.adminUnlocked = true;
+    state.route = "admin";
+    history.replaceState(null, "", "#admin");
+    saveState();
+    render();
+    return;
+  }
   if (ROUTES.includes(hashRoute)) {
     state.route = hashRoute;
     state.drawerOpen = false;
