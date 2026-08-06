@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Lumora",
+    "slug": "lumora",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#050506"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ftlafrica.lumora"
+    },
+    "android": {
+      "package": "com.ftlafrica.lumora"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

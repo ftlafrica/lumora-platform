@@ -179,3 +179,29 @@ Current clickable prototype:
 5. Create chat history and search screens.
 6. Create profile and settings screens as native mobile views.
 7. Create admin mobile role-gated view for operators.
+
+## 9. Mobile App Build Status
+
+Initial Expo / React Native implementation added in `mobile-app`.
+
+Implemented:
+
+- Welcome / first launch.
+- Login and sign-up with Language Passport fields.
+- Fresh centered chat home.
+- Active chat thread with local simulated Lumora replies.
+- Language and tone controls.
+- Tools surface for Chat, Translate, Voice Circle, Market Mode, Classroom, and Creator Studio.
+- Plans for Free, Plus, Pro, and Teams.
+- Safe personal Dashboard.
+- Profile and settings.
+- Bottom navigation for mobile-first usage.
+
+Pending:
+
+- Native microphone capture, ASR, TTS, and playback.
+- Persistent auth and secure storage.
+- Backend model router API connection.
+- Real payment integration.
+- Native app icon and splash assets.
+- Role-gated mobile admin/operator app, if leadership later approves mobile admin access.
