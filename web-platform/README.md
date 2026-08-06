@@ -24,6 +24,7 @@ Admin preview entry: open `admin.html` or `index.html#admin-preview`.
 - Premium plan selection with Free, Plus, Pro, and Teams
 - Personal user dashboard with plan usage, language passport, activity, and preferences
 - Seed-admin-gated enterprise Admin Console
+- Enterprise Admin Dashboard sections: Command, Growth, Payments, Users and Orgs, AI Ops, Safety, Platform, Access
 - Hugging Face model registry prototype
 - Local simulated model routing
 - LocalStorage persistence
@@ -44,6 +45,7 @@ The consumer app should never expose sensitive admin operations in the normal us
 
 - Users see `Dashboard` for safe plan, language passport, and activity information.
 - Enterprise operators use `admin.html` or `#admin-preview` for prototype previewing.
+- The Admin Console is separated into leadership/dev operating areas: executive command, visitor growth, payments, user/org management, model operations, safety, platform operations, and access/compliance.
 - Production-style access is still represented at `#admin`, which opens a seed-admin access gate when not already unlocked.
 - Prototype seed code: `LUMORA-SEED-2026`.
 - Production must replace this with SSO/MFA, RBAC/ABAC, audit logs, and seed-admin-issued access.

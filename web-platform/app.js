@@ -63,6 +63,66 @@ const ADMIN_MODULES = [
   { title: "Release and Feature Flags", desc: "Canary, rollback, percentage rollout, country rollout, plan rollout, kill switches.", metrics: ["2 canaries", "18 flags", "1 kill switch armed"] }
 ];
 
+const ADMIN_SECTIONS = [
+  { id: "overview", label: "Command", desc: "Executive health, growth, revenue, cost, and incident posture." },
+  { id: "growth", label: "Growth", desc: "Visitors, activation, countries, devices, campaigns, and funnels." },
+  { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
+  { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
+  { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
+  { id: "safety", label: "Safety", desc: "Moderation, corrections, privacy, red-team findings, appeals, and policy." },
+  { id: "platform", label: "Platform", desc: "Web, mobile, API, infrastructure, incidents, releases, and feature flags." },
+  { id: "access", label: "Access", desc: "Seed-admin grants, RBAC, audit logs, compliance, data residency, and SSO." }
+];
+
+const ADMIN_KPIS = [
+  { label: "Total users", value: "18,420", trend: "+12.8%", tone: "good" },
+  { label: "New visitors", value: "2,184", trend: "+18.4%", tone: "good" },
+  { label: "Revenue today", value: "$12,840", trend: "+9.1%", tone: "gold" },
+  { label: "AI requests", value: "1.28M", trend: "+22.6%", tone: "good" },
+  { label: "Payment upgrades", value: "842", trend: "+7.3%", tone: "gold" },
+  { label: "Avg response", value: "428ms", trend: "-11.2%", tone: "good" },
+  { label: "Open safety alerts", value: "19", trend: "3 high", tone: "warn" },
+  { label: "Platform health", value: "99.98%", trend: "stable", tone: "good" }
+];
+
+const ADMIN_FUNNELS = [
+  { label: "Visitor to signup", value: "12.4%", width: 68 },
+  { label: "Signup to first chat", value: "78.2%", width: 82 },
+  { label: "Free to Plus", value: "8.7%", width: 45 },
+  { label: "Plus to Pro", value: "21.3%", width: 59 }
+];
+
+const ADMIN_COUNTRIES = [
+  { country: "Nigeria", users: "8,420", growth: "+16%", languages: "Yoruba, Hausa, Igbo, Pidgin" },
+  { country: "Kenya", users: "2,880", growth: "+11%", languages: "Swahili, English" },
+  { country: "South Africa", users: "2,410", growth: "+9%", languages: "Zulu, Xhosa, English" },
+  { country: "Ghana", users: "1,940", growth: "+14%", languages: "Twi/Akan, Ewe, English" },
+  { country: "Ethiopia", users: "1,220", growth: "+7%", languages: "Amharic, Oromo" }
+];
+
+const ADMIN_PAYMENTS = [
+  { plan: "Free", users: "13,920", mrr: "$0", conversion: "baseline", status: "Healthy" },
+  { plan: "Plus", users: "2,840", mrr: "$22,720", conversion: "8.7%", status: "Growing" },
+  { plan: "Pro", users: "1,442", mrr: "$25,956", conversion: "21.3%", status: "Best ARPU" },
+  { plan: "Teams", users: "218 org seats", mrr: "$135,400", conversion: "sales-led", status: "Expansion" }
+];
+
+const ADMIN_ALERTS = [
+  { title: "3 model fallback spikes", area: "AI Routing", severity: "High", owner: "Model Ops", eta: "18 min" },
+  { title: "31 failed payments need retry", area: "Billing", severity: "Medium", owner: "Finance", eta: "Today" },
+  { title: "312 language corrections pending", area: "Quality", severity: "Medium", owner: "Language QA", eta: "2 days" },
+  { title: "iOS beta crash cluster", area: "Mobile", severity: "High", owner: "Mobile Team", eta: "1 hr" }
+];
+
+const ADMIN_ROLES = [
+  { role: "Seed Admin", access: "Full platform", users: 1, approval: "Root approval" },
+  { role: "Leadership", access: "Executive metrics, finance summaries, growth", users: 5, approval: "Seed admin" },
+  { role: "Developer", access: "Models, API, logs, releases, feature flags", users: 12, approval: "Engineering lead" },
+  { role: "Finance", access: "Payments, invoices, plans, refunds, taxes", users: 4, approval: "CFO/Seed admin" },
+  { role: "Support", access: "Tickets, account assistance, non-sensitive user context", users: 18, approval: "Support lead" },
+  { role: "Moderator", access: "Safety queues, appeals, content policy", users: 24, approval: "Trust lead" }
+];
+
 const DEFAULT_STATE = {
   route: "welcome",
   activeChatId: "demo",
@@ -72,6 +132,7 @@ const DEFAULT_STATE = {
   authMode: "signup",
   activeMode: "chat",
   adminUnlocked: false,
+  adminSection: "overview",
   user: {
     name: "Murewa Oyetoro",
     email: "murewa@example.com",
@@ -597,16 +658,18 @@ function adminView() {
     acc[item.readiness] = (acc[item.readiness] || 0) + 1;
     return acc;
   }, {});
+  const active = ADMIN_SECTIONS.find(section => section.id === state.adminSection) || ADMIN_SECTIONS[0];
   return appShell(`
     <main class="view admin-layout enterprise-admin">
       ${adminSidebar()}
       <section class="admin-main">
         <header class="admin-top">
           <div>
-            <p class="eyebrow">Seed Admin Console</p>
-            <h1>Enterprise operations across web, mobile, models, payments, safety, and infrastructure.</h1>
+            <p class="eyebrow">Seed Admin Console / ${active.label}</p>
+            <h1>${active.desc}</h1>
           </div>
           <div class="top-actions">
+            <button class="pill mobile-menu" data-action="drawer"><span class="hamburger"><span></span></span></button>
             <button class="pill" data-route="fresh">Consumer app</button>
             <button class="pill gold" data-action="lock-admin">Lock admin</button>
           </div>
@@ -615,36 +678,10 @@ function adminView() {
           <strong>Preview mode</strong>
           <span>This is a non-production console preview with simulated metrics. Production access will require seed-admin approval, SSO/MFA, RBAC/ABAC, and audit logging.</span>
         </section>
-        <div class="admin-grid">
-          ${metric("Total users", "18,420")}
-          ${metric("New visitors", "2,184")}
-          ${metric("Revenue today", "$12,840")}
-          ${metric("AI requests today", "1.28M")}
-          ${metric("Web vs mobile", "62% / 38%")}
-          ${metric("Payment upgrades", "842")}
-          ${metric("Avg response", "428ms")}
-          ${metric("Platform health", "99.98%")}
-          <section class="admin-card wide">
-            <h2>Hugging Face model registry</h2>
-            <div class="table">
-              ${MODEL_REGISTRY.slice(0, 7).map(model => `<div class="table-row"><strong>${model.name}</strong><span>${model.readiness}</span><span>${model.type}</span></div>`).join("")}
-            </div>
-          </section>
-          <section class="admin-card wide">
-            <h2>Readiness snapshot</h2>
-            <div class="model-list">
-              <div class="metric"><span>A readiness</span><strong>${readiness.A || 0}</strong></div>
-              <div class="metric"><span>B readiness</span><strong>${readiness.B || 0}</strong></div>
-              <div class="metric"><span>Priority launch</span><strong>Nigeria</strong></div>
-            </div>
-          </section>
-          <section class="admin-card full-admin">
-            <h2>Enterprise modules</h2>
-            <div class="admin-module-grid">
-              ${ADMIN_MODULES.map(adminModuleTemplate).join("")}
-            </div>
-          </section>
-        </div>
+        <nav class="admin-tabs">
+          ${ADMIN_SECTIONS.map(section => `<button class="${active.id === section.id ? "active" : ""}" data-admin-section="${section.id}">${section.label}</button>`).join("")}
+        </nav>
+        ${adminSectionView(active.id, readiness)}
       </section>
     </main>
   `);
@@ -684,7 +721,11 @@ function adminSidebar() {
         </div>
         <div class="section-label">Enterprise control</div>
         <nav class="nav-list">
-          ${ADMIN_MODULES.slice(0, 12).map(module => `<button class="feature-btn">${module.title}</button>`).join("")}
+          ${ADMIN_SECTIONS.map(section => `<button class="feature-btn ${state.adminSection === section.id ? "active" : ""}" data-admin-section="${section.id}"><strong>${section.label}</strong><small>${section.desc}</small></button>`).join("")}
+        </nav>
+        <div class="section-label">Priority queues</div>
+        <nav class="nav-list">
+          ${ADMIN_ALERTS.slice(0, 3).map(alert => `<button class="recent-btn" data-admin-section="${alert.area === "Billing" ? "payments" : alert.area === "Mobile" ? "platform" : "models"}">${alert.title}</button>`).join("")}
         </nav>
       </div>
       <button class="profile-mini">
@@ -692,6 +733,222 @@ function adminSidebar() {
         <span><strong>Seed Admin</strong><small>Full platform access</small></span>
       </button>
     </aside>
+  `;
+}
+
+function adminSectionView(section, readiness) {
+  const sections = {
+    overview: () => adminOverview(readiness),
+    growth: adminGrowth,
+    payments: adminPayments,
+    users: adminUsers,
+    models: () => adminModels(readiness),
+    safety: adminSafety,
+    platform: adminPlatform,
+    access: adminAccess
+  };
+  return (sections[section] || sections.overview)();
+}
+
+function adminOverview(readiness) {
+  return `
+    <div class="admin-grid">
+      ${ADMIN_KPIS.map(adminMetric).join("")}
+      <section class="admin-card wide">
+        <h2>Live command pulse</h2>
+        <div class="admin-chart">
+          ${[42, 58, 51, 72, 66, 84, 79, 92, 88, 96, 91, 99].map((height, index) => `<span style="height:${height}%"><em>${index + 1}</em></span>`).join("")}
+        </div>
+        <p class="hero-lead">Simulated 12-hour view across visitors, chats, requests, upgrades, latency, and incidents.</p>
+      </section>
+      <section class="admin-card wide">
+        <h2>Critical attention</h2>
+        <div class="table">
+          ${ADMIN_ALERTS.map(alertRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Model readiness</h2>
+        <div class="model-list compact-metrics">
+          ${metric("A readiness", readiness.A || 0)}
+          ${metric("B readiness", readiness.B || 0)}
+          ${metric("Model sources", MODEL_REGISTRY.length)}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Operating principles</h2>
+        <div class="admin-checklist">
+          <span>Admin access is seed-admin issued only.</span>
+          <span>Normal users never see sensitive operations.</span>
+          <span>Production requires MFA, SSO, RBAC, audit logs, and approval workflows.</span>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminGrowth() {
+  return `
+    <div class="admin-grid">
+      ${metric("Visitors today", "4,812")}
+      ${metric("New visitors", "2,184")}
+      ${metric("Signup conversion", "12.4%")}
+      ${metric("Mobile web share", "38%")}
+      <section class="admin-card wide">
+        <h2>Conversion funnel</h2>
+        <div class="funnel-list">${ADMIN_FUNNELS.map(funnelBar).join("")}</div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Country traction</h2>
+        <div class="table">${ADMIN_COUNTRIES.map(country => `<div class="table-row"><strong>${country.country}</strong><span>${country.users} users</span><span>${country.growth}</span></div>`).join("")}</div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Language adoption by market</h2>
+        <div class="admin-module-grid">${ADMIN_COUNTRIES.map(country => `<article class="admin-module"><h3>${country.country}</h3><p>${country.languages}</p><div class="module-metrics"><span>${country.users}</span><span>${country.growth}</span></div></article>`).join("")}</div>
+      </section>
+    </div>
+  `;
+}
+
+function adminPayments() {
+  return `
+    <div class="admin-grid">
+      ${metric("MRR", "$184K")}
+      ${metric("ARR", "$2.2M")}
+      ${metric("Upgrades today", "842")}
+      ${metric("Failed payments", "31")}
+      <section class="admin-card full-admin">
+        <h2>Plan performance</h2>
+        <div class="table admin-table-4">
+          ${ADMIN_PAYMENTS.map(item => `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Billing queues</h2>
+        <div class="admin-checklist"><span>Retry failed payments with smart dunning.</span><span>Review refund requests over $250.</span><span>Prepare Teams invoices and tax exports.</span></div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Revenue mix</h2>
+        <div class="admin-donut"><span>73%</span></div>
+        <p class="hero-lead">Pro and Teams currently carry most simulated recurring revenue.</p>
+      </section>
+    </div>
+  `;
+}
+
+function adminUsers() {
+  return `
+    <div class="admin-grid">
+      ${metric("Consumer users", "18.4K")}
+      ${metric("Organizations", "47")}
+      ${metric("Enterprise seats", "1,280")}
+      ${metric("Risk reviews", "92")}
+      <section class="admin-card wide">
+        <h2>User operations</h2>
+        <div class="table">
+          <div class="table-row"><strong>Account support</strong><span>214 linked users</span><span>Support</span></div>
+          <div class="table-row"><strong>Suspensions</strong><span>17 active</span><span>Trust</span></div>
+          <div class="table-row"><strong>Data export requests</strong><span>9 pending</span><span>Privacy</span></div>
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Organization controls</h2>
+        <div class="admin-checklist"><span>SSO and SCIM readiness</span><span>Domain claim approval queue</span><span>Workspace policy templates</span></div>
+      </section>
+    </div>
+  `;
+}
+
+function adminModels(readiness) {
+  return `
+    <div class="admin-grid">
+      ${metric("Model sources", MODEL_REGISTRY.length)}
+      ${metric("Avg route", "428ms")}
+      ${metric("Success rate", "99.1%")}
+      ${metric("Fallback chains", "3")}
+      <section class="admin-card full-admin">
+        <h2>Hugging Face model registry</h2>
+        <div class="table admin-table-4">
+          ${MODEL_REGISTRY.map(model => `<div class="table-row"><strong>${model.name}</strong><span>${model.readiness}</span><span>${model.languages}</span><span>${model.task}</span></div>`).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Routing policy</h2>
+        <div class="admin-checklist"><span>Detect language, dialect, task, and tone.</span><span>Route by readiness, license, latency, cost, and safety.</span><span>Fallback to NLLB/MMS/general LLM where local model quality is low.</span></div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Readiness snapshot</h2>
+        <div class="model-list compact-metrics">${metric("A readiness", readiness.A || 0)}${metric("B readiness", readiness.B || 0)}${metric("Priority launch", "Nigeria")}</div>
+      </section>
+    </div>
+  `;
+}
+
+function adminSafety() {
+  return `
+    <div class="admin-grid">
+      ${metric("Moderation flags", "418")}
+      ${metric("Appeals", "44")}
+      ${metric("Corrections", "1,284")}
+      ${metric("Red-team reports", "3")}
+      <section class="admin-card wide">
+        <h2>Safety queues</h2>
+        <div class="table">${ADMIN_ALERTS.filter(alert => alert.area !== "Billing").map(alertRow).join("")}</div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Language quality loop</h2>
+        <div class="admin-checklist"><span>Native-speaker review queue</span><span>Dialect confidence scoring</span><span>Bias and hallucination report triage</span><span>Community correction feedback loop</span></div>
+      </section>
+    </div>
+  `;
+}
+
+function adminPlatform() {
+  return `
+    <div class="admin-grid">
+      ${metric("Web uptime", "99.98%")}
+      ${metric("API calls", "9.2M")}
+      ${metric("Mobile releases", "2 live")}
+      ${metric("Open incidents", "0")}
+      <section class="admin-card wide">
+        <h2>Release control</h2>
+        <div class="table">
+          <div class="table-row"><strong>Web</strong><span>3 feature flags</span><span>Stable</span></div>
+          <div class="table-row"><strong>iOS</strong><span>1.0.4 beta</span><span>Crash review</span></div>
+          <div class="table-row"><strong>Android</strong><span>1.0.6 beta</span><span>Healthy</span></div>
+          <div class="table-row"><strong>API</strong><span>0.8% errors</span><span>Watch</span></div>
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Infrastructure</h2>
+        <div class="admin-checklist"><span>GPU utilization: 61%</span><span>Queue pressure: normal</span><span>Vector indexing jobs: 8</span><span>CDN and object storage healthy</span></div>
+      </section>
+    </div>
+  `;
+}
+
+function adminAccess() {
+  return `
+    <div class="admin-grid">
+      ${metric("Roles", ADMIN_ROLES.length)}
+      ${metric("Audit events", "1,904")}
+      ${metric("Critical threats", "0")}
+      ${metric("SSO enabled orgs", "14")}
+      <section class="admin-card full-admin">
+        <h2>Role access matrix</h2>
+        <div class="table admin-table-4">
+          ${ADMIN_ROLES.map(role => `<div class="table-row"><strong>${role.role}</strong><span>${role.access}</span><span>${role.users} users</span><span>${role.approval}</span></div>`).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Audit and compliance</h2>
+        <div class="admin-checklist"><span>MFA and passkeys required</span><span>RBAC/ABAC policy engine</span><span>Immutable audit log</span><span>GDPR/data residency request handling</span></div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Seed admin policy</h2>
+        <p class="hero-lead">Only seed admins can grant admin access. Limited areas should be assigned by role, country, product surface, and approval workflow.</p>
+      </section>
+    </div>
   `;
 }
 
@@ -703,6 +960,18 @@ function adminModuleTemplate(module) {
       <div class="module-metrics">${module.metrics.map(item => `<span>${item}</span>`).join("")}</div>
     </article>
   `;
+}
+
+function adminMetric(item) {
+  return `<div class="metric admin-kpi ${item.tone}"><span>${item.label}</span><strong>${item.value}</strong><em>${item.trend}</em></div>`;
+}
+
+function alertRow(alert) {
+  return `<div class="table-row"><strong>${alert.title}</strong><span>${alert.severity}</span><span>${alert.owner}</span></div>`;
+}
+
+function funnelBar(item) {
+  return `<div class="funnel-row"><div><strong>${item.label}</strong><span>${item.value}</span></div><i><b style="width:${item.width}%"></b></i></div>`;
 }
 
 function metric(label, value) {
@@ -807,6 +1076,12 @@ function bindEvents() {
   document.querySelectorAll("[data-route]").forEach(item => item.addEventListener("click", () => routeTo(item.dataset.route)));
   document.querySelectorAll("[data-sheet]").forEach(item => item.addEventListener("click", () => openSheet(item.dataset.sheet)));
   document.querySelectorAll("[data-mode]").forEach(item => item.addEventListener("click", () => setMode(item.dataset.mode)));
+  document.querySelectorAll("[data-admin-section]").forEach(item => item.addEventListener("click", () => {
+    state.adminSection = item.dataset.adminSection;
+    state.drawerOpen = false;
+    saveState();
+    render();
+  }));
   document.querySelectorAll("[data-auth-mode]").forEach(item => item.addEventListener("click", () => {
     state.authMode = item.dataset.authMode;
     saveState();
