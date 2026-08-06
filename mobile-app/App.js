@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { StatusBar as ExpoStatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const colors = {
   bg: "#050506",
@@ -53,6 +54,12 @@ const initialMessages = [
   { role: "ai", meta: "Lumora - Respectful teacher tone", text: "Think of AI like a sharp helper that has learned from many examples. You can ask it questions, but you still guide it with your own sense." }
 ];
 
+const initialChatHistory = [
+  { id: "demo", title: "Explain AI in Lagos Yoruba", mode: "AI Chat", updated: "Today", messages: initialMessages }
+];
+
+const STORAGE_KEY = "lumora-mobile-state-v1";
+
 export default function App() {
   const [route, setRoute] = useState("welcome");
   const [isSignedIn, setSignedIn] = useState(false);
@@ -69,10 +76,74 @@ export default function App() {
   const [fontScale, setFontScale] = useState(1);
   const [memory, setMemory] = useState(true);
   const [messages, setMessages] = useState(initialMessages);
+  const [chatHistory, setChatHistory] = useState(initialChatHistory);
+  const [activeChatId, setActiveChatId] = useState("demo");
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [operatorRequested, setOperatorRequested] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const [draft, setDraft] = useState("");
 
   const mode = useMemo(() => modes.find(item => item.id === activeMode) || modes[0], [activeMode]);
   const firstName = name.split(" ")[0] || "friend";
+
+  useEffect(() => {
+    let mounted = true;
+    AsyncStorage.getItem(STORAGE_KEY)
+      .then(saved => {
+        if (!saved || !mounted) return;
+        const data = JSON.parse(saved);
+        setSignedIn(Boolean(data.isSignedIn));
+        setAuthMode(data.authMode || "signup");
+        setActiveMode(data.activeMode || "chat");
+        setMainLanguage(data.mainLanguage || "Yoruba");
+        setBridgeLanguage(data.bridgeLanguage || "English");
+        setTone(data.tone || "Respectful");
+        setPlan(data.plan || "Free");
+        setName(data.name || "Murewa Oyetoro");
+        setEmail(data.email || "murewa@example.com");
+        setCountry(data.country || "Nigeria");
+        setCity(data.city || "Lagos");
+        setFontScale(data.fontScale || 1);
+        setMemory(data.memory !== false);
+        setChatHistory(data.chatHistory?.length ? data.chatHistory : initialChatHistory);
+        setActiveChatId(data.activeChatId || "demo");
+        setMessages(data.messages?.length ? data.messages : initialMessages);
+        setOperatorRequested(Boolean(data.operatorRequested));
+        setRoute(data.route && data.route !== "welcome" ? data.route : "welcome");
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (mounted) setHydrated(true);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const snapshot = {
+      route,
+      isSignedIn,
+      authMode,
+      activeMode,
+      mainLanguage,
+      bridgeLanguage,
+      tone,
+      plan,
+      name,
+      email,
+      country,
+      city,
+      fontScale,
+      memory,
+      messages,
+      chatHistory,
+      activeChatId,
+      operatorRequested
+    };
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)).catch(() => {});
+  }, [route, isSignedIn, authMode, activeMode, mainLanguage, bridgeLanguage, tone, plan, name, email, country, city, fontScale, memory, messages, chatHistory, activeChatId, operatorRequested, hydrated]);
 
   function navigate(nextRoute) {
     setRoute(nextRoute);
@@ -91,16 +162,23 @@ export default function App() {
   function sendMessage(text = draft) {
     const clean = text.trim();
     if (!clean) return;
+    const chatId = activeChatId || `chat-${Date.now()}`;
     const reply = {
       role: "ai",
       meta: `Lumora - ${mode.label} - ${tone} tone`,
       text: `I hear you. I would answer in ${mainLanguage}, bridge with ${bridgeLanguage} only where it helps, and keep the tone ${tone.toLowerCase()}. This mobile build is ready for the future model router integration.`
     };
-    setMessages(current => [
-      ...current,
+    const nextMessages = [
+      ...messages,
       { role: "user", meta: `${mainLanguage} + ${bridgeLanguage}`, text: clean },
       reply
-    ]);
+    ];
+    setActiveChatId(chatId);
+    setMessages(nextMessages);
+    setChatHistory(current => [
+      { id: chatId, title: clean.slice(0, 48), mode: mode.label, updated: "Now", messages: nextMessages },
+      ...current.filter(chat => chat.id !== chatId)
+    ].slice(0, 24));
     setDraft("");
     setRoute("chatThread");
   }
@@ -108,6 +186,25 @@ export default function App() {
   function chooseMode(nextMode) {
     setActiveMode(nextMode);
     setRoute("chatHome");
+  }
+
+  function startNewChat() {
+    setActiveChatId(null);
+    setMessages([]);
+    setDraft("");
+    setRoute("chatHome");
+  }
+
+  function openChat(chat) {
+    setActiveChatId(chat.id);
+    setMessages(chat.messages);
+    setRoute("chatThread");
+  }
+
+  function startVoicePrototype() {
+    setVoiceListening(true);
+    setActiveMode("voice");
+    setRoute("voice");
   }
 
   const screen = {
@@ -131,6 +228,7 @@ export default function App() {
         mode={mode}
         activeMode={activeMode}
         onMode={chooseMode}
+        onVoice={startVoicePrototype}
         draft={draft}
         setDraft={setDraft}
         onSend={sendMessage}
@@ -145,12 +243,15 @@ export default function App() {
         setDraft={setDraft}
         onSend={sendMessage}
         onLanguage={() => navigate("language")}
+        onNewChat={startNewChat}
       />
     ),
+    history: <HistoryScreen chats={chatHistory} onOpen={openChat} onNew={startNewChat} />,
     language: (
       <LanguageScreen mainLanguage={mainLanguage} bridgeLanguage={bridgeLanguage} tone={tone} setMainLanguage={setMainLanguage} setBridgeLanguage={setBridgeLanguage} setTone={setTone} />
     ),
-    tools: <ToolsScreen activeMode={activeMode} onMode={chooseMode} />,
+    voice: <VoiceScreen listening={voiceListening} setListening={setVoiceListening} onTranscript={sendMessage} />,
+    tools: <ToolsScreen activeMode={activeMode} onMode={chooseMode} onVoice={startVoicePrototype} />,
     plans: <PlansScreen plan={plan} setPlan={setPlan} onDone={() => navigate("dashboard")} />,
     dashboard: <DashboardScreen name={name} plan={plan} mainLanguage={mainLanguage} bridgeLanguage={bridgeLanguage} tone={tone} messages={messages} />,
     profile: (
@@ -170,8 +271,10 @@ export default function App() {
         setMemory={setMemory}
         onAuth={() => navigate("auth")}
         onPlans={() => navigate("plans")}
+        onOperator={() => navigate("operator")}
       />
-    )
+    ),
+    operator: <OperatorAccessScreen requested={operatorRequested} setRequested={setOperatorRequested} />
   }[route] || null;
 
   return (
@@ -231,10 +334,10 @@ function AuthScreen({ authMode, setAuthMode, fields, setters, onSubmit, onGuest 
   );
 }
 
-function ChatHome({ isSignedIn, firstName, mode, activeMode, onMode, draft, setDraft, onSend, onPrompt }) {
+function ChatHome({ isSignedIn, firstName, mode, activeMode, onMode, onVoice, draft, setDraft, onSend, onPrompt }) {
   return (
     <Screen padded>
-      <Header title="Lumora" subtitle={mode.label} />
+      <Header title="Lumora" subtitle={mode.label} right={<IconButton name="mic-outline" onPress={onVoice} />} />
       <View style={styles.centerHero}>
         <Text style={styles.eyebrow}>{mode.label}</Text>
         <Text style={styles.chatTitle}>{isSignedIn ? `Welcome back, ${firstName}.` : "What should we shape"} in your language today?</Text>
@@ -252,12 +355,16 @@ function ChatHome({ isSignedIn, firstName, mode, activeMode, onMode, draft, setD
   );
 }
 
-function ChatThread({ messages, mode, draft, setDraft, onSend, onLanguage }) {
+function ChatThread({ messages, mode, draft, setDraft, onSend, onLanguage, onNewChat }) {
   return (
     <Screen>
-      <Header title="Lumora" subtitle={mode.label} right={<IconButton name="language-outline" onPress={onLanguage} />} />
+      <Header
+        title="Lumora"
+        subtitle={mode.label}
+        right={<View style={styles.headerActions}><IconButton name="create-outline" onPress={onNewChat} /><IconButton name="language-outline" onPress={onLanguage} /></View>}
+      />
       <ScrollView contentContainerStyle={styles.messages} showsVerticalScrollIndicator={false}>
-        {messages.map((message, index) => (
+        {messages.length ? messages.map((message, index) => (
           <View key={`${message.role}-${index}`} style={[styles.messageRow, message.role === "user" && styles.messageRowUser]}>
             <View style={[styles.avatar, message.role === "user" && styles.userAvatar]}>
               <Text style={styles.avatarText}>{message.role === "user" ? "You" : "L"}</Text>
@@ -267,9 +374,28 @@ function ChatThread({ messages, mode, draft, setDraft, onSend, onLanguage }) {
               <Text style={styles.bodyText}>{message.text}</Text>
             </View>
           </View>
-        ))}
+        )) : <EmptyState title="Fresh chat" text="Start with the composer below. Lumora will keep the conversation simple, direct, and language-aware." />}
       </ScrollView>
       <Composer value={draft} onChangeText={setDraft} placeholder={mode.prompt} onSend={() => onSend()} />
+    </Screen>
+  );
+}
+
+function HistoryScreen({ chats, onOpen, onNew }) {
+  return (
+    <Screen padded>
+      <Header title="History" subtitle="Saved local conversations" right={<IconButton name="create-outline" onPress={onNew} gold />} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.planList}>
+        {chats.length ? chats.map(chat => (
+          <Pressable key={chat.id} style={styles.historyCard} onPress={() => onOpen(chat)}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.cardTitle}>{chat.title}</Text>
+              <Text style={styles.goldText}>{chat.updated}</Text>
+            </View>
+            <Text style={styles.cardText}>{chat.mode} / {chat.messages.length} messages</Text>
+          </Pressable>
+        )) : <EmptyState title="No saved chats yet" text="Start a conversation and it will appear here automatically." />}
+      </ScrollView>
     </Screen>
   );
 }
@@ -285,13 +411,32 @@ function LanguageScreen({ mainLanguage, bridgeLanguage, tone, setMainLanguage, s
   );
 }
 
-function ToolsScreen({ activeMode, onMode }) {
+function VoiceScreen({ listening, setListening, onTranscript }) {
+  return (
+    <Screen padded>
+      <Header title="Voice Circle" subtitle="Native voice flow prototype" />
+      <View style={styles.voicePanel}>
+        <View style={[styles.voiceOrb, listening && styles.voiceOrbActive]}>
+          <Ionicons name={listening ? "radio-outline" : "mic-outline"} size={42} color={listening ? colors.bg : colors.gold} />
+        </View>
+        <Text style={styles.chatTitle}>{listening ? "Listening for your voice..." : "Speak naturally."}</Text>
+        <Text style={styles.cardText}>This placeholder is ready for native microphone capture, African language ASR, translation, TTS, and playback.</Text>
+      </View>
+      <View style={styles.stack}>
+        <PrimaryButton label={listening ? "Stop listening" : "Start listening"} icon={listening ? "stop" : "mic"} onPress={() => setListening(!listening)} />
+        <SecondaryButton label="Use sample transcript" icon="text-outline" onPress={() => onTranscript("Voice input: make this message shorter and natural in my tone.")} />
+      </View>
+    </Screen>
+  );
+}
+
+function ToolsScreen({ activeMode, onMode, onVoice }) {
   return (
     <Screen padded>
       <Header title="Tools" subtitle="Open features without crowding chat" />
       <View style={styles.toolGrid}>
         {modes.map(mode => (
-          <Pressable key={mode.id} style={[styles.toolCard, activeMode === mode.id && styles.activeCard]} onPress={() => onMode(mode.id)}>
+          <Pressable key={mode.id} style={[styles.toolCard, activeMode === mode.id && styles.activeCard]} onPress={() => mode.id === "voice" ? onVoice() : onMode(mode.id)}>
             <Ionicons name={mode.icon} size={22} color={activeMode === mode.id ? colors.bg : colors.gold} />
             <Text style={styles.cardTitle}>{mode.label}</Text>
             <Text style={styles.cardText}>{mode.prompt}</Text>
@@ -339,7 +484,7 @@ function DashboardScreen({ name, plan, mainLanguage, bridgeLanguage, tone, messa
   );
 }
 
-function ProfileScreen({ isSignedIn, name, email, country, city, mainLanguage, bridgeLanguage, tone, plan, fontScale, setFontScale, memory, setMemory, onAuth, onPlans }) {
+function ProfileScreen({ isSignedIn, name, email, country, city, mainLanguage, bridgeLanguage, tone, plan, fontScale, setFontScale, memory, setMemory, onAuth, onPlans, onOperator }) {
   return (
     <Screen padded>
       <Header title={isSignedIn ? name : "Guest profile"} subtitle={isSignedIn ? email : "Local prototype session"} />
@@ -347,6 +492,7 @@ function ProfileScreen({ isSignedIn, name, email, country, city, mainLanguage, b
       <View style={styles.stack}>
         <SecondaryButton label="Edit profile" icon="person-outline" onPress={onAuth} />
         <SecondaryButton label="Manage plan" icon="diamond-outline" onPress={onPlans} />
+        <GhostButton label="Request operator access" icon="lock-closed-outline" onPress={onOperator} />
       </View>
       <View style={styles.settingsCard}>
         <Text style={styles.cardTitle}>Settings</Text>
@@ -363,10 +509,23 @@ function ProfileScreen({ isSignedIn, name, email, country, city, mainLanguage, b
   );
 }
 
+function OperatorAccessScreen({ requested, setRequested }) {
+  return (
+    <Screen padded>
+      <Header title="Operator access" subtitle="Separate from consumer profile" />
+      <InfoCard title="Role-gated mobile admin" lines={["Enterprise admin tools must stay separate from normal user accounts.", "Mobile operator access will require seed-admin approval, SSO/MFA, RBAC, audit logs, and device trust."]} />
+      <InfoCard title="Allowed future roles" lines={["Leadership view", "Developer incident view", "Support queue", "Safety moderator queue"]} />
+      <View style={styles.stack}>
+        <PrimaryButton label={requested ? "Request submitted" : "Request seed-admin review"} icon={requested ? "checkmark" : "shield-checkmark-outline"} onPress={() => setRequested(true)} />
+      </View>
+    </Screen>
+  );
+}
+
 function BottomTabs({ route, onRoute }) {
   const tabs = [
     { route: "chatHome", icon: "chatbubble-outline", label: "Chat" },
-    { route: "chatThread", icon: "time-outline", label: "History" },
+    { route: "history", icon: "time-outline", label: "History" },
     { route: "tools", icon: "grid-outline", label: "Tools" },
     { route: "dashboard", icon: "speedometer-outline", label: "Dash" },
     { route: "profile", icon: "person-outline", label: "Profile" }
@@ -503,6 +662,16 @@ function InfoCard({ title, lines, compact }) {
   );
 }
 
+function EmptyState({ title, text }) {
+  return (
+    <View style={styles.emptyState}>
+      <Ionicons name="sparkles-outline" size={28} color={colors.gold} />
+      <Text style={styles.cardTitle}>{title}</Text>
+      <Text style={styles.cardText}>{text}</Text>
+    </View>
+  );
+}
+
 function Metric({ label, value }) {
   return (
     <View style={styles.metric}>
@@ -569,6 +738,7 @@ const styles = StyleSheet.create({
   cardTitle: { color: colors.text, fontSize: 18, fontWeight: "900" },
   cardText: { color: colors.soft, lineHeight: 21, marginTop: 8 },
   header: { minHeight: 54, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerTitle: { color: colors.text, fontSize: 22, fontWeight: "900" },
   headerSub: { color: colors.muted, marginTop: 2, fontWeight: "700" },
   centerHero: { flex: 1, justifyContent: "center" },
@@ -607,6 +777,11 @@ const styles = StyleSheet.create({
   toolGrid: { gap: 12 },
   toolCard: { borderRadius: 22, borderWidth: 1, borderColor: colors.line, padding: 16, backgroundColor: "rgba(245,242,234,0.055)" },
   activeCard: { borderColor: colors.gold, backgroundColor: "rgba(255,209,102,0.12)" },
+  historyCard: { borderRadius: 22, borderWidth: 1, borderColor: colors.line, padding: 16, backgroundColor: "rgba(245,242,234,0.055)" },
+  emptyState: { minHeight: 220, borderRadius: 24, borderWidth: 1, borderColor: colors.line, padding: 20, backgroundColor: "rgba(245,242,234,0.045)", alignItems: "center", justifyContent: "center", gap: 8 },
+  voicePanel: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
+  voiceOrb: { width: 132, height: 132, borderRadius: 66, borderWidth: 1, borderColor: "rgba(255,209,102,0.32)", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,209,102,0.08)" },
+  voiceOrbActive: { backgroundColor: colors.gold, shadowColor: colors.gold, shadowOpacity: 0.36, shadowRadius: 24 },
   planList: { gap: 12, paddingBottom: 24 },
   planCard: { borderRadius: 24, borderWidth: 1, borderColor: colors.line, padding: 18, backgroundColor: "rgba(245,242,234,0.055)" },
   featuredPlan: { borderColor: colors.gold, backgroundColor: "rgba(255,209,102,0.11)" },

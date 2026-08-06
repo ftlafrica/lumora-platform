@@ -190,12 +190,16 @@ Implemented:
 - Login and sign-up with Language Passport fields.
 - Fresh centered chat home.
 - Active chat thread with local simulated Lumora replies.
+- Local chat history and new-chat flow.
 - Language and tone controls.
+- Voice Circle prototype state.
 - Tools surface for Chat, Translate, Voice Circle, Market Mode, Classroom, and Creator Studio.
 - Plans for Free, Plus, Pro, and Teams.
 - Safe personal Dashboard.
 - Profile and settings.
 - Bottom navigation for mobile-first usage.
+- Local AsyncStorage persistence.
+- Separate operator access request placeholder, without exposing sensitive admin functions to normal users.
 
 Pending:
 
