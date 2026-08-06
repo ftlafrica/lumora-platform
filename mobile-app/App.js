@@ -64,6 +64,8 @@ const plans = [
   { name: "Teams", price: "Custom", desc: "For organizations, schools, and enterprise teams.", features: ["Shared workspace", "Governance", "Priority support"] }
 ];
 
+const planLimits = { Free: 20, Plus: 200, Pro: 1000, Teams: 5000 };
+
 const initialMessages = [
   { role: "user", meta: "Yoruba + English", text: "Explain artificial intelligence to my younger cousin, but make it sound natural for home." },
   { role: "ai", meta: "Lumora - Respectful teacher tone", text: "Think of AI like a sharp helper that has learned from many examples. You can ask it questions, but you still guide it with your own sense." }
@@ -93,6 +95,7 @@ export default function App() {
   const [privacyMode, setPrivacyMode] = useState(false);
   const [showModelRoute, setShowModelRoute] = useState(true);
   const [onboardingIndex, setOnboardingIndex] = useState(0);
+  const [usage, setUsage] = useState({ messagesToday: 4, voiceMinutes: 1.5, corrections: 0 });
   const [messages, setMessages] = useState(initialMessages);
   const [chatHistory, setChatHistory] = useState(initialChatHistory);
   const [activeChatId, setActiveChatId] = useState("demo");
@@ -126,6 +129,7 @@ export default function App() {
         setPrivacyMode(Boolean(data.privacyMode));
         setShowModelRoute(data.showModelRoute !== false);
         setOnboardingIndex(data.onboardingIndex || 0);
+        setUsage(data.usage || { messagesToday: 4, voiceMinutes: 1.5, corrections: 0 });
         setChatHistory(data.chatHistory?.length ? data.chatHistory : initialChatHistory);
         setActiveChatId(data.activeChatId || "demo");
         setMessages(data.messages?.length ? data.messages : initialMessages);
@@ -161,13 +165,14 @@ export default function App() {
       privacyMode,
       showModelRoute,
       onboardingIndex,
+      usage,
       messages,
       chatHistory,
       activeChatId,
       operatorRequested
     };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)).catch(() => {});
-  }, [route, isSignedIn, authMode, activeMode, mainLanguage, bridgeLanguage, tone, plan, name, email, country, city, fontScale, memory, privacyMode, showModelRoute, onboardingIndex, messages, chatHistory, activeChatId, operatorRequested, hydrated]);
+  }, [route, isSignedIn, authMode, activeMode, mainLanguage, bridgeLanguage, tone, plan, name, email, country, city, fontScale, memory, privacyMode, showModelRoute, onboardingIndex, usage, messages, chatHistory, activeChatId, operatorRequested, hydrated]);
 
   function navigate(nextRoute) {
     setRoute(nextRoute);
@@ -199,10 +204,13 @@ export default function App() {
     ];
     setActiveChatId(chatId);
     setMessages(nextMessages);
-    setChatHistory(current => [
-      { id: chatId, title: clean.slice(0, 48), mode: mode.label, updated: "Now", messages: nextMessages },
-      ...current.filter(chat => chat.id !== chatId)
-    ].slice(0, 24));
+    setUsage(current => ({ ...current, messagesToday: current.messagesToday + 1 }));
+    if (memory && !privacyMode) {
+      setChatHistory(current => [
+        { id: chatId, title: clean.slice(0, 48), mode: mode.label, updated: "Now", messages: nextMessages },
+        ...current.filter(chat => chat.id !== chatId)
+      ].slice(0, 24));
+    }
     setDraft("");
     setRoute("chatThread");
   }
@@ -229,6 +237,33 @@ export default function App() {
     setVoiceListening(true);
     setActiveMode("voice");
     setRoute("voice");
+  }
+
+  function resetLocalData() {
+    setSignedIn(false);
+    setAuthMode("signup");
+    setActiveMode("chat");
+    setMainLanguage("Yoruba");
+    setBridgeLanguage("English");
+    setTone("Respectful");
+    setPlan("Free");
+    setName("Murewa Oyetoro");
+    setEmail("murewa@example.com");
+    setCountry("Nigeria");
+    setCity("Lagos");
+    setFontScale(1);
+    setMemory(true);
+    setPrivacyMode(false);
+    setShowModelRoute(true);
+    setOnboardingIndex(0);
+    setUsage({ messagesToday: 0, voiceMinutes: 0, corrections: 0 });
+    setMessages([]);
+    setChatHistory([]);
+    setActiveChatId(null);
+    setOperatorRequested(false);
+    setDraft("");
+    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+    setRoute("welcome");
   }
 
   const screen = {
@@ -280,7 +315,7 @@ export default function App() {
     voice: <VoiceScreen listening={voiceListening} setListening={setVoiceListening} onTranscript={sendMessage} />,
     tools: <ToolsScreen activeMode={activeMode} onMode={chooseMode} onVoice={startVoicePrototype} />,
     plans: <PlansScreen plan={plan} setPlan={setPlan} onDone={() => navigate("dashboard")} />,
-    dashboard: <DashboardScreen name={name} plan={plan} mainLanguage={mainLanguage} bridgeLanguage={bridgeLanguage} tone={tone} messages={messages} />,
+    dashboard: <DashboardScreen name={name} plan={plan} mainLanguage={mainLanguage} bridgeLanguage={bridgeLanguage} tone={tone} messages={messages} usage={usage} />,
     profile: (
       <ProfileScreen
         isSignedIn={isSignedIn}
@@ -303,9 +338,11 @@ export default function App() {
         onAuth={() => navigate("auth")}
         onPlans={() => navigate("plans")}
         onReadiness={() => navigate("readiness")}
+        onDataControls={() => navigate("dataControls")}
         onOperator={() => navigate("operator")}
       />
     ),
+    dataControls: <DataControlsScreen profile={{ name, email, country, city, mainLanguage, bridgeLanguage, tone, plan }} usage={usage} chatHistory={chatHistory} memory={memory} privacyMode={privacyMode} onReset={resetLocalData} />,
     operator: <OperatorAccessScreen requested={operatorRequested} setRequested={setOperatorRequested} />
   }[route] || null;
 
@@ -550,15 +587,21 @@ function PlansScreen({ plan, setPlan, onDone }) {
   );
 }
 
-function DashboardScreen({ name, plan, mainLanguage, bridgeLanguage, tone, messages }) {
+function DashboardScreen({ name, plan, mainLanguage, bridgeLanguage, tone, messages, usage }) {
+  const limit = planLimits[plan] || planLimits.Free;
+  const usagePercent = Math.min(100, Math.round((usage.messagesToday / limit) * 100));
   return (
     <Screen padded>
       <Header title="Dashboard" subtitle="Safe personal activity" />
       <View style={styles.metricGrid}>
         <Metric label="Plan" value={plan} />
-        <Metric label="Messages" value={String(messages.length)} />
+        <Metric label="Messages today" value={`${usage.messagesToday}/${limit}`} />
         <Metric label="Language" value={mainLanguage} />
         <Metric label="Tone" value={tone} />
+      </View>
+      <View style={styles.usagePanel}>
+        <View style={styles.usageTrack}><View style={[styles.usageFill, { width: `${usagePercent}%` }]} /></View>
+        <Text style={styles.cardText}>{usagePercent}% of today's {plan} allowance used. Current thread has {messages.length} messages.</Text>
       </View>
       <InfoCard title="Language Passport" lines={[name, `${mainLanguage} + ${bridgeLanguage}`, tone]} />
       <InfoCard title="Privacy note" lines={["Admin operations are separate.", "Your profile only shows safe personal data."]} />
@@ -587,6 +630,7 @@ function ProfileScreen({
   onAuth,
   onPlans,
   onReadiness,
+  onDataControls,
   onOperator
 }) {
   return (
@@ -597,6 +641,7 @@ function ProfileScreen({
         <SecondaryButton label="Edit profile" icon="person-outline" onPress={onAuth} />
         <SecondaryButton label="Manage plan" icon="diamond-outline" onPress={onPlans} />
         <SecondaryButton label="Language readiness" icon="analytics-outline" onPress={onReadiness} />
+        <SecondaryButton label="Data controls" icon="server-outline" onPress={onDataControls} />
         <GhostButton label="Request operator access" icon="lock-closed-outline" onPress={onOperator} />
       </View>
       <View style={styles.settingsCard}>
@@ -619,6 +664,43 @@ function ProfileScreen({
         </Pressable>
       </View>
       <InfoCard title="Data controls" lines={["Memory is stored locally in this prototype.", "Private mode will later avoid saving eligible chats.", "Model route display explains how Lumora chose a response path."]} />
+    </Screen>
+  );
+}
+
+function DataControlsScreen({ profile, usage, chatHistory, memory, privacyMode, onReset }) {
+  const exportLines = [
+    `${profile.name} / ${profile.email}`,
+    `${profile.city}, ${profile.country}`,
+    `${profile.mainLanguage} + ${profile.bridgeLanguage}`,
+    `${profile.tone} tone / ${profile.plan} plan`,
+    `${usage.messagesToday} messages today`,
+    `${chatHistory.length} saved local chats`
+  ];
+  return (
+    <Screen padded>
+      <Header title="Data controls" subtitle="Privacy, export, and local reset" />
+      <InfoCard title="Local data summary" lines={exportLines} />
+      <View style={styles.settingsCard}>
+        <Text style={styles.cardTitle}>Trust status</Text>
+        <View style={styles.settingRow}>
+          <Text style={styles.bodyText}>Memory</Text>
+          <Text style={styles.goldText}>{memory ? "Saving eligible chats" : "Not saving new chats"}</Text>
+        </View>
+        <View style={styles.settingRow}>
+          <Text style={styles.bodyText}>Private mode</Text>
+          <Text style={styles.goldText}>{privacyMode ? "History paused" : "Off"}</Text>
+        </View>
+        <View style={styles.settingRow}>
+          <Text style={styles.bodyText}>Storage</Text>
+          <Text style={styles.goldText}>AsyncStorage prototype</Text>
+        </View>
+      </View>
+      <InfoCard title="Production behavior" lines={["Export will become a downloadable account archive.", "Reset will require confirmation and can later call backend deletion APIs.", "Sensitive admin data is never stored in this consumer profile."]} />
+      <View style={styles.stack}>
+        <SecondaryButton label="Export summary prepared" icon="document-text-outline" onPress={() => {}} />
+        <GhostButton label="Reset local prototype data" icon="trash-outline" onPress={onReset} />
+      </View>
     </Screen>
   );
 }
@@ -915,6 +997,9 @@ const styles = StyleSheet.create({
   metricGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   metric: { width: "47.5%", minHeight: 92, borderRadius: 20, borderWidth: 1, borderColor: colors.line, padding: 14, backgroundColor: "rgba(245,242,234,0.055)", justifyContent: "center" },
   metricValue: { color: colors.text, fontSize: 21, fontWeight: "900", marginTop: 6 },
+  usagePanel: { borderRadius: 22, borderWidth: 1, borderColor: colors.line, padding: 16, backgroundColor: "rgba(245,242,234,0.055)", marginTop: 12 },
+  usageTrack: { height: 10, borderRadius: 999, overflow: "hidden", backgroundColor: "rgba(245,242,234,0.1)" },
+  usageFill: { height: "100%", borderRadius: 999, backgroundColor: colors.gold },
   settingsCard: { borderRadius: 22, borderWidth: 1, borderColor: colors.line, padding: 16, backgroundColor: "rgba(245,242,234,0.055)", marginTop: 12 },
   settingRow: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: colors.line },
   goldText: { color: colors.gold, fontWeight: "900" },

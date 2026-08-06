@@ -15,8 +15,10 @@ Expo / React Native starter for the Lumora Android and iOS consumer app.
 - Tools: Translate, Voice Circle, Market Mode, Classroom, Creator Studio
 - Plans: Free, Plus, Pro, Teams
 - Safe personal dashboard
+- Plan usage and quota display
 - Profile and settings
 - Privacy, memory, font-size, and model-route controls
+- Data controls screen for local summary and prototype reset
 - Language/model readiness screen
 - Local AsyncStorage persistence
 - Separate operator access request placeholder
@@ -51,3 +53,4 @@ npm run ios
 - Replies are simulated locally until the model router API is built.
 - Voice actions are placeholders for future native microphone, ASR, TTS, and playback integration.
 - Operator access is only a role-gated request placeholder; sensitive admin features are not exposed in the consumer app.
+- Private mode and memory-off prevent new chats from being added to local history in this prototype.
