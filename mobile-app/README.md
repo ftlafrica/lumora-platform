@@ -5,6 +5,7 @@ Expo / React Native starter for the Lumora Android and iOS consumer app.
 ## Current Mobile Scope
 
 - Welcome / first launch
+- Native onboarding steps
 - Login and signup with Language Passport fields
 - Fresh centered chat home
 - Active chat thread with simulated Lumora replies
@@ -15,6 +16,8 @@ Expo / React Native starter for the Lumora Android and iOS consumer app.
 - Plans: Free, Plus, Pro, Teams
 - Safe personal dashboard
 - Profile and settings
+- Privacy, memory, font-size, and model-route controls
+- Language/model readiness screen
 - Local AsyncStorage persistence
 - Separate operator access request placeholder
 

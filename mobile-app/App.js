@@ -33,6 +33,21 @@ const colors = {
 const languages = ["Yoruba", "Hausa", "Igbo", "Nigerian Pidgin", "Swahili", "Zulu", "Xhosa", "Amharic", "Arabic", "French", "English"];
 const tones = ["Respectful", "Casual", "Street", "Business", "Teacher", "Storyteller", "Market"];
 
+const readiness = [
+  { language: "Yoruba", country: "Nigeria", grade: "A", models: "InkubaLM, AfroXLMR, Masakhane" },
+  { language: "Hausa", country: "Nigeria", grade: "A", models: "InkubaLM, AfroLM, Masakhane" },
+  { language: "Swahili", country: "Kenya/Tanzania", grade: "A", models: "InkubaLM, AfriNLLB, MMS" },
+  { language: "Zulu", country: "South Africa", grade: "B", models: "InkubaLM, AfriBERTa, MMS" },
+  { language: "Amharic", country: "Ethiopia", grade: "B", models: "AfroXLMR, NLLB, MMS" },
+  { language: "Wolof", country: "Senegal", grade: "Research", models: "Masakhane, NLLB fallback" }
+];
+
+const onboardingSteps = [
+  { icon: "language-outline", title: "Choose how you speak", text: "Set your country, city, main language, bridge language, and tone." },
+  { icon: "chatbubbles-outline", title: "Chat without switching yourself off", text: "Mix languages naturally. Lumora keeps the conversation clean and familiar." },
+  { icon: "mic-outline", title: "Voice-first when needed", text: "The native app is prepared for ASR, translation, TTS, and playback." }
+];
+
 const modes = [
   { id: "chat", icon: "chatbubble-ellipses-outline", label: "AI Chat", prompt: "Ask in any African language, or mix naturally..." },
   { id: "translate", icon: "language-outline", label: "Translate", prompt: "Paste text to translate without losing tone..." },
@@ -75,6 +90,9 @@ export default function App() {
   const [city, setCity] = useState("Lagos");
   const [fontScale, setFontScale] = useState(1);
   const [memory, setMemory] = useState(true);
+  const [privacyMode, setPrivacyMode] = useState(false);
+  const [showModelRoute, setShowModelRoute] = useState(true);
+  const [onboardingIndex, setOnboardingIndex] = useState(0);
   const [messages, setMessages] = useState(initialMessages);
   const [chatHistory, setChatHistory] = useState(initialChatHistory);
   const [activeChatId, setActiveChatId] = useState("demo");
@@ -105,6 +123,9 @@ export default function App() {
         setCity(data.city || "Lagos");
         setFontScale(data.fontScale || 1);
         setMemory(data.memory !== false);
+        setPrivacyMode(Boolean(data.privacyMode));
+        setShowModelRoute(data.showModelRoute !== false);
+        setOnboardingIndex(data.onboardingIndex || 0);
         setChatHistory(data.chatHistory?.length ? data.chatHistory : initialChatHistory);
         setActiveChatId(data.activeChatId || "demo");
         setMessages(data.messages?.length ? data.messages : initialMessages);
@@ -137,13 +158,16 @@ export default function App() {
       city,
       fontScale,
       memory,
+      privacyMode,
+      showModelRoute,
+      onboardingIndex,
       messages,
       chatHistory,
       activeChatId,
       operatorRequested
     };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)).catch(() => {});
-  }, [route, isSignedIn, authMode, activeMode, mainLanguage, bridgeLanguage, tone, plan, name, email, country, city, fontScale, memory, messages, chatHistory, activeChatId, operatorRequested, hydrated]);
+  }, [route, isSignedIn, authMode, activeMode, mainLanguage, bridgeLanguage, tone, plan, name, email, country, city, fontScale, memory, privacyMode, showModelRoute, onboardingIndex, messages, chatHistory, activeChatId, operatorRequested, hydrated]);
 
   function navigate(nextRoute) {
     setRoute(nextRoute);
@@ -209,8 +233,9 @@ export default function App() {
 
   const screen = {
     welcome: (
-      <WelcomeScreen onGuest={startGuest} onAuth={() => navigate("auth")} onPlans={() => navigate("plans")} />
+      <WelcomeScreen onGuest={startGuest} onAuth={() => navigate("auth")} onPlans={() => navigate("plans")} onOnboarding={() => navigate("onboarding")} />
     ),
+    onboarding: <OnboardingScreen index={onboardingIndex} setIndex={setOnboardingIndex} onDone={() => navigate("auth")} onGuest={startGuest} />,
     auth: (
       <AuthScreen
         authMode={authMode}
@@ -239,6 +264,7 @@ export default function App() {
       <ChatThread
         messages={messages}
         mode={mode}
+        showModelRoute={showModelRoute}
         draft={draft}
         setDraft={setDraft}
         onSend={sendMessage}
@@ -250,6 +276,7 @@ export default function App() {
     language: (
       <LanguageScreen mainLanguage={mainLanguage} bridgeLanguage={bridgeLanguage} tone={tone} setMainLanguage={setMainLanguage} setBridgeLanguage={setBridgeLanguage} setTone={setTone} />
     ),
+    readiness: <ReadinessScreen mainLanguage={mainLanguage} />,
     voice: <VoiceScreen listening={voiceListening} setListening={setVoiceListening} onTranscript={sendMessage} />,
     tools: <ToolsScreen activeMode={activeMode} onMode={chooseMode} onVoice={startVoicePrototype} />,
     plans: <PlansScreen plan={plan} setPlan={setPlan} onDone={() => navigate("dashboard")} />,
@@ -269,8 +296,13 @@ export default function App() {
         setFontScale={setFontScale}
         memory={memory}
         setMemory={setMemory}
+        privacyMode={privacyMode}
+        setPrivacyMode={setPrivacyMode}
+        showModelRoute={showModelRoute}
+        setShowModelRoute={setShowModelRoute}
         onAuth={() => navigate("auth")}
         onPlans={() => navigate("plans")}
+        onReadiness={() => navigate("readiness")}
         onOperator={() => navigate("operator")}
       />
     ),
@@ -293,7 +325,7 @@ export default function App() {
   );
 }
 
-function WelcomeScreen({ onGuest, onAuth, onPlans }) {
+function WelcomeScreen({ onGuest, onAuth, onPlans, onOnboarding }) {
   return (
     <Screen padded>
       <Brand subtitle="African language AI" />
@@ -305,9 +337,35 @@ function WelcomeScreen({ onGuest, onAuth, onPlans }) {
       <View style={styles.stack}>
         <PrimaryButton label="Continue to Lumora" icon="arrow-forward" onPress={onGuest} />
         <SecondaryButton label="Create account" icon="person-add-outline" onPress={onAuth} />
+        <SecondaryButton label="See onboarding" icon="map-outline" onPress={onOnboarding} />
         <GhostButton label="View plans" icon="diamond-outline" onPress={onPlans} />
       </View>
       <SignalGrid />
+    </Screen>
+  );
+}
+
+function OnboardingScreen({ index, setIndex, onDone, onGuest }) {
+  const step = onboardingSteps[index] || onboardingSteps[0];
+  const isLast = index === onboardingSteps.length - 1;
+  return (
+    <Screen padded>
+      <Brand subtitle="First launch" />
+      <View style={styles.onboardingPanel}>
+        <View style={styles.onboardingIcon}>
+          <Ionicons name={step.icon} size={38} color={colors.bg} />
+        </View>
+        <Text style={styles.eyebrow}>Step {index + 1} of {onboardingSteps.length}</Text>
+        <Text style={styles.heroTitle}>{step.title}</Text>
+        <Text style={styles.lead}>{step.text}</Text>
+        <View style={styles.dots}>
+          {onboardingSteps.map((item, dotIndex) => <View key={item.title} style={[styles.dot, dotIndex === index && styles.activeDot]} />)}
+        </View>
+      </View>
+      <View style={styles.stack}>
+        <PrimaryButton label={isLast ? "Set up Language Passport" : "Next"} icon="arrow-forward" onPress={() => isLast ? onDone() : setIndex(index + 1)} />
+        <GhostButton label="Continue as guest" icon="flash-outline" onPress={onGuest} />
+      </View>
     </Screen>
   );
 }
@@ -355,7 +413,7 @@ function ChatHome({ isSignedIn, firstName, mode, activeMode, onMode, onVoice, dr
   );
 }
 
-function ChatThread({ messages, mode, draft, setDraft, onSend, onLanguage, onNewChat }) {
+function ChatThread({ messages, mode, showModelRoute, draft, setDraft, onSend, onLanguage, onNewChat }) {
   return (
     <Screen>
       <Header
@@ -372,6 +430,9 @@ function ChatThread({ messages, mode, draft, setDraft, onSend, onLanguage, onNew
             <View style={[styles.bubble, message.role === "user" && styles.userBubble]}>
               <Text style={styles.meta}>{message.meta}</Text>
               <Text style={styles.bodyText}>{message.text}</Text>
+              {message.role === "ai" && showModelRoute ? (
+                <Text style={styles.routeHint}>Route: language detection -> African model registry -> Lumora tone layer</Text>
+              ) : null}
             </View>
           </View>
         )) : <EmptyState title="Fresh chat" text="Start with the composer below. Lumora will keep the conversation simple, direct, and language-aware." />}
@@ -407,6 +468,27 @@ function LanguageScreen({ mainLanguage, bridgeLanguage, tone, setMainLanguage, s
       <PickerRow label="Main language" value={mainLanguage} options={languages} onSelect={setMainLanguage} />
       <PickerRow label="Bridge language" value={bridgeLanguage} options={languages} onSelect={setBridgeLanguage} />
       <PickerRow label="Tone" value={tone} options={tones} onSelect={setTone} />
+      <InfoCard title="Native app behavior" lines={["Language and tone choices will follow you across chat, voice, tools, and future offline states."]} />
+    </Screen>
+  );
+}
+
+function ReadinessScreen({ mainLanguage }) {
+  return (
+    <Screen padded>
+      <Header title="Language readiness" subtitle="Model coverage and launch confidence" />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.planList}>
+        {readiness.map(item => (
+          <View key={`${item.language}-${item.country}`} style={[styles.readinessCard, item.language === mainLanguage && styles.currentPlan]}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.cardTitle}>{item.language}</Text>
+              <Text style={styles.grade}>{item.grade}</Text>
+            </View>
+            <Text style={styles.cardText}>{item.country}</Text>
+            <Text style={styles.feature}>{item.models}</Text>
+          </View>
+        ))}
+      </ScrollView>
     </Screen>
   );
 }
@@ -484,7 +566,29 @@ function DashboardScreen({ name, plan, mainLanguage, bridgeLanguage, tone, messa
   );
 }
 
-function ProfileScreen({ isSignedIn, name, email, country, city, mainLanguage, bridgeLanguage, tone, plan, fontScale, setFontScale, memory, setMemory, onAuth, onPlans, onOperator }) {
+function ProfileScreen({
+  isSignedIn,
+  name,
+  email,
+  country,
+  city,
+  mainLanguage,
+  bridgeLanguage,
+  tone,
+  plan,
+  fontScale,
+  setFontScale,
+  memory,
+  setMemory,
+  privacyMode,
+  setPrivacyMode,
+  showModelRoute,
+  setShowModelRoute,
+  onAuth,
+  onPlans,
+  onReadiness,
+  onOperator
+}) {
   return (
     <Screen padded>
       <Header title={isSignedIn ? name : "Guest profile"} subtitle={isSignedIn ? email : "Local prototype session"} />
@@ -492,6 +596,7 @@ function ProfileScreen({ isSignedIn, name, email, country, city, mainLanguage, b
       <View style={styles.stack}>
         <SecondaryButton label="Edit profile" icon="person-outline" onPress={onAuth} />
         <SecondaryButton label="Manage plan" icon="diamond-outline" onPress={onPlans} />
+        <SecondaryButton label="Language readiness" icon="analytics-outline" onPress={onReadiness} />
         <GhostButton label="Request operator access" icon="lock-closed-outline" onPress={onOperator} />
       </View>
       <View style={styles.settingsCard}>
@@ -504,7 +609,16 @@ function ProfileScreen({ isSignedIn, name, email, country, city, mainLanguage, b
           <Text style={styles.bodyText}>Font size</Text>
           <Text style={styles.goldText}>{Math.round(fontScale * 100)}%</Text>
         </Pressable>
+        <Pressable style={styles.settingRow} onPress={() => setPrivacyMode(!privacyMode)}>
+          <Text style={styles.bodyText}>Private mode</Text>
+          <Text style={styles.goldText}>{privacyMode ? "On" : "Off"}</Text>
+        </Pressable>
+        <Pressable style={styles.settingRow} onPress={() => setShowModelRoute(!showModelRoute)}>
+          <Text style={styles.bodyText}>Model route display</Text>
+          <Text style={styles.goldText}>{showModelRoute ? "On" : "Off"}</Text>
+        </Pressable>
       </View>
+      <InfoCard title="Data controls" lines={["Memory is stored locally in this prototype.", "Private mode will later avoid saving eligible chats.", "Model route display explains how Lumora chose a response path."]} />
     </Screen>
   );
 }
@@ -722,6 +836,11 @@ const styles = StyleSheet.create({
   brandText: { color: colors.text, fontSize: 22, fontWeight: "900" },
   brandSub: { color: colors.muted, marginTop: 2, fontWeight: "700" },
   hero: { flex: 1, justifyContent: "center" },
+  onboardingPanel: { flex: 1, justifyContent: "center", gap: 14 },
+  onboardingIcon: { width: 82, height: 82, borderRadius: 28, alignItems: "center", justifyContent: "center", backgroundColor: colors.gold },
+  dots: { flexDirection: "row", gap: 8, marginTop: 18 },
+  dot: { width: 24, height: 7, borderRadius: 999, backgroundColor: "rgba(245,242,234,0.16)" },
+  activeDot: { width: 46, backgroundColor: colors.gold },
   eyebrow: { color: colors.cyan, fontSize: 12, fontWeight: "900", letterSpacing: 1.1, textTransform: "uppercase" },
   heroTitle: { color: colors.text, fontSize: 48, lineHeight: 50, fontWeight: "900", marginTop: 14 },
   chatTitle: { color: colors.text, fontSize: 30, lineHeight: 35, fontWeight: "900", marginTop: 10, marginBottom: 18 },
@@ -764,6 +883,7 @@ const styles = StyleSheet.create({
   userBubble: { backgroundColor: "rgba(139,92,246,0.12)" },
   meta: { color: colors.muted, fontSize: 12, fontWeight: "800" },
   bodyText: { color: colors.text, fontSize: 15, lineHeight: 23, marginTop: 5 },
+  routeHint: { color: colors.gold, fontSize: 12, lineHeight: 18, marginTop: 12, fontWeight: "800" },
   formScroll: { gap: 12, paddingBottom: 24 },
   field: { gap: 7 },
   label: { color: colors.muted, fontSize: 12, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.8 },
@@ -778,6 +898,8 @@ const styles = StyleSheet.create({
   toolCard: { borderRadius: 22, borderWidth: 1, borderColor: colors.line, padding: 16, backgroundColor: "rgba(245,242,234,0.055)" },
   activeCard: { borderColor: colors.gold, backgroundColor: "rgba(255,209,102,0.12)" },
   historyCard: { borderRadius: 22, borderWidth: 1, borderColor: colors.line, padding: 16, backgroundColor: "rgba(245,242,234,0.055)" },
+  readinessCard: { borderRadius: 22, borderWidth: 1, borderColor: colors.line, padding: 16, backgroundColor: "rgba(245,242,234,0.055)" },
+  grade: { minWidth: 44, textAlign: "center", overflow: "hidden", borderRadius: 999, paddingVertical: 5, paddingHorizontal: 10, color: colors.bg, backgroundColor: colors.gold, fontWeight: "900" },
   emptyState: { minHeight: 220, borderRadius: 24, borderWidth: 1, borderColor: colors.line, padding: 20, backgroundColor: "rgba(245,242,234,0.045)", alignItems: "center", justifyContent: "center", gap: 8 },
   voicePanel: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   voiceOrb: { width: 132, height: 132, borderRadius: 66, borderWidth: 1, borderColor: "rgba(255,209,102,0.32)", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,209,102,0.08)" },
