@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lumora Login And Sign Up</title>
+  <style>
+    :root {
+      --bg: #050506;
+      --panel: rgba(21, 22, 26, .92);
+      --line: rgba(245, 242, 234, .10);
+      --text: #f5f2ea;
+      --soft: rgba(245, 242, 234, .70);
+      --muted: rgba(245, 242, 234, .46);
+      --cyan: #00f5d4;
+      --violet: #8b5cf6;
+      --gold: #ffd166;
+      --gold-hot: #ffb703;
+      color-scheme: dark;
+      font-family: Inter, Satoshi, Manrope, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: clamp(16px, 3vw, 32px);
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at 18% 12%, rgba(139, 92, 246, .18), transparent 34%),
+        radial-gradient(circle at 80% 18%, rgba(0, 245, 212, .12), transparent 30%),
+        var(--bg);
+      color: var(--text);
+    }
+
+    button,
+    input,
+    select { font: inherit; }
+    [data-link] { cursor: pointer; }
+
+    .shell {
+      width: min(980px, calc(100vw - 32px));
+      min-height: min(640px, calc(100vh - 48px));
+      display: grid;
+      grid-template-columns: minmax(0, .95fr) minmax(360px, 420px);
+      gap: 16px;
+      min-width: 0;
+    }
+
+    .story,
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      background: linear-gradient(180deg, rgba(245, 242, 234, .065), rgba(245, 242, 234, .025));
+      box-shadow: 0 30px 100px rgba(0, 0, 0, .36);
+    }
+
+    .story {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(26px, 4vw, 38px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .story::after {
+      content: "";
+      position: absolute;
+      right: -22%;
+      bottom: -28%;
+      width: 460px;
+      height: 460px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0, 245, 212, .20), rgba(139, 92, 246, .12), transparent 68%);
+      filter: blur(6px);
+    }
+
+    .mark {
+      display: grid;
+      width: 50px;
+      height: 50px;
+      place-items: center;
+      border-radius: 17px;
+      color: #050506;
+      font-weight: 950;
+      background:
+        radial-gradient(circle at 29% 25%, #f8ff3d, transparent 27%),
+        linear-gradient(135deg, var(--cyan), var(--violet));
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 900;
+    }
+
+    .copy {
+      position: relative;
+      z-index: 1;
+    }
+
+    h1 {
+      max-width: 560px;
+      margin: 30px 0 16px;
+      font-size: clamp(38px, 5.2vw, 68px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .copy p {
+      max-width: 560px;
+      color: var(--soft);
+      line-height: 1.62;
+      font-size: 16px;
+    }
+
+    .badges {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 11px;
+      color: var(--soft);
+      background: rgba(245, 242, 234, .04);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .card {
+      padding: clamp(20px, 3vw, 26px);
+      align-self: center;
+    }
+
+    .tabs {
+      display: flex;
+      padding: 5px;
+      margin-bottom: 20px;
+      border-radius: 999px;
+      background: rgba(245, 242, 234, .055);
+    }
+
+    .tab {
+      flex: 1;
+      border: 0;
+      border-radius: 999px;
+      padding: 10px;
+      color: var(--muted);
+      background: transparent;
+      font-weight: 850;
+    }
+
+    .tab.active {
+      color: #050506;
+      background: linear-gradient(135deg, #fff2ad, var(--gold), var(--gold-hot));
+    }
+
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    input,
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(245, 242, 234, .055);
+      color: var(--text);
+      padding: 12px 13px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .cta {
+      width: 100%;
+      margin-top: 18px;
+      border: 0;
+      border-radius: 16px;
+      padding: 14px;
+      background: linear-gradient(135deg, #fff2ad, var(--gold), var(--gold-hot));
+      color: #050506;
+      font-weight: 950;
+    }
+
+    .fine {
+      margin-top: 13px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 860px) {
+      body {
+        place-items: start center;
+        min-height: auto;
+      }
+
+      .shell {
+        min-height: auto;
+        grid-template-columns: 1fr;
+        width: min(300px, calc(100vw - 24px));
+        max-width: 300px;
+      }
+
+      .story {
+        min-height: auto;
+        padding: 24px;
+      }
+
+      h1 {
+        margin-top: 24px;
+        font-size: clamp(28px, 8vw, 36px);
+      }
+
+      .copy p {
+        font-size: 14px;
+      }
+
+      .badges {
+        margin-top: 18px;
+      }
+
+      .card {
+        align-self: auto;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+    }
+
+    @media (min-width: 700px) and (max-width: 860px) {
+      .shell {
+        width: min(560px, calc(100vw - 48px));
+        max-width: 560px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 12px;
+      }
+
+      .shell {
+        width: min(300px, calc(100vw - 24px));
+        max-width: 300px;
+      }
+
+      .story,
+      .card {
+        border-radius: 22px;
+      }
+
+      .story {
+        padding: 20px;
+      }
+
+      .mark {
+        width: 44px;
+        height: 44px;
+        border-radius: 15px;
+      }
+
+      h1 {
+        margin-top: 22px;
+        font-size: clamp(28px, 9vw, 34px);
+      }
+
+      .copy p {
+        overflow-wrap: anywhere;
+      }
+
+      .badges {
+        gap: 7px;
+      }
+
+      .badge {
+        padding: 7px 10px;
+        font-size: 11px;
+      }
+
+      .card {
+        padding: 18px;
+      }
+
+      input,
+      select {
+        min-height: 46px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="story">
+      <div class="copy">
+        <div class="brand" data-link="Lumora_Welcome_Concept.html"><div class="mark">L</div><span>Lumora</span></div>
+        <h1>Your language, your tone, your AI.</h1>
+        <p>Create a profile that helps Lumora understand your country, city, language, dialect, writing style, and preferred tone from day one.</p>
+      </div>
+      <div class="badges"><span class="badge">African language AI</span><span class="badge">Voice-first</span><span class="badge">Dialect-aware</span><span class="badge">Privacy controls</span></div>
+    </section>
+    <section class="card">
+      <div class="tabs"><button class="tab active">Sign up</button><button class="tab">Log in</button></div>
+      <label>Full name</label><input value="Murewa Oyetoro">
+      <label>Email</label><input value="murewa@example.com">
+      <div class="grid"><div><label>Country</label><select><option>Nigeria</option></select></div><div><label>City</label><input value="Lagos"></div></div>
+      <div class="grid"><div><label>Main language</label><select><option>Yoruba</option></select></div><div><label>Bridge language</label><select><option>English</option></select></div></div>
+      <label>Password</label><input type="password" value="password">
+      <button class="cta" data-link="Lumora_Fresh_Chat_Concept.html">Create Lumora account</button>
+      <div class="fine">Your profile can later include dialect, script, tone, voice preference, plan, memory settings, and contributor status.</div>
+    </section>
+  </main>
+  <script>
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(item => item.classList.remove('active'));
+        tab.classList.add('active');
+      });
+    });
+    document.querySelectorAll('[data-link]').forEach(item => {
+      item.addEventListener('click', () => { window.location.href = item.dataset.link; });
+    });
+  </script>
+</body>
+</html>

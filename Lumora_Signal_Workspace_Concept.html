@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lumora Chat</title>
+  <style>
+    :root {
+      --bg: #050506;
+      --rail: #0d0e10;
+      --panel: #202126;
+      --panel-soft: #17181c;
+      --line: rgba(245, 242, 234, .10);
+      --text: #f5f2ea;
+      --soft: rgba(245, 242, 234, .70);
+      --muted: rgba(245, 242, 234, .45);
+      --cyan: #00f5d4;
+      --violet: #8b5cf6;
+      --gold: #ffd166;
+      --gold-hot: #ffb703;
+      --shadow: 0 24px 80px rgba(0, 0, 0, .42);
+      color-scheme: dark;
+      font-family: Inter, Satoshi, Manrope, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body { min-height: 100%; }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 64% 12%, rgba(0, 245, 212, .08), transparent 31%),
+        radial-gradient(circle at 34% 88%, rgba(139, 92, 246, .12), transparent 34%),
+        var(--bg);
+      color: var(--text);
+    }
+
+    button { font: inherit; cursor: pointer; }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 268px minmax(0, 1fr);
+      height: 100vh;
+      min-width: 0;
+    }
+
+    .sidebar {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 18px;
+      height: 100vh;
+      min-width: 0;
+      padding: 14px;
+      border-right: 1px solid var(--line);
+      background: rgba(13, 14, 16, .96);
+      overflow-y: auto;
+    }
+
+    .sidebar-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding-bottom: 4px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+      padding: 6px 4px 8px;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+    }
+
+    .mark {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 13px;
+      color: #050506;
+      font-weight: 950;
+      background:
+        radial-gradient(circle at 29% 25%, #f8ff3d, transparent 27%),
+        linear-gradient(135deg, var(--cyan), var(--violet));
+      box-shadow: 0 0 26px rgba(0, 245, 212, .16);
+    }
+
+    .brand strong {
+      display: block;
+      font-size: 17px;
+      line-height: 1;
+    }
+
+    .brand span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .nav,
+    .recents { display: grid; gap: 7px; }
+
+    .nav button,
+    .recent {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 42px;
+      width: 100%;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 12px;
+      background: transparent;
+      color: var(--soft);
+      text-align: left;
+      font-weight: 700;
+    }
+
+    .nav button.active {
+      color: var(--text);
+      background: rgba(245, 242, 234, .095);
+    }
+
+    .glyph {
+      display: grid;
+      width: 22px;
+      height: 22px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 8px;
+      background: rgba(245, 242, 234, .07);
+      color: var(--cyan);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .section-label {
+      margin: 20px 8px 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    .recent {
+      display: block;
+      min-height: auto;
+      color: var(--soft);
+      font-size: 13px;
+      line-height: 1.35;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .profile-mini {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(245, 242, 234, .045);
+      color: var(--text);
+      text-align: left;
+    }
+
+    .avatar {
+      display: grid;
+      width: 32px;
+      height: 32px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--cyan), var(--violet));
+      color: #050506;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .profile-mini strong { display: block; font-size: 13px; }
+    .profile-mini span { display: block; color: var(--muted); font-size: 12px; }
+
+    .main {
+      position: relative;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      height: 100vh;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 68px;
+      padding: 12px 24px;
+      background: rgba(5, 5, 6, .76);
+      backdrop-filter: blur(20px);
+    }
+
+    .model {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+      color: var(--text);
+      font-weight: 850;
+    }
+
+    .model small {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .pill {
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: rgba(245, 242, 234, .055);
+      color: var(--soft);
+      font-weight: 780;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .pill.language {
+      color: var(--cyan);
+      border-color: rgba(0, 245, 212, .24);
+      background: rgba(0, 245, 212, .07);
+    }
+
+    .pill.gold {
+      border: 0;
+      color: #050506;
+      background: linear-gradient(135deg, #fff2ad, var(--gold), var(--gold-hot));
+    }
+
+    .mobile-menu { display: none; }
+
+    .chat-scroll {
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 22px 20px 136px;
+    }
+
+    .conversation {
+      width: min(100%, 840px);
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .message {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 12px;
+      align-items: flex-start;
+      min-width: 0;
+    }
+
+    .face {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(245, 242, 234, .08);
+      border: 1px solid var(--line);
+      color: var(--soft);
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    .face.l {
+      border: 0;
+      color: #050506;
+      background:
+        radial-gradient(circle at 30% 25%, #f8ff3d, transparent 28%),
+        linear-gradient(135deg, var(--cyan), var(--violet));
+    }
+
+    .bubble {
+      max-width: 720px;
+      min-width: 0;
+      padding: 15px 17px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(32, 33, 38, .82);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, .14);
+      overflow-wrap: anywhere;
+    }
+
+    .message.ai .bubble {
+      border-color: rgba(0, 245, 212, .15);
+      background: linear-gradient(135deg, rgba(0, 245, 212, .06), rgba(139, 92, 246, .08)), rgba(22, 24, 32, .9);
+    }
+
+    .meta {
+      margin: 0 0 7px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 820;
+    }
+
+    .bubble p:last-child {
+      margin: 0;
+      color: rgba(245, 242, 234, .94);
+      font-size: 15px;
+      line-height: 1.58;
+    }
+
+    .message-tools {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .mini-action {
+      min-height: 30px;
+      border: 1px solid rgba(245, 242, 234, .10);
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: rgba(245, 242, 234, .045);
+      color: var(--soft);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .mini-action.gold {
+      border: 0;
+      color: #050506;
+      background: linear-gradient(135deg, #fff2ad, var(--gold), var(--gold-hot));
+    }
+
+    .composer-wrap {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      justify-content: center;
+      padding: 18px 20px 22px;
+      background: linear-gradient(180deg, transparent, rgba(5, 5, 6, .82) 34%, rgba(5, 5, 6, .98));
+      pointer-events: none;
+    }
+
+    .composer-panel {
+      width: min(100%, 840px);
+      pointer-events: auto;
+    }
+
+    .composer {
+      width: 100%;
+      border: 1px solid rgba(245, 242, 234, .12);
+      border-radius: 27px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .composer-main {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 62px;
+      padding: 9px 10px 9px 16px;
+    }
+
+    .plus,
+    .tool {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--soft);
+      font-size: 25px;
+      line-height: 1;
+    }
+
+    .prompt {
+      min-width: 0;
+      color: var(--soft);
+      font-size: 15px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tool.mic {
+      font-size: 18px;
+      border: 1px solid rgba(245, 242, 234, .10);
+      background: rgba(245, 242, 234, .045);
+    }
+
+    .tool.send {
+      color: #050506;
+      background: linear-gradient(135deg, #fff2ad, var(--gold), var(--gold-hot));
+      box-shadow: 0 0 24px rgba(255, 209, 102, .22);
+    }
+
+    .suggestions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .suggestion {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 12px;
+      color: var(--soft);
+      background: rgba(245, 242, 234, .035);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .scrim {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      background: rgba(0, 0, 0, .44);
+      backdrop-filter: blur(6px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .22s ease;
+    }
+
+    body.language-open .scrim,
+    body.menu-open .scrim,
+    body.sidebar-open .scrim,
+    body.correction-open .scrim {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .sheet {
+      position: fixed;
+      z-index: 21;
+      top: 76px;
+      right: 24px;
+      width: min(430px, calc(100vw - 24px));
+      max-height: calc(100vh - 96px);
+      overflow: auto;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: rgba(18, 20, 28, .98);
+      box-shadow: 0 30px 120px rgba(0, 0, 0, .55);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-8px);
+      transition: opacity .22s ease, transform .22s ease;
+    }
+
+    body.language-open .language-sheet,
+    body.menu-open .menu-sheet,
+    body.correction-open .correction-sheet {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .sheet h2 { margin: 0; font-size: 18px; }
+    .close { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 50%; background: rgba(245,242,234,.05); color: var(--soft); }
+    .label { margin: 18px 0 9px; color: var(--muted); font-size: 11px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+    .card-list { display: grid; gap: 9px; }
+    .option { border: 1px solid transparent; border-radius: 16px; padding: 13px 14px; background: rgba(245,242,234,.055); color: var(--text); text-align: left; }
+    .option.active { border-color: rgba(0,245,212,.28); background: rgba(0,245,212,.075); }
+    .option strong { display: block; margin-bottom: 4px; }
+    .option span { color: var(--muted); font-size: 12px; line-height: 1.35; }
+    .profile-card { display: flex; gap: 12px; align-items: center; border: 1px solid var(--line); border-radius: 18px; padding: 14px; background: rgba(245,242,234,.055); }
+    .profile-card .avatar { width: 42px; height: 42px; }
+    .small-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mini { border: 1px solid var(--line); border-radius: 14px; padding: 11px; background: rgba(245,242,234,.04); }
+    .mini strong { display:block; font-size: 13px; }
+    .mini span { color: var(--muted); font-size: 12px; }
+    .control-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; background: rgba(245,242,234,.045); }
+    .control-row strong { display: block; font-size: 13px; }
+    .control-row span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .segmented { display: inline-flex; padding: 3px; border-radius: 999px; background: rgba(245,242,234,.075); }
+    .segmented button { min-height: 28px; border: 0; border-radius: 999px; padding: 5px 10px; background: transparent; color: var(--muted); font-size: 12px; font-weight: 800; }
+    .segmented button.active { color: #050506; background: linear-gradient(135deg, #fff2ad, var(--gold), var(--gold-hot)); }
+    .toggle { position: relative; width: 46px; height: 26px; border-radius: 999px; background: rgba(0,245,212,.18); border: 1px solid rgba(0,245,212,.22); }
+    .toggle::after { content: ""; position: absolute; top: 4px; right: 4px; width: 16px; height: 16px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 18px rgba(255,209,102,.28); }
+    .feature-link { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; border: 1px solid transparent; border-radius: 16px; padding: 13px 14px; background: rgba(245,242,234,.055); color: var(--text); text-align: left; }
+    .feature-link strong { display: block; margin-bottom: 4px; }
+    .feature-link span { color: var(--muted); font-size: 12px; line-height: 1.35; }
+    .feature-link em { font-style: normal; color: var(--gold); font-size: 12px; font-weight: 850; }
+    .textarea-mock { min-height: 92px; border: 1px solid var(--line); border-radius: 16px; padding: 13px 14px; background: rgba(245,242,234,.045); color: var(--soft); font-size: 13px; line-height: 1.45; }
+    .sheet-actions { display: flex; gap: 9px; margin-top: 14px; }
+    .sheet-actions .option { flex: 1; text-align: center; font-weight: 850; }
+    .voice-status {
+      position: fixed;
+      z-index: 22;
+      left: 50%;
+      bottom: 104px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: min(420px, calc(100vw - 32px));
+      padding: 14px 16px;
+      border: 1px solid rgba(0,245,212,.24);
+      border-radius: 22px;
+      background: rgba(18,20,28,.98);
+      box-shadow: 0 24px 80px rgba(0,0,0,.44);
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 10px);
+      transition: opacity .22s ease, transform .22s ease;
+    }
+    body.voice-on .voice-status { opacity: 1; transform: translate(-50%, 0); }
+    .voice-orb { position: relative; width: 42px; height: 42px; flex: 0 0 auto; border-radius: 50%; background: linear-gradient(135deg, var(--cyan), var(--violet)); }
+    .voice-orb::after { content: ""; position: absolute; inset: -7px; border-radius: inherit; border: 1px solid rgba(0,245,212,.26); animation: pulse 1.4s ease-in-out infinite; }
+    .voice-status strong { display: block; font-size: 13px; }
+    .voice-status span { color: var(--muted); font-size: 12px; }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(.9); opacity: .4; }
+      50% { transform: scale(1.14); opacity: .9; }
+    }
+
+    .hamburger {
+      position: relative;
+      width: 18px;
+      height: 12px;
+    }
+
+    .hamburger::before,
+    .hamburger::after,
+    .hamburger span {
+      content: "";
+      position: absolute;
+      left: 0;
+      width: 18px;
+      height: 2px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+
+    .hamburger::before { top: 0; }
+    .hamburger span { top: 5px; }
+    .hamburger::after { bottom: 0; }
+
+    @media (max-width: 1023px) {
+      .shell { grid-template-columns: 1fr; }
+
+      .sidebar {
+        position: fixed;
+        z-index: 21;
+        top: 10px;
+        bottom: 10px;
+        left: 10px;
+        width: min(310px, calc(100vw - 20px));
+        height: auto;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        transform: translateX(calc(-100% - 16px));
+        transition: transform .24s ease;
+        box-shadow: 0 30px 120px rgba(0, 0, 0, .58);
+      }
+
+      body.sidebar-open .sidebar { transform: translateX(0); }
+      .mobile-menu { display: grid; }
+      .model small { display: none; }
+    }
+
+    @media (max-width: 699px) {
+      .topbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        min-height: 58px;
+        padding: 9px 12px 9px 10px;
+        overflow: hidden;
+      }
+
+      .model {
+        gap: 7px;
+        font-size: 15px;
+      }
+
+      .top-actions {
+        position: absolute;
+        top: 12px;
+        right: 110px;
+        gap: 7px;
+        max-width: 124px;
+        overflow: hidden;
+      }
+
+      .pill {
+        min-height: 34px;
+        padding: 7px 10px;
+        font-size: 12px;
+      }
+
+      .pill.language {
+        width: 74px;
+        max-width: 74px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: transparent;
+      }
+
+      .pill.language::before {
+        content: "Lang";
+        color: var(--cyan);
+      }
+
+      .pill.gold { display: none; }
+
+      #openMenu {
+        width: 36px;
+        padding: 0;
+        overflow: hidden;
+        color: transparent;
+      }
+
+      #openMenu::before {
+        content: "...";
+        color: var(--soft);
+      }
+
+      .chat-scroll {
+        padding: 12px 0 90px;
+      }
+
+      .conversation {
+        width: min(280px, calc(100% - 28px));
+        max-width: 280px;
+        gap: 12px;
+      }
+
+      .message {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+        width: 100%;
+      }
+
+      .face {
+        display: none;
+      }
+
+      .bubble {
+        width: 100%;
+        max-width: none;
+        min-width: 0;
+        padding: 11px 12px;
+        border-radius: 16px;
+      }
+
+      .bubble p:last-child {
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .meta {
+        margin-bottom: 5px;
+        font-size: 10.5px;
+      }
+
+      .composer-wrap {
+        padding: 8px 0 10px;
+      }
+
+      .composer-panel {
+        width: min(280px, calc(100% - 28px));
+        max-width: 280px;
+      }
+
+      .composer {
+        width: 100%;
+        max-width: 100%;
+        border-radius: 20px;
+      }
+
+      .composer-main {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        min-height: 52px;
+        padding: 7px 7px 7px 11px;
+        gap: 7px;
+      }
+
+      .plus {
+        width: 30px;
+        height: 30px;
+        font-size: 21px;
+      }
+
+      .tool.mic { display: none; }
+
+      .tool {
+        width: 38px;
+        height: 38px;
+      }
+
+      .prompt {
+        font-size: 13px;
+        line-height: 1.32;
+        white-space: normal;
+        min-width: 0;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+      }
+
+      .suggestions { display: none; }
+
+      .sheet {
+        top: auto;
+        right: 8px;
+        left: 8px;
+        bottom: 8px;
+        width: auto;
+        max-height: 78vh;
+        border-radius: 22px;
+        transform: translateY(20px);
+      }
+
+      body.language-open .language-sheet,
+      body.menu-open .menu-sheet,
+      body.correction-open .correction-sheet {
+        transform: translateY(0);
+      }
+
+      .small-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <aside class="sidebar" id="sidebar">
+      <div>
+        <div class="sidebar-head">
+          <button class="brand" aria-label="Open Lumora welcome" data-link="Lumora_Welcome_Concept.html">
+            <div class="mark">L</div>
+            <div><strong>Lumora</strong><span>Language intelligence</span></div>
+          </button>
+          <button class="close" id="closeSidebar" aria-label="Close sidebar">x</button>
+        </div>
+        <nav class="nav">
+          <button class="active" data-link="Lumora_Fresh_Chat_Concept.html"><span class="glyph">+</span>New chat</button>
+          <button><span class="glyph">S</span>Search chats</button>
+          <button id="navTranslate"><span class="glyph">T</span>Translate</button>
+          <button id="navVoice"><span class="glyph">V</span>Voice Circle</button>
+          <button><span class="glyph">M</span>Market Mode</button>
+          <button><span class="glyph">C</span>Classroom</button>
+          <button data-link="Lumora_Admin_Dashboard_Concept.html"><span class="glyph">A</span>Admin Observatory</button>
+        </nav>
+        <div class="section-label">Recents</div>
+        <div class="recents">
+          <div class="recent">Explain AI in Lagos Yoruba</div>
+          <div class="recent">WhatsApp customer reply</div>
+          <div class="recent">Swahili travel phrases</div>
+          <div class="recent">Business proposal tone</div>
+        </div>
+      </div>
+      <button class="profile-mini" id="openProfileMini"><div class="avatar">MO</div><div><strong>Murewa</strong><span>Free plan</span></div></button>
+    </aside>
+
+    <section class="main">
+      <header class="topbar">
+        <div class="model">
+          <button class="pill mobile-menu" id="openSidebar" aria-label="Open sidebar"><span class="hamburger"><span></span></span></button>
+          <span>Lumora</span><small>Neon Baobab</small>
+        </div>
+        <div class="top-actions">
+          <button class="pill language" id="openLanguage">Yoruba - Pidgin</button>
+          <button class="pill gold" data-link="Lumora_Plans_Concept.html">Upgrade</button>
+          <button class="pill" id="openMenu">Menu</button>
+        </div>
+      </header>
+
+      <section class="chat-scroll">
+        <div class="conversation">
+          <article class="message user"><div class="face">You</div><div class="bubble"><p class="meta">Yoruba + English</p><p>Explain artificial intelligence to my younger cousin, but make it sound natural for home.</p></div></article>
+          <article class="message ai"><div class="face l">L</div><div class="bubble"><p class="meta">Lumora - Respectful teacher tone</p><p>Think of AI like a sharp helper that has learned from many examples. If you ask it a question, it looks for patterns and gives you an answer. But we still guide it, correct it, and use our own sense.</p><div class="message-tools"><button class="mini-action gold" id="openCorrection">Correct tone</button><button class="mini-action" id="showRoute">Model route</button></div></div></article>
+          <article class="message user"><div class="face">You</div><div class="bubble"><p class="meta">Voice input</p><p>Make it shorter, and add one Yoruba proverb feeling without forcing it.</p></div></article>
+          <article class="message ai"><div class="face l">L</div><div class="bubble"><p class="meta">Lumora - Cultural style</p><p>AI is a helper that learns from examples and answers from what it has seen. But like elders say, the person who asks for the road must still use their eyes. AI can guide, but we must still think.</p></div></article>
+        </div>
+      </section>
+
+      <footer class="composer-wrap">
+        <section class="composer-panel">
+          <div class="composer">
+            <div class="composer-main">
+              <button class="plus" aria-label="Add">+</button>
+              <div class="prompt">Ask in any African language, or mix naturally...</div>
+              <button class="tool mic" id="startVoice" aria-label="Voice">V</button>
+              <button class="tool send" aria-label="Send">^</button>
+            </div>
+          </div>
+          <div class="suggestions">
+            <button class="suggestion">Explain in my dialect</button>
+            <button class="suggestion">Translate with tone</button>
+            <button class="suggestion">Write a market reply</button>
+          </div>
+        </section>
+      </footer>
+    </section>
+  </main>
+
+  <div class="scrim" id="scrim"></div>
+  <div class="voice-status" id="voiceStatus"><div class="voice-orb"></div><div><strong>Listening in Yoruba + English</strong><span>Speak naturally. Lumora will detect language, tone, and intent.</span></div></div>
+  <section class="sheet language-sheet">
+    <div class="sheet-head"><h2>Language</h2><button class="close" id="closeLanguage">x</button></div>
+    <div class="label">Language Passport</div>
+    <div class="small-grid">
+      <div class="mini"><strong>Country</strong><span>Nigeria</span></div>
+      <div class="mini"><strong>City</strong><span>Lagos</span></div>
+      <div class="mini"><strong>Primary</strong><span>Yoruba</span></div>
+      <div class="mini"><strong>Bridge</strong><span>English</span></div>
+    </div>
+    <div class="label">Choose language</div>
+    <div class="card-list">
+      <button class="option active"><strong>Yoruba + English</strong><span>Nigeria - Lagos tone - code-switching</span></button>
+      <button class="option"><strong>Nigerian Pidgin</strong><span>Casual, market, creator, friendly</span></button>
+      <button class="option"><strong>Swahili</strong><span>East Africa - formal or casual</span></button>
+      <button class="option"><strong>Arabic + Darija</strong><span>North Africa - dialect-aware</span></button>
+    </div>
+    <div class="label">Tone Dial</div>
+    <div class="card-list">
+      <div class="control-row"><div><strong>Respect level</strong><span>Keep replies culturally polite and natural.</span></div><div class="segmented"><button>Casual</button><button class="active">Respect</button><button>Formal</button></div></div>
+      <div class="control-row"><div><strong>Style</strong><span>Choose how Lumora shapes the answer.</span></div><div class="segmented"><button>Simple</button><button class="active">Teacher</button><button>Market</button></div></div>
+    </div>
+  </section>
+  <section class="sheet menu-sheet">
+    <div class="sheet-head"><h2>Profile & Settings</h2><button class="close" id="closeMenu">x</button></div>
+    <div class="profile-card"><div class="avatar">MO</div><div><strong>Murewa Oyetoro</strong><br><span class="meta">murewa@example.com - Lagos, Nigeria</span><br><span class="meta">Yoruba primary - English bridge</span></div></div>
+    <div class="label">Account</div>
+    <div class="small-grid">
+      <div class="mini"><strong>Plan</strong><span>Free - upgrade available</span></div>
+      <div class="mini"><strong>Country</strong><span>Nigeria - Lagos</span></div>
+      <div class="mini"><strong>Languages</strong><span>Yoruba, Pidgin, English</span></div>
+      <div class="mini"><strong>Dialects</strong><span>Lagos tone - casual bridge</span></div>
+    </div>
+    <div class="label">Personalization</div>
+    <div class="card-list">
+      <div class="control-row"><div><strong>Font size</strong><span>Switch reading comfort without changing the whole UI.</span></div><div class="segmented"><button>Small</button><button class="active">Comfort</button><button>Large</button></div></div>
+      <div class="control-row"><div><strong>Theme</strong><span>Dark-first Neon Baobab with future light mode.</span></div><div class="segmented"><button class="active">Dark</button><button>Light</button></div></div>
+      <div class="control-row"><div><strong>Memory</strong><span>Remember tone, language, and writing preferences.</span></div><div class="toggle" aria-label="Memory on"></div></div>
+    </div>
+    <div class="label">Lumora features</div>
+    <div class="card-list">
+      <button class="feature-link" id="openLanguageFromMenu"><span><strong>Language Passport</strong><span>Country, dialect, bridge language, script, formality, and voice preference.</span></span><em>Open</em></button>
+      <button class="feature-link" id="openToneFromMenu"><span><strong>Tone Dial</strong><span>Respectful, business, teacher, street, creator, storyteller, and simple modes.</span></span><em>Set</em></button>
+      <button class="feature-link" id="openCorrectionFromMenu"><span><strong>Community Corrections</strong><span>Flag unnatural output and suggest better local phrasing.</span></span><em>Review</em></button>
+      <button class="feature-link" data-link="Lumora_Plans_Concept.html"><span><strong>Plans</strong><span>Free, Plus, Pro, and Teams for deeper language intelligence.</span></span><em>Upgrade</em></button>
+      <button class="feature-link"><span><strong>Privacy</strong><span>Manage voice consent, memory, exports, and data preferences.</span></span><em>Manage</em></button>
+    </div>
+  </section>
+  <section class="sheet correction-sheet">
+    <div class="sheet-head"><h2>Improve this response</h2><button class="close" id="closeCorrection">x</button></div>
+    <div class="label">What feels wrong?</div>
+    <div class="card-list">
+      <button class="option active"><strong>Tone feels imported</strong><span>The answer is understandable, but it does not sound local enough.</span></button>
+      <button class="option"><strong>Dialect issue</strong><span>Words, phrasing, or respect level need native-speaker correction.</span></button>
+      <button class="option"><strong>Meaning changed</strong><span>The response lost part of the original intent.</span></button>
+    </div>
+    <div class="label">Suggested correction</div>
+    <div class="textarea-mock">Make it sound more like Lagos Yoruba mixed with simple English, and keep the proverb natural, not forced.</div>
+    <div class="sheet-actions">
+      <button class="option" id="closeCorrectionSoft">Cancel</button>
+      <button class="option active" id="submitCorrection">Submit correction</button>
+    </div>
+  </section>
+  <script>
+    const body = document.body;
+    const closePanels = () => body.classList.remove('language-open', 'menu-open', 'sidebar-open', 'correction-open', 'voice-on');
+    document.getElementById('openLanguage').onclick = () => { closePanels(); body.classList.add('language-open'); };
+    document.getElementById('openMenu').onclick = () => { closePanels(); body.classList.add('menu-open'); };
+    document.getElementById('openSidebar').onclick = () => { closePanels(); body.classList.add('sidebar-open'); };
+    document.getElementById('closeSidebar').onclick = () => body.classList.remove('sidebar-open');
+    document.getElementById('closeLanguage').onclick = closePanels;
+    document.getElementById('closeMenu').onclick = closePanels;
+    document.getElementById('openProfileMini').onclick = () => { closePanels(); body.classList.add('menu-open'); };
+    document.getElementById('openCorrection').onclick = () => { closePanels(); body.classList.add('correction-open'); };
+    document.getElementById('openCorrectionFromMenu').onclick = () => { closePanels(); body.classList.add('correction-open'); };
+    document.getElementById('closeCorrection').onclick = closePanels;
+    document.getElementById('closeCorrectionSoft').onclick = closePanels;
+    document.getElementById('submitCorrection').onclick = () => { closePanels(); body.classList.add('menu-open'); };
+    document.getElementById('openLanguageFromMenu').onclick = () => { closePanels(); body.classList.add('language-open'); };
+    document.getElementById('openToneFromMenu').onclick = () => { closePanels(); body.classList.add('language-open'); };
+    document.getElementById('navTranslate').onclick = () => { closePanels(); body.classList.add('language-open'); };
+    document.getElementById('navVoice').onclick = () => {
+      closePanels();
+      body.classList.add('voice-on');
+      setTimeout(() => body.classList.remove('voice-on'), 2800);
+    };
+    document.getElementById('startVoice').onclick = () => {
+      body.classList.add('voice-on');
+      setTimeout(() => body.classList.remove('voice-on'), 2800);
+    };
+    document.getElementById('showRoute').onclick = () => { closePanels(); body.classList.add('language-open'); };
+    document.getElementById('scrim').onclick = closePanels;
+    document.querySelectorAll('[data-link]').forEach(button => {
+      button.addEventListener('click', () => { window.location.href = button.dataset.link; });
+    });
+    document.querySelectorAll('.segmented').forEach(group => {
+      group.querySelectorAll('button').forEach(button => {
+        button.addEventListener('click', () => {
+          group.querySelectorAll('button').forEach(item => item.classList.remove('active'));
+          button.classList.add('active');
+        });
+      });
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanels(); });
+  </script>
+</body>
+</html>

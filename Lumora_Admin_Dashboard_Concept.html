@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lumora Admin Observatory</title>
+  <style>
+    :root {
+      --void: #05060b;
+      --ink: #0a0c13;
+      --panel: rgba(16, 19, 31, 0.78);
+      --panel-strong: rgba(18, 22, 36, 0.94);
+      --line: rgba(245, 242, 234, 0.10);
+      --text: #f5f2ea;
+      --soft: rgba(245, 242, 234, 0.68);
+      --muted: rgba(245, 242, 234, 0.46);
+      --cyan: #00f5d4;
+      --violet: #8b5cf6;
+      --gold: #ffd166;
+      --gold-hot: #ffb703;
+      --coral: #ff4d6d;
+      --green: #21e06b;
+      color-scheme: dark;
+      font-family: Inter, Satoshi, Manrope, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 18% 8%, rgba(139, 92, 246, 0.22), transparent 34%),
+        radial-gradient(circle at 82% 18%, rgba(0, 245, 212, 0.14), transparent 30%),
+        radial-gradient(circle at 64% 100%, rgba(255, 77, 109, 0.12), transparent 36%),
+        linear-gradient(180deg, #080913 0%, var(--void) 56%, #030408 100%);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.34;
+      background:
+        linear-gradient(90deg, rgba(245, 242, 234, 0.032) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(245, 242, 234, 0.026) 1px, transparent 1px);
+      background-size: 76px 76px;
+      mask-image: radial-gradient(circle at 52% 42%, black, transparent 78%);
+    }
+
+    button { font: inherit; cursor: pointer; }
+    [data-link] { cursor: pointer; }
+
+    .layout {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 286px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 22px;
+      border-right: 1px solid var(--line);
+      background: rgba(8, 10, 18, 0.76);
+      backdrop-filter: blur(26px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .mark {
+      display: grid;
+      width: 44px;
+      height: 44px;
+      place-items: center;
+      border-radius: 15px;
+      color: #07070d;
+      font-weight: 950;
+      background:
+        radial-gradient(circle at 30% 26%, #f8ff3d, transparent 28%),
+        linear-gradient(135deg, var(--cyan), var(--violet));
+      box-shadow: 0 0 28px rgba(0, 245, 212, 0.20);
+    }
+
+    .brand strong { display: block; font-size: 19px; }
+    .brand span { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
+
+    .nav-label {
+      margin: 24px 0 10px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+    }
+
+    .nav button {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 12px;
+      border: 1px solid transparent;
+      border-radius: 15px;
+      background: transparent;
+      color: var(--soft);
+      text-align: left;
+      font-weight: 750;
+    }
+
+    .nav button.active {
+      color: var(--cyan);
+      border-color: rgba(0, 245, 212, 0.24);
+      background: rgba(0, 245, 212, 0.075);
+      box-shadow: inset 0 0 0 1px rgba(0, 245, 212, 0.025);
+    }
+
+    .nav .glyph {
+      display: grid;
+      width: 26px;
+      height: 26px;
+      place-items: center;
+      border-radius: 9px;
+      background: rgba(245, 242, 234, 0.055);
+      color: inherit;
+      font-size: 11px;
+      font-weight: 950;
+    }
+
+    .admin-card {
+      margin-top: 24px;
+      padding: 15px;
+      border: 1px solid rgba(255, 209, 102, 0.20);
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(255, 209, 102, 0.10), rgba(139, 92, 246, 0.08));
+    }
+
+    .admin-card strong { display: block; margin-bottom: 6px; }
+    .admin-card span { color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+    .main {
+      padding: 24px clamp(20px, 4vw, 42px) 42px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      color: var(--cyan);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 5px 0 0;
+      font-size: clamp(30px, 4vw, 52px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 9px 13px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(245, 242, 234, 0.055);
+      color: var(--soft);
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .pill.gold {
+      border: 0;
+      color: #080913;
+      background: linear-gradient(135deg, #fff2ad, var(--gold), var(--gold-hot));
+      box-shadow: 0 0 26px rgba(255, 209, 102, 0.18);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(280px, .75fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .hero-card,
+    .panel,
+    .metric,
+    .table-card {
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(245, 242, 234, 0.070), rgba(245, 242, 234, 0.032));
+      border-radius: 26px;
+      box-shadow: 0 26px 90px rgba(0, 0, 0, 0.26);
+      backdrop-filter: blur(24px);
+    }
+
+    .hero-card {
+      position: relative;
+      min-height: 280px;
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    .hero-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -12% -34% 28%;
+      height: 260px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0, 245, 212, 0.28), rgba(139, 92, 246, 0.16), transparent 68%);
+      filter: blur(8px);
+    }
+
+    .hero-copy {
+      position: relative;
+      z-index: 1;
+      max-width: 620px;
+    }
+
+    .hero-copy p {
+      margin: 14px 0 22px;
+      color: var(--soft);
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .signal-map {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      max-width: 640px;
+    }
+
+    .signal {
+      min-height: 86px;
+      padding: 13px;
+      border: 1px solid rgba(0, 245, 212, 0.14);
+      border-radius: 18px;
+      background: rgba(0, 245, 212, 0.045);
+    }
+
+    .signal b { display: block; font-size: 20px; margin-bottom: 5px; }
+    .signal span { color: var(--muted); font-size: 12px; line-height: 1.35; }
+
+    .health {
+      padding: 20px;
+    }
+
+    .health h2,
+    .panel h2,
+    .table-card h2 {
+      margin: 0 0 14px;
+      font-size: 18px;
+    }
+
+    .ring {
+      width: 154px;
+      height: 154px;
+      margin: 12px auto 18px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at center, rgba(16, 19, 31, .96) 0 56%, transparent 57%),
+        conic-gradient(var(--cyan) 0 82%, rgba(245, 242, 234, .08) 82% 100%);
+      display: grid;
+      place-items: center;
+      box-shadow: 0 0 46px rgba(0, 245, 212, 0.12);
+    }
+
+    .ring strong { font-size: 34px; }
+    .ring span { display: block; color: var(--muted); font-size: 11px; text-align: center; }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .metric {
+      padding: 18px;
+      min-height: 138px;
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .metric .value {
+      margin: 10px 0 8px;
+      font-size: 34px;
+      font-weight: 950;
+    }
+
+    .metric .delta {
+      color: var(--cyan);
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .panel {
+      min-height: 280px;
+      padding: 20px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 110px minmax(0, 1fr) 44px;
+      gap: 12px;
+      align-items: center;
+      margin: 15px 0;
+      color: var(--soft);
+      font-size: 13px;
+    }
+
+    .bar {
+      height: 9px;
+      border-radius: 999px;
+      background: rgba(245, 242, 234, 0.075);
+      overflow: hidden;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--cyan), var(--gold));
+    }
+
+    .route-list,
+    .risk-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .route,
+    .risk {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 52px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(245, 242, 234, 0.045);
+      color: var(--soft);
+    }
+
+    .route b,
+    .risk b { color: var(--text); }
+
+    .tag {
+      border-radius: 999px;
+      padding: 6px 9px;
+      background: rgba(0, 245, 212, 0.075);
+      color: var(--cyan);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .tag.gold {
+      color: #080913;
+      background: linear-gradient(135deg, #fff2ad, var(--gold));
+    }
+
+    .table-card {
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+
+    th,
+    td {
+      padding: 14px 10px;
+      border-bottom: 1px solid rgba(245, 242, 234, 0.075);
+      text-align: left;
+      font-size: 13px;
+    }
+
+    th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+    td { color: var(--soft); }
+    td strong { color: var(--text); }
+
+    .table-scroll { overflow-x: auto; }
+
+    @media (max-width: 1120px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { position: relative; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+      .nav { grid-template-columns: repeat(4, 1fr); }
+      .admin-card { display: none; }
+      .hero-grid,
+      .content-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 760px) {
+      .main { padding: 18px 12px 30px; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .metric-grid,
+      .signal-map { grid-template-columns: 1fr 1fr; }
+      .nav { grid-template-columns: 1fr 1fr; }
+      .sidebar { padding: 16px 12px; }
+      .hero-card { padding: 18px; min-height: auto; }
+      .bar-row { grid-template-columns: 78px minmax(0, 1fr) 38px; }
+    }
+
+    @media (max-width: 520px) {
+      .layout,
+      .main,
+      .sidebar,
+      .hero-grid,
+      .content-grid,
+      .hero-card,
+      .panel,
+      .table-card {
+        max-width: 100%;
+        min-width: 0;
+      }
+      .layout,
+      .main {
+        width: 100%;
+        overflow-x: hidden;
+      }
+      .sidebar > .brand,
+      .sidebar > .nav-label,
+      .sidebar > .nav,
+      .main > .topbar,
+      .main > section {
+        width: min(300px, calc(100% - 24px));
+        max-width: 300px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .brand { margin-bottom: 18px; }
+      .mark { width: 38px; height: 38px; border-radius: 13px; }
+      .nav {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        overflow: hidden;
+      }
+      .nav button {
+        width: 100%;
+        min-width: 0;
+        min-height: 38px;
+        padding: 8px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+      }
+      .nav .glyph { display: none; }
+      .eyebrow { font-size: 10px; }
+      h1 {
+        font-size: clamp(25px, 8vw, 31px);
+        line-height: 1.06;
+        overflow-wrap: anywhere;
+      }
+      .top-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+        gap: 8px;
+      }
+      .top-actions .pill {
+        justify-content: center;
+        width: 100%;
+        min-width: 0;
+        padding: 8px 10px;
+        font-size: 12px;
+        text-align: center;
+      }
+      .top-actions .gold { display: none; }
+      .hero-card h1 { font-size: clamp(27px, 8.4vw, 33px); }
+      .hero-copy p,
+      .route,
+      .risk,
+      td { font-size: 12px; }
+      .signal-map,
+      .metric-grid { grid-template-columns: 1fr; }
+      .signal,
+      .metric,
+      .panel,
+      .table-card { border-radius: 18px; }
+      .panel,
+      .table-card { padding: 16px; }
+      .bar-row { grid-template-columns: 70px minmax(0, 1fr) 32px; }
+      table { min-width: 620px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="brand" data-link="Lumora_Welcome_Concept.html">
+        <div class="mark">L</div>
+        <div>
+          <strong>Lumora</strong>
+          <span>Admin Observatory</span>
+        </div>
+      </div>
+
+      <div class="nav-label">Command</div>
+      <nav class="nav" aria-label="Admin navigation">
+        <button class="active"><span class="glyph">OV</span>Overview</button>
+        <button><span class="glyph">US</span>Users</button>
+        <button><span class="glyph">LG</span>Languages</button>
+        <button><span class="glyph">AI</span>Models</button>
+        <button><span class="glyph">PL</span>Plans</button>
+        <button><span class="glyph">SF</span>Safety</button>
+        <button><span class="glyph">CR</span>Corrections</button>
+        <button><span class="glyph">KP</span>Knowledge</button>
+      </nav>
+
+      <div class="admin-card">
+        <strong>Mission Control</strong>
+        <span>Track language quality, user trust, model routing, subscriptions, content packs, and safety across every launch country.</span>
+      </div>
+    </aside>
+
+    <section class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">Live Platform Intelligence</div>
+          <h1>Admin Observatory</h1>
+        </div>
+        <div class="top-actions">
+          <span class="pill">Today · 04 May 2026</span>
+          <span class="pill">54-country registry</span>
+          <button class="pill" data-link="Lumora_Clean_Chat_Concept.html">Back to chat</button>
+          <button class="pill gold" data-link="Lumora_Plans_Concept.html">Plans</button>
+        </div>
+      </header>
+
+      <section class="hero-grid">
+        <div class="hero-card">
+          <div class="hero-copy">
+            <div class="eyebrow">Lumora Pulse</div>
+            <h1>Every language, every signal, one operating view.</h1>
+            <p>Monitor adoption, dialect quality, model performance, community corrections, voice usage, revenue, and safety from one elegant command layer.</p>
+          </div>
+          <div class="signal-map">
+            <div class="signal"><b>128K</b><span>active users</span></div>
+            <div class="signal"><b>47</b><span>languages used today</span></div>
+            <div class="signal"><b>31K</b><span>voice sessions</span></div>
+            <div class="signal"><b>8.4K</b><span>community corrections</span></div>
+          </div>
+        </div>
+
+        <div class="panel health">
+          <h2>Trust health</h2>
+          <div class="ring"><div><strong>82%</strong><span>quality score</span></div></div>
+          <div class="route"><b>Safety incidents</b><span class="tag">Low</span></div>
+          <div class="route"><b>Native rating</b><span class="tag gold">4.6/5</span></div>
+        </div>
+      </section>
+
+      <section class="metric-grid">
+        <div class="metric"><div class="label">Subscriptions</div><div class="value">$42K</div><div class="delta">+18% this month</div></div>
+        <div class="metric"><div class="label">Avg latency</div><div class="value">1.8s</div><div class="delta">-12% improved</div></div>
+        <div class="metric"><div class="label">ASR quality</div><div class="value">74%</div><div class="delta">+6% after tuning</div></div>
+        <div class="metric"><div class="label">Human review</div><div class="value">2.1K</div><div class="delta">pending samples</div></div>
+      </section>
+
+      <section class="content-grid">
+        <div class="panel">
+          <h2>Language Quality By Market</h2>
+          <div class="bar-row"><span>Nigeria</span><div class="bar"><span style="width:88%"></span></div><b>88</b></div>
+          <div class="bar-row"><span>Kenya</span><div class="bar"><span style="width:82%"></span></div><b>82</b></div>
+          <div class="bar-row"><span>Ghana</span><div class="bar"><span style="width:77%"></span></div><b>77</b></div>
+          <div class="bar-row"><span>South Africa</span><div class="bar"><span style="width:74%"></span></div><b>74</b></div>
+          <div class="bar-row"><span>Senegal</span><div class="bar"><span style="width:69%"></span></div><b>69</b></div>
+        </div>
+
+        <div class="panel">
+          <h2>Model Routing</h2>
+          <div class="route-list">
+            <div class="route"><b>General chat</b><span class="tag">Primary LLM</span></div>
+            <div class="route"><b>Translation</b><span class="tag">NLLB/AfriNLLB</span></div>
+            <div class="route"><b>Speech</b><span class="tag">MMS/Simba</span></div>
+            <div class="route"><b>Tone style</b><span class="tag">Lumora layer</span></div>
+            <div class="route"><b>Safety</b><span class="tag gold">Required</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="content-grid">
+        <div class="panel">
+          <h2>Community Corrections</h2>
+          <div class="risk-list">
+            <div class="risk"><b>Yoruba Lagos phrasing</b><span class="tag">542 new</span></div>
+            <div class="risk"><b>Pidgin market tone</b><span class="tag">389 new</span></div>
+            <div class="risk"><b>Swahili classroom examples</b><span class="tag">244 new</span></div>
+            <div class="risk"><b>Darija casual replies</b><span class="tag">201 new</span></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Safety And Governance</h2>
+          <div class="risk-list">
+            <div class="risk"><b>Medical guidance</b><span class="tag gold">Review</span></div>
+            <div class="risk"><b>Legal advice</b><span class="tag gold">Review</span></div>
+            <div class="risk"><b>Financial claims</b><span class="tag">Stable</span></div>
+            <div class="risk"><b>Hate/abuse checks</b><span class="tag">Stable</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="table-card">
+        <h2>Launch Country Readiness</h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>Country</th><th>Top languages</th><th>Users</th><th>Quality</th><th>Risk</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Nigeria</strong></td><td>Yoruba, Hausa, Igbo, Pidgin</td><td>48K</td><td>88%</td><td>Medium</td><td><span class="tag">Pilot ready</span></td></tr>
+              <tr><td><strong>Kenya</strong></td><td>Swahili, Sheng, English</td><td>22K</td><td>82%</td><td>Low</td><td><span class="tag">Pilot ready</span></td></tr>
+              <tr><td><strong>Ghana</strong></td><td>Twi, Ewe, English</td><td>18K</td><td>77%</td><td>Medium</td><td><span class="tag gold">Needs review</span></td></tr>
+              <tr><td><strong>South Africa</strong></td><td>Zulu, Xhosa, Afrikaans</td><td>16K</td><td>74%</td><td>Medium</td><td><span class="tag gold">Needs speech QA</span></td></tr>
+              <tr><td><strong>Senegal</strong></td><td>Wolof, French, Pulaar</td><td>9K</td><td>69%</td><td>Medium</td><td><span class="tag gold">Needs reviewers</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+  <script>
+    const datePill = document.querySelector('.top-actions .pill');
+    if (datePill) datePill.textContent = 'Today - 04 May 2026';
+    document.querySelectorAll('[data-link]').forEach(item => {
+      item.addEventListener('click', () => { window.location.href = item.dataset.link; });
+    });
+  </script>
+</body>
+</html>
