@@ -1,0 +1,15 @@
+{
+  "name": "lumora-api-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dependency-light Lumora API scaffold for chat, model routing, usage, plans, and admin metrics.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js",
+    "smoke": "node test-smoke.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

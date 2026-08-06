@@ -109,6 +109,7 @@ Pilot testing should happen with native speakers across regions. Each session sh
 Design artifacts:
 
 - Working web platform: `web-platform/index.html`
+- API platform scaffold: `api-platform/server.js`
 - Master execution plan: `Lumora_Master_Execution_Plan.md`
 - App navigation map: `Lumora_App_Navigation_Map.md`
 - Component inventory: `Lumora_Component_Inventory.md`

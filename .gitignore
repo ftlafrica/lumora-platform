@@ -7,6 +7,7 @@ desktop.ini
 .lumora-git/
 .tmp-chrome-profile-*/
 web-platform/.tmp-chrome-*/
+api-platform/.tmp-*/
 
 # Generated visual verification screenshots
 *.png
