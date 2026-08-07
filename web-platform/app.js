@@ -74,6 +74,7 @@ const ADMIN_SECTIONS = [
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
   { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
+  { id: "success", label: "Success", desc: "Enterprise account health, onboarding, renewals, expansion, and customer success playbooks." },
   { id: "support", label: "Support", desc: "Tickets, SLA, escalations, CSAT, macros, user-impact signals, and safe support boundaries." },
   { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
   { id: "evaluations", label: "Evals", desc: "Model eval suites, benchmark runs, regressions, human samples, and release gates." },
@@ -187,6 +188,8 @@ const DEFAULT_STATE = {
   adminExperimentsLoadedAt: null,
   adminEvaluations: null,
   adminEvaluationsLoadedAt: null,
+  adminCustomerSuccess: null,
+  adminCustomerSuccessLoadedAt: null,
   adminInfrastructure: null,
   adminInfrastructureLoadedAt: null,
   adminAccess: null,
@@ -509,6 +512,26 @@ async function loadAdminEvaluations(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminCustomerSuccess(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminCustomerSuccessLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/customer-success`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Customer success unavailable.");
+    state.adminCustomerSuccess = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminCustomerSuccessLoadedAt = Date.now();
+  } catch {
+    state.adminCustomerSuccessLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminPayments(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminPaymentsLoadedAt || 0;
@@ -757,7 +780,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1203,6 +1226,42 @@ function adminEvaluationsData() {
       "African language evals must include native reviewer samples, code-switching, dialect, and tone preservation.",
       "Safety regressions block rollout even when latency, cost, or conversion improves.",
       "Release gates must compare current model, fallback model, and previous production baseline."
+    ]
+  };
+}
+
+function adminCustomerSuccessData() {
+  return state.adminCustomerSuccess || {
+    summary: { enterpriseAccounts: 47, onboardingWorkspaces: 8, renewalRisk: 6, expansionReady: 12, healthScore: "86%" },
+    accounts: [
+      { account: "EduBridge Africa", plan: "Teams", seats: 320, health: "Expansion", owner: "Customer Success" },
+      { account: "MarketUnion NG", plan: "Teams", seats: 210, health: "Healthy", owner: "Customer Success" },
+      { account: "Swahili Learning Hub", plan: "Teams", seats: 184, health: "Onboarding", owner: "Enterprise" },
+      { account: "Creator Desk", plan: "Pro/Teams", seats: 96, health: "Support watch", owner: "Support" }
+    ],
+    onboarding: [
+      { workspace: "Swahili Learning Hub", milestone: "Language packs", progress: "72%", blocker: "Reviewer approval" },
+      { workspace: "EduBridge Africa", milestone: "SSO rollout", progress: "88%", blocker: "Domain verification" },
+      { workspace: "MarketUnion NG", milestone: "Webhook launch", progress: "64%", blocker: "Retry mapping" },
+      { workspace: "Creator Desk", milestone: "Creator workflows", progress: "54%", blocker: "Template review" }
+    ],
+    renewals: [
+      { account: "EduBridge Africa", renewal: "Nov 2026", value: "$58K ARR", risk: "Low", action: "Expansion review" },
+      { account: "MarketUnion NG", renewal: "Oct 2026", value: "$34K ARR", risk: "Medium", action: "Payment retry watch" },
+      { account: "Swahili Learning Hub", renewal: "Dec 2026", value: "$28K ARR", risk: "Low", action: "Onboarding support" },
+      { account: "Creator Desk", renewal: "Sep 2026", value: "$18K ARR", risk: "Medium", action: "Support escalation" }
+    ],
+    playbooks: [
+      { playbook: "SSO/domain onboarding", owner: "Enterprise", trigger: "Teams workspace created", status: "Active" },
+      { playbook: "Language quality escalation", owner: "Language QA", trigger: "CSAT below 4.3", status: "Active" },
+      { playbook: "Expansion opportunity", owner: "Customer Success", trigger: "Seat usage above 80%", status: "Ready" },
+      { playbook: "Renewal risk save", owner: "Leadership", trigger: "Health below 70%", status: "Review" }
+    ],
+    guardrails: [
+      "Enterprise success data should show account health, not private user chats or sensitive content.",
+      "Expansion recommendations must include usage, support, payment, and language-quality context.",
+      "Renewal risks should route to owners with next actions, dates, and evidence.",
+      "Customer-facing commitments must match platform, language, privacy, and support readiness."
     ]
   };
 }
@@ -1741,6 +1800,22 @@ function evalRegressionRow(item) {
 
 function evalGateRow(item) {
   return `<div class="table-row"><strong>${item.gate}</strong><span>${item.threshold}</span><span>${item.current}</span><span>${item.status}</span></div>`;
+}
+
+function successAccountRow(item) {
+  return `<div class="table-row"><strong>${item.account}</strong><span>${item.plan}</span><span>${item.seats} seats</span><span>${item.health}</span></div>`;
+}
+
+function onboardingRow(item) {
+  return `<div class="table-row"><strong>${item.workspace}</strong><span>${item.milestone}</span><span>${item.progress}</span><span>${item.blocker}</span></div>`;
+}
+
+function renewalRow(item) {
+  return `<div class="table-row"><strong>${item.account}</strong><span>${item.renewal}</span><span>${item.value}</span><span>${item.risk}</span></div>`;
+}
+
+function successPlaybookRow(item) {
+  return `<div class="table-row"><strong>${item.playbook}</strong><span>${item.owner}</span><span>${item.trigger}</span><span>${item.status}</span></div>`;
 }
 
 function paymentPlanRow(item) {
@@ -2311,6 +2386,7 @@ function adminView() {
   if (state.adminSection === "experiments") loadAdminExperiments();
   if (state.adminSection === "reports") loadAdminReports();
   if (state.adminSection === "communications") loadAdminCommunications();
+  if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "access") loadAdminAccess();
   if (state.adminSection === "operations") loadAdminActions();
   if (state.adminSection === "api") loadAdminApi();
@@ -2413,6 +2489,7 @@ function adminSectionView(section, readiness) {
     payments: adminPayments,
     finance: adminFinance,
     users: adminUsers,
+    success: adminCustomerSuccess,
     support: adminSupport,
     models: () => adminModels(readiness),
     evaluations: adminEvaluations,
@@ -3192,6 +3269,49 @@ function adminEvaluations() {
   `;
 }
 
+function adminCustomerSuccess() {
+  const success = adminCustomerSuccessData();
+  const summary = success.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Enterprise accounts", summary.enterpriseAccounts || "47")}
+      ${metric("Onboarding", summary.onboardingWorkspaces || "8")}
+      ${metric("Renewal risk", summary.renewalRisk || "6")}
+      ${metric("Health score", summary.healthScore || "86%")}
+      <section class="admin-card full-admin">
+        <h2>Account health</h2>
+        <div class="table admin-table-4">
+          ${success.accounts.map(successAccountRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Onboarding milestones</h2>
+        <div class="table admin-table-4">
+          ${success.onboarding.map(onboardingRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Renewals and expansion</h2>
+        <div class="table admin-table-4">
+          ${success.renewals.map(renewalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Success playbooks</h2>
+        <div class="table admin-table-4">
+          ${success.playbooks.map(successPlaybookRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Customer success guardrails</h2>
+        <div class="admin-checklist">
+          ${success.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminPlatform() {
   const platform = adminPlatformData();
   const releases = adminMetricValue("platform.mobileReleases", ["iOS 1.0.4 beta", "Android 1.0.6 beta"]);
@@ -3668,6 +3788,7 @@ function bindEvents() {
       loadAdminExperiments(true);
       loadAdminReports(true);
       loadAdminCommunications(true);
+      loadAdminCustomerSuccess(true);
       loadAdminAccess(true);
       loadAdminActions(true);
       loadAdminApi(true);

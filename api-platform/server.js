@@ -702,6 +702,40 @@ const modelEvaluationOperations = {
   ]
 };
 
+const customerSuccessOperations = {
+  summary: { enterpriseAccounts: 47, onboardingWorkspaces: 8, renewalRisk: 6, expansionReady: 12, healthScore: "86%" },
+  accounts: [
+    { account: "EduBridge Africa", plan: "Teams", seats: 320, health: "Expansion", owner: "Customer Success" },
+    { account: "MarketUnion NG", plan: "Teams", seats: 210, health: "Healthy", owner: "Customer Success" },
+    { account: "Swahili Learning Hub", plan: "Teams", seats: 184, health: "Onboarding", owner: "Enterprise" },
+    { account: "Creator Desk", plan: "Pro/Teams", seats: 96, health: "Support watch", owner: "Support" }
+  ],
+  onboarding: [
+    { workspace: "Swahili Learning Hub", milestone: "Language packs", progress: "72%", blocker: "Reviewer approval" },
+    { workspace: "EduBridge Africa", milestone: "SSO rollout", progress: "88%", blocker: "Domain verification" },
+    { workspace: "MarketUnion NG", milestone: "Webhook launch", progress: "64%", blocker: "Retry mapping" },
+    { workspace: "Creator Desk", milestone: "Creator workflows", progress: "54%", blocker: "Template review" }
+  ],
+  renewals: [
+    { account: "EduBridge Africa", renewal: "Nov 2026", value: "$58K ARR", risk: "Low", action: "Expansion review" },
+    { account: "MarketUnion NG", renewal: "Oct 2026", value: "$34K ARR", risk: "Medium", action: "Payment retry watch" },
+    { account: "Swahili Learning Hub", renewal: "Dec 2026", value: "$28K ARR", risk: "Low", action: "Onboarding support" },
+    { account: "Creator Desk", renewal: "Sep 2026", value: "$18K ARR", risk: "Medium", action: "Support escalation" }
+  ],
+  playbooks: [
+    { playbook: "SSO/domain onboarding", owner: "Enterprise", trigger: "Teams workspace created", status: "Active" },
+    { playbook: "Language quality escalation", owner: "Language QA", trigger: "CSAT below 4.3", status: "Active" },
+    { playbook: "Expansion opportunity", owner: "Customer Success", trigger: "Seat usage above 80%", status: "Ready" },
+    { playbook: "Renewal risk save", owner: "Leadership", trigger: "Health below 70%", status: "Review" }
+  ],
+  guardrails: [
+    "Enterprise success data should show account health, not private user chats or sensitive content.",
+    "Expansion recommendations must include usage, support, payment, and language-quality context.",
+    "Renewal risks should route to owners with next actions, dates, and evidence.",
+    "Customer-facing commitments must match platform, language, privacy, and support readiness."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -935,6 +969,10 @@ function adminModelEvaluationOperations() {
   return modelEvaluationOperations;
 }
 
+function adminCustomerSuccessOperations() {
+  return customerSuccessOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -967,7 +1005,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "data:govern",
       "integrations:manage",
       "experiments:operate",
-      "evals:review"
+      "evals:review",
+      "success:manage"
     ],
     audit: [
       accessEvent,
@@ -1203,6 +1242,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminModelEvaluationOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/customer-success") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("customer_success_viewed", "Customer Success", "Info", "Customer Success");
+      return sendJson(response, 200, adminCustomerSuccessOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1219,4 +1266,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, plans };
