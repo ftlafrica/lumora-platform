@@ -13,7 +13,8 @@ const {
   adminModelOperations,
   adminSafetyOperations,
   adminGrowthOperations,
-  adminAccessOperations
+  adminAccessOperations,
+  adminActionOperations
 } = require("./server");
 const { modelRegistry } = require("./model-registry");
 
@@ -54,7 +55,8 @@ const adminContracts = [
   ["models", adminModelOperations(), data => Array.isArray(data.registry) && Array.isArray(data.health) && data.summary.modelSources >= modelRegistry.length],
   ["safety", adminSafetyOperations(), data => data.summary && Array.isArray(data.moderationQueues) && Array.isArray(data.languageQuality)],
   ["growth", adminGrowthOperations(), data => data.summary && Array.isArray(data.funnel) && Array.isArray(data.countries) && Array.isArray(data.channels)],
-  ["access", adminAccessOperations(), data => data.summary && Array.isArray(data.roles) && Array.isArray(data.approvals) && Array.isArray(data.compliance)]
+  ["access", adminAccessOperations(), data => data.summary && Array.isArray(data.roles) && Array.isArray(data.approvals) && Array.isArray(data.compliance)],
+  ["actions", adminActionOperations(), data => data.summary && Array.isArray(data.incidents) && Array.isArray(data.decisions) && Array.isArray(data.followUps)]
 ];
 
 adminContracts.forEach(([name, data, isValid]) => {

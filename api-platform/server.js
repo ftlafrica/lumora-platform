@@ -195,6 +195,33 @@ const accessOperations = {
   ]
 };
 
+const actionOperations = {
+  summary: { openActions: 12, highPriority: 4, blocked: 2, dueToday: 7, completedToday: 18 },
+  incidents: [
+    { id: "INC-2407", title: "iOS beta crash cluster", area: "Mobile", severity: "High", owner: "Mobile Team", status: "Investigating", eta: "1 hr" },
+    { id: "INC-2408", title: "Speech model latency watch", area: "AI Ops", severity: "Medium", owner: "Voice Ops", status: "Mitigating", eta: "3 hrs" },
+    { id: "INC-2409", title: "Failed payment retry spike", area: "Payments", severity: "Medium", owner: "Finance", status: "Queued", eta: "Today" },
+    { id: "INC-2410", title: "Dialect correction backlog", area: "Language QA", severity: "High", owner: "Native reviewers", status: "Escalated", eta: "2 days" }
+  ],
+  decisions: [
+    { decision: "Keep mobile force-update armed, not active", owner: "Platform", rationale: "Crash cluster is contained to beta users.", status: "Approved" },
+    { decision: "Prioritize Yoruba, Swahili, Hausa quality reviews", owner: "Language QA", rationale: "Highest traffic and most correction volume.", status: "In review" },
+    { decision: "Route enterprise invoices through finance queue", owner: "Revenue Ops", rationale: "Teams revenue concentration requires manual verification.", status: "Approved" }
+  ],
+  followUps: [
+    { task: "Publish model fallback incident note", owner: "Model Ops", due: "Today", status: "Drafting" },
+    { task: "Prepare investor/admin metrics export", owner: "Leadership", due: "Tomorrow", status: "Queued" },
+    { task: "Validate seed-admin approval workflow", owner: "Security", due: "This week", status: "Blocked on SSO" },
+    { task: "Review country-level language adoption gaps", owner: "Growth", due: "Friday", status: "Ready" }
+  ],
+  runbooks: [
+    { runbook: "Model fallback spike", trigger: "Fallback rate > 8% for 15 minutes", owner: "AI Ops" },
+    { runbook: "Payment retry surge", trigger: "Failed payment count > 25 today", owner: "Finance" },
+    { runbook: "Mobile crash cluster", trigger: "Crash-free sessions below 99.5%", owner: "Mobile" },
+    { runbook: "Safety escalation", trigger: "High severity moderation queue > 20", owner: "Trust" }
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -368,6 +395,10 @@ function adminAccessOperations() {
   return accessOperations;
 }
 
+function adminActionOperations() {
+  return actionOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -502,6 +533,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminAccessOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/actions") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("operations_action_center_viewed", "Operations", "Info", "Leadership");
+      return sendJson(response, 200, adminActionOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -518,4 +557,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, plans };

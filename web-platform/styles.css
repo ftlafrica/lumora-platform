@@ -1258,6 +1258,68 @@ body.sheet-open .sheet {
   line-height: 1.38;
 }
 
+.action-link {
+  margin-top: 12px;
+}
+
+.operations-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.operation-card {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(245, 242, 234, .1);
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(245, 242, 234, .065), rgba(5, 5, 6, .1)),
+    rgba(245, 242, 234, .035);
+}
+
+.operation-card.high {
+  border-color: rgba(255, 76, 112, .34);
+  box-shadow: inset 0 0 24px rgba(255, 76, 112, .08);
+}
+
+.operation-card.medium {
+  border-color: rgba(255, 209, 102, .28);
+  box-shadow: inset 0 0 24px rgba(255, 209, 102, .075);
+}
+
+.operation-card span {
+  color: var(--gold);
+  font-size: .72rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.operation-card strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.operation-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .82rem;
+  line-height: 1.42;
+}
+
+.operation-card footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
 .funnel-list {
   display: grid;
   gap: 14px;
@@ -1433,6 +1495,10 @@ body.sheet-open .sheet {
   }
 
   .admin-module-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .operations-board {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1636,7 +1702,8 @@ body.sheet-open .sheet {
   .form-grid,
   .plans-grid,
   .admin-grid,
-  .admin-module-grid {
+  .admin-module-grid,
+  .operations-board {
     grid-template-columns: 1fr;
   }
 

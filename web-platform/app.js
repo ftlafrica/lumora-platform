@@ -72,7 +72,8 @@ const ADMIN_SECTIONS = [
   { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
   { id: "safety", label: "Safety", desc: "Moderation, corrections, privacy, red-team findings, appeals, and policy." },
   { id: "platform", label: "Platform", desc: "Web, mobile, API, infrastructure, incidents, releases, and feature flags." },
-  { id: "access", label: "Access", desc: "Seed-admin grants, RBAC, audit logs, compliance, data residency, and SSO." }
+  { id: "access", label: "Access", desc: "Seed-admin grants, RBAC, audit logs, compliance, data residency, and SSO." },
+  { id: "operations", label: "Operations", desc: "Incidents, decisions, follow-ups, runbooks, owners, ETAs, and leadership action tracking." }
 ];
 
 const ADMIN_KPIS = [
@@ -154,6 +155,8 @@ const DEFAULT_STATE = {
   adminGrowthLoadedAt: null,
   adminAccess: null,
   adminAccessLoadedAt: null,
+  adminActions: null,
+  adminActionsLoadedAt: null,
   user: {
     name: "Murewa Oyetoro",
     email: "murewa@example.com",
@@ -399,6 +402,26 @@ async function loadAdminAccess(force = false) {
     state.adminAccessLoadedAt = Date.now();
   } catch {
     state.adminAccessLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminActions(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminActionsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/actions`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Operations action center unavailable.");
+    state.adminActions = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminActionsLoadedAt = Date.now();
+  } catch {
+    state.adminActionsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -677,6 +700,35 @@ function adminAccessData() {
       "Limited access must be scoped by role, product surface, country, and approval workflow.",
       "Sensitive admin data must never appear in consumer profiles.",
       "Production requires SSO, MFA/passkeys, RBAC/ABAC, immutable audit logs, and device trust."
+    ]
+  };
+}
+
+function adminActionData() {
+  return state.adminActions || {
+    summary: { openActions: 12, highPriority: 4, blocked: 2, dueToday: 7, completedToday: 18 },
+    incidents: [
+      { id: "INC-2407", title: "iOS beta crash cluster", area: "Mobile", severity: "High", owner: "Mobile Team", status: "Investigating", eta: "1 hr" },
+      { id: "INC-2408", title: "Speech model latency watch", area: "AI Ops", severity: "Medium", owner: "Voice Ops", status: "Mitigating", eta: "3 hrs" },
+      { id: "INC-2409", title: "Failed payment retry spike", area: "Payments", severity: "Medium", owner: "Finance", status: "Queued", eta: "Today" },
+      { id: "INC-2410", title: "Dialect correction backlog", area: "Language QA", severity: "High", owner: "Native reviewers", status: "Escalated", eta: "2 days" }
+    ],
+    decisions: [
+      { decision: "Keep mobile force-update armed, not active", owner: "Platform", rationale: "Crash cluster is contained to beta users.", status: "Approved" },
+      { decision: "Prioritize Yoruba, Swahili, Hausa quality reviews", owner: "Language QA", rationale: "Highest traffic and correction volume.", status: "In review" },
+      { decision: "Route enterprise invoices through finance queue", owner: "Revenue Ops", rationale: "Teams revenue concentration requires manual verification.", status: "Approved" }
+    ],
+    followUps: [
+      { task: "Publish model fallback incident note", owner: "Model Ops", due: "Today", status: "Drafting" },
+      { task: "Prepare investor/admin metrics export", owner: "Leadership", due: "Tomorrow", status: "Queued" },
+      { task: "Validate seed-admin approval workflow", owner: "Security", due: "This week", status: "Blocked on SSO" },
+      { task: "Review country-level language adoption gaps", owner: "Growth", due: "Friday", status: "Ready" }
+    ],
+    runbooks: [
+      { runbook: "Model fallback spike", trigger: "Fallback rate > 8% for 15 minutes", owner: "AI Ops" },
+      { runbook: "Payment retry surge", trigger: "Failed payment count > 25 today", owner: "Finance" },
+      { runbook: "Mobile crash cluster", trigger: "Crash-free sessions below 99.5%", owner: "Mobile" },
+      { runbook: "Safety escalation", trigger: "High severity moderation queue > 20", owner: "Trust" }
     ]
   };
 }
@@ -1223,6 +1275,7 @@ function adminView() {
   if (state.adminSection === "safety") loadAdminSafety();
   if (state.adminSection === "growth") loadAdminGrowth();
   if (state.adminSection === "access") loadAdminAccess();
+  if (state.adminSection === "operations") loadAdminActions();
   const readiness = MODEL_REGISTRY.reduce((acc, item) => {
     acc[item.readiness] = (acc[item.readiness] || 0) + 1;
     return acc;
@@ -1318,7 +1371,8 @@ function adminSectionView(section, readiness) {
     models: () => adminModels(readiness),
     safety: adminSafety,
     platform: adminPlatform,
-    access: adminAccess
+    access: adminAccess,
+    operations: adminOperations
   };
   return (sections[section] || sections.overview)();
 }
@@ -1340,6 +1394,7 @@ function adminOverview(readiness) {
         <div class="table">
           ${ADMIN_ALERTS.map(alertRow).join("")}
         </div>
+        <button class="mini-action action-link" data-admin-section="operations">Open operations action center</button>
       </section>
       <section class="admin-card wide">
         <h2>Admin audit pulse</h2>
@@ -1655,6 +1710,52 @@ function adminAccess() {
   `;
 }
 
+function adminOperations() {
+  const operations = adminActionData();
+  const summary = operations.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Open actions", summary.openActions || "12")}
+      ${metric("High priority", summary.highPriority || "4")}
+      ${metric("Blocked", summary.blocked || "2")}
+      ${metric("Due today", summary.dueToday || "7")}
+      <section class="admin-card full-admin">
+        <h2>Incident command board</h2>
+        <div class="operations-board">
+          ${operations.incidents.map(incidentCard).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Leadership decisions</h2>
+        <div class="table">
+          ${operations.decisions.map(decisionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Follow-up tracker</h2>
+        <div class="table">
+          ${operations.followUps.map(followUpRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Runbooks</h2>
+        <div class="table">
+          ${operations.runbooks.map(runbookRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Operating cadence</h2>
+        <div class="admin-checklist">
+          <span>Morning leadership pulse reviews growth, revenue, incidents, and safety.</span>
+          <span>Every high-severity incident needs an owner, ETA, user impact note, and rollback posture.</span>
+          <span>Decisions stay visible until the follow-up owner marks the linked work complete.</span>
+          <span>Production will sync this action layer into issue tracking, paging, and audit systems.</span>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminModuleTemplate(module) {
   return `
     <article class="admin-module">
@@ -1671,6 +1772,28 @@ function adminMetric(item) {
 
 function alertRow(alert) {
   return `<div class="table-row"><strong>${alert.title}</strong><span>${alert.severity}</span><span>${alert.owner}</span></div>`;
+}
+
+function incidentCard(incident) {
+  return `
+    <article class="operation-card ${String(incident.severity || "").toLowerCase()}">
+      <div><span>${incident.id}</span><strong>${incident.title}</strong></div>
+      <p>${incident.area} - ${incident.status}</p>
+      <footer><span>${incident.owner}</span><span>${incident.eta}</span></footer>
+    </article>
+  `;
+}
+
+function decisionRow(item) {
+  return `<div class="table-row"><strong>${item.decision}</strong><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
+function followUpRow(item) {
+  return `<div class="table-row"><strong>${item.task}</strong><span>${item.owner}</span><span>${item.due}</span></div>`;
+}
+
+function runbookRow(item) {
+  return `<div class="table-row"><strong>${item.runbook}</strong><span>${item.owner}</span><span>${item.trigger}</span></div>`;
 }
 
 function funnelBar(item) {
@@ -1821,6 +1944,7 @@ function bindEvents() {
       loadAdminSafety(true);
       loadAdminGrowth(true);
       loadAdminAccess(true);
+      loadAdminActions(true);
       setTimeout(() => showToast("Refreshing admin data."), 40);
     }
     if (action === "sign-out") signOut();
