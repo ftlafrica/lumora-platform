@@ -69,6 +69,7 @@ const ADMIN_SECTIONS = [
   { id: "growth", label: "Growth", desc: "Visitors, activation, countries, devices, campaigns, and funnels." },
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
+  { id: "support", label: "Support", desc: "Tickets, SLA, escalations, CSAT, macros, user-impact signals, and safe support boundaries." },
   { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
   { id: "knowledge", label: "Knowledge", desc: "RAG collections, sources, indexing, embeddings, permissions, freshness, and quality queues." },
   { id: "safety", label: "Safety", desc: "Moderation, corrections, privacy, red-team findings, appeals, and policy." },
@@ -163,6 +164,8 @@ const DEFAULT_STATE = {
   adminApiLoadedAt: null,
   adminKnowledge: null,
   adminKnowledgeLoadedAt: null,
+  adminSupport: null,
+  adminSupportLoadedAt: null,
   user: {
     name: "Murewa Oyetoro",
     email: "murewa@example.com",
@@ -473,6 +476,26 @@ async function loadAdminKnowledge(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminSupport(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminSupportLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/support`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Support center unavailable.");
+    state.adminSupport = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminSupportLoadedAt = Date.now();
+  } catch {
+    state.adminSupportLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 function localAdminSession() {
   const issuedAt = new Date().toISOString();
   return {
@@ -481,7 +504,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -851,6 +874,42 @@ function adminKnowledgeData() {
   };
 }
 
+function adminSupportData() {
+  return state.adminSupport || {
+    summary: { openTickets: 184, sla: "91%", csat: "4.6", escalations: 23, highRiskUsers: 31 },
+    queues: [
+      { queue: "Account access", count: 58, owner: "Support", sla: "93%", priority: "Today" },
+      { queue: "Billing questions", count: 42, owner: "Revenue Support", sla: "89%", priority: "Today" },
+      { queue: "Language quality reports", count: 37, owner: "Language QA", sla: "86%", priority: "High" },
+      { queue: "Enterprise workspace help", count: 24, owner: "Enterprise Support", sla: "96%", priority: "High" }
+    ],
+    escalations: [
+      { id: "ESC-1184", user: "EduBridge workspace", issue: "SSO setup blocked", owner: "Enterprise", status: "Engineering review" },
+      { id: "ESC-1185", user: "Creator Desk", issue: "Webhook delivery confusion", owner: "Developer Support", status: "Waiting on customer" },
+      { id: "ESC-1186", user: "Marketplace seller", issue: "Tone output felt too formal", owner: "Language QA", status: "Native review" },
+      { id: "ESC-1187", user: "Plus subscriber", issue: "Payment retry after bank decline", owner: "Revenue Support", status: "Retry scheduled" }
+    ],
+    satisfaction: [
+      { channel: "In-app support", volume: 104, csat: "4.7", trend: "+0.2" },
+      { channel: "Email", volume: 48, csat: "4.4", trend: "flat" },
+      { channel: "Enterprise success", volume: 18, csat: "4.8", trend: "+0.1" },
+      { channel: "Developer support", volume: 14, csat: "4.5", trend: "+0.3" }
+    ],
+    macros: [
+      { macro: "Language answer correction", use: "31%", owner: "Language QA", status: "Current" },
+      { macro: "Plan and billing explanation", use: "24%", owner: "Revenue Support", status: "Review" },
+      { macro: "API key safety guidance", use: "18%", owner: "Developer Support", status: "Current" },
+      { macro: "Account data export request", use: "9%", owner: "Privacy", status: "Restricted" }
+    ],
+    boundaries: [
+      "Support can view plan, language preference, and recent non-sensitive activity.",
+      "Support cannot view full private chats, raw payment tokens, admin scopes, or security secrets.",
+      "High-risk sessions must escalate to Trust/Security before any restrictive account action.",
+      "Data export and deletion requests must route through privacy-reviewed workflows."
+    ]
+  };
+}
+
 function formatAdminTime(timestamp) {
   if (!timestamp) return "Not loaded";
   return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -909,6 +968,22 @@ function orgRow(item) {
 
 function orgControlRow(item) {
   return `<div class="table-row"><strong>${item.control}</strong><span>${item.status}</span><span>${item.owner}</span></div>`;
+}
+
+function supportQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} tickets</span><span>${item.owner} / ${item.sla}</span></div>`;
+}
+
+function supportEscalationRow(item) {
+  return `<div class="table-row"><strong>${item.id}</strong><span>${item.user}</span><span>${item.status}</span></div>`;
+}
+
+function supportSatisfactionRow(item) {
+  return `<div class="table-row"><strong>${item.channel}</strong><span>${item.volume} cases</span><span>${item.csat} CSAT</span></div>`;
+}
+
+function supportMacroRow(item) {
+  return `<div class="table-row"><strong>${item.macro}</strong><span>${item.use}</span><span>${item.status}</span></div>`;
 }
 
 function modelHealthRow(item) {
@@ -1389,6 +1464,7 @@ function adminView() {
   if (state.adminSection === "platform") loadAdminPlatform();
   if (state.adminSection === "payments") loadAdminPayments();
   if (state.adminSection === "users") loadAdminUsers();
+  if (state.adminSection === "support") loadAdminSupport();
   if (state.adminSection === "models") loadAdminModels();
   if (state.adminSection === "safety") loadAdminSafety();
   if (state.adminSection === "growth") loadAdminGrowth();
@@ -1488,6 +1564,7 @@ function adminSectionView(section, readiness) {
     growth: adminGrowth,
     payments: adminPayments,
     users: adminUsers,
+    support: adminSupport,
     models: () => adminModels(readiness),
     knowledge: adminKnowledge,
     safety: adminSafety,
@@ -1647,6 +1724,49 @@ function adminUsers() {
       <section class="admin-card wide">
         <h2>Account governance</h2>
         <div class="admin-checklist"><span>Support can see non-sensitive user context only.</span><span>Data export requests must remain privacy-reviewed.</span><span>Suspensions require trust-owner approval.</span><span>Enterprise domain claims require organization verification.</span></div>
+      </section>
+    </div>
+  `;
+}
+
+function adminSupport() {
+  const support = adminSupportData();
+  const summary = support.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Open tickets", summary.openTickets || "184")}
+      ${metric("SLA", summary.sla || "91%")}
+      ${metric("CSAT", summary.csat || "4.6")}
+      ${metric("Escalations", summary.escalations || "23")}
+      <section class="admin-card wide">
+        <h2>Support queues</h2>
+        <div class="table">
+          ${support.queues.map(supportQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Escalations</h2>
+        <div class="table">
+          ${support.escalations.map(supportEscalationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Satisfaction by channel</h2>
+        <div class="table">
+          ${support.satisfaction.map(supportSatisfactionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Reply macros</h2>
+        <div class="table">
+          ${support.macros.map(supportMacroRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Support data boundaries</h2>
+        <div class="admin-checklist">
+          ${support.boundaries.map(item => `<span>${item}</span>`).join("")}
+        </div>
       </section>
     </div>
   `;
@@ -2206,6 +2326,7 @@ function bindEvents() {
       loadAdminPlatform(true);
       loadAdminPayments(true);
       loadAdminUsers(true);
+      loadAdminSupport(true);
       loadAdminModels(true);
       loadAdminSafety(true);
       loadAdminGrowth(true);

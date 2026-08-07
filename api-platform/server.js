@@ -290,6 +290,40 @@ const knowledgeOperations = {
   ]
 };
 
+const supportOperations = {
+  summary: { openTickets: 184, sla: "91%", csat: "4.6", escalations: 23, highRiskUsers: 31 },
+  queues: [
+    { queue: "Account access", count: 58, owner: "Support", sla: "93%", priority: "Today" },
+    { queue: "Billing questions", count: 42, owner: "Revenue Support", sla: "89%", priority: "Today" },
+    { queue: "Language quality reports", count: 37, owner: "Language QA", sla: "86%", priority: "High" },
+    { queue: "Enterprise workspace help", count: 24, owner: "Enterprise Support", sla: "96%", priority: "High" }
+  ],
+  escalations: [
+    { id: "ESC-1184", user: "EduBridge workspace", issue: "SSO setup blocked", owner: "Enterprise", status: "Engineering review" },
+    { id: "ESC-1185", user: "Creator Desk", issue: "Webhook delivery confusion", owner: "Developer Support", status: "Waiting on customer" },
+    { id: "ESC-1186", user: "Marketplace seller", issue: "Tone output felt too formal", owner: "Language QA", status: "Native review" },
+    { id: "ESC-1187", user: "Plus subscriber", issue: "Payment retry after bank decline", owner: "Revenue Support", status: "Retry scheduled" }
+  ],
+  satisfaction: [
+    { channel: "In-app support", volume: 104, csat: "4.7", trend: "+0.2" },
+    { channel: "Email", volume: 48, csat: "4.4", trend: "flat" },
+    { channel: "Enterprise success", volume: 18, csat: "4.8", trend: "+0.1" },
+    { channel: "Developer support", volume: 14, csat: "4.5", trend: "+0.3" }
+  ],
+  macros: [
+    { macro: "Language answer correction", use: "31%", owner: "Language QA", status: "Current" },
+    { macro: "Plan and billing explanation", use: "24%", owner: "Revenue Support", status: "Review" },
+    { macro: "API key safety guidance", use: "18%", owner: "Developer Support", status: "Current" },
+    { macro: "Account data export request", use: "9%", owner: "Privacy", status: "Restricted" }
+  ],
+  boundaries: [
+    "Support can view plan, language preference, and recent non-sensitive activity.",
+    "Support cannot view full private chats, raw payment tokens, admin scopes, or security secrets.",
+    "High-risk sessions must escalate to Trust/Security before any restrictive account action.",
+    "Data export and deletion requests must route through privacy-reviewed workflows."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -475,6 +509,10 @@ function adminKnowledgeOperations() {
   return knowledgeOperations;
 }
 
+function adminSupportOperations() {
+  return supportOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -495,7 +533,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "platform:operate",
       "access:grant",
       "api:manage",
-      "knowledge:operate"
+      "knowledge:operate",
+      "support:review"
     ],
     audit: [
       accessEvent,
@@ -635,6 +674,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminKnowledgeOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/support") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("support_center_viewed", "Support", "Info", "Support");
+      return sendJson(response, 200, adminSupportOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -651,4 +698,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, plans };
