@@ -134,6 +134,36 @@ const safetyOperations = {
   ]
 };
 
+const growthOperations = {
+  summary: { visitorsToday: 4812, newVisitors: 2184, returningVisitors: 2628, signupConversion: "12.4%", mobileWebShare: "38%" },
+  funnel: [
+    { label: "Visitors", value: "4,812", width: 100 },
+    { label: "Started chat", value: "2,940", width: 72 },
+    { label: "Created profile", value: "1,284", width: 44 },
+    { label: "Picked language", value: "1,028", width: 37 },
+    { label: "Upgraded", value: "842", width: 28 }
+  ],
+  countries: [
+    { country: "Nigeria", users: "8,420", growth: "+16%", languages: "Yoruba, Hausa, Igbo, Pidgin" },
+    { country: "Kenya", users: "2,880", growth: "+11%", languages: "Swahili, English" },
+    { country: "South Africa", users: "2,410", growth: "+9%", languages: "Zulu, Xhosa, English" },
+    { country: "Ghana", users: "1,940", growth: "+14%", languages: "Twi/Akan, Ewe, English" },
+    { country: "Ethiopia", users: "1,220", growth: "+7%", languages: "Amharic, Oromo" }
+  ],
+  channels: [
+    { channel: "Organic search", visitors: "1,420", conversion: "11.8%", note: "Language queries" },
+    { channel: "Community referrals", visitors: "1,106", conversion: "15.4%", note: "Diaspora groups" },
+    { channel: "Creator campaigns", visitors: "884", conversion: "13.2%", note: "Video demos" },
+    { channel: "Direct", visitors: "792", conversion: "10.7%", note: "Returning users" }
+  ],
+  devices: [
+    { device: "Mobile web", share: "38%", trend: "+6%" },
+    { device: "Desktop web", share: "44%", trend: "+3%" },
+    { device: "Tablet", share: "8%", trend: "+1%" },
+    { device: "API/Partner", share: "10%", trend: "+2%" }
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -299,6 +329,10 @@ function adminSafetyOperations() {
   return safetyOperations;
 }
 
+function adminGrowthOperations() {
+  return growthOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -417,6 +451,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminSafetyOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/growth") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("growth_operations_viewed", "Growth", "Info", "Leadership");
+      return sendJson(response, 200, adminGrowthOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -433,4 +475,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, plans };

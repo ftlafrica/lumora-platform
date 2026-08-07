@@ -150,6 +150,8 @@ const DEFAULT_STATE = {
   adminModelsLoadedAt: null,
   adminSafety: null,
   adminSafetyLoadedAt: null,
+  adminGrowth: null,
+  adminGrowthLoadedAt: null,
   user: {
     name: "Murewa Oyetoro",
     email: "murewa@example.com",
@@ -355,6 +357,26 @@ async function loadAdminSafety(force = false) {
     state.adminSafetyLoadedAt = Date.now();
   } catch {
     state.adminSafetyLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminGrowth(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminGrowthLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/growth`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Growth operations unavailable.");
+    state.adminGrowth = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminGrowthLoadedAt = Date.now();
+  } catch {
+    state.adminGrowthLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -591,6 +613,26 @@ function adminSafetyData() {
   };
 }
 
+function adminGrowthData() {
+  return state.adminGrowth || {
+    summary: { visitorsToday: 4812, newVisitors: 2184, returningVisitors: 2628, signupConversion: "12.4%", mobileWebShare: "38%" },
+    funnel: ADMIN_FUNNELS,
+    countries: ADMIN_COUNTRIES,
+    channels: [
+      { channel: "Organic search", visitors: "1,420", conversion: "11.8%", note: "Language queries" },
+      { channel: "Community referrals", visitors: "1,106", conversion: "15.4%", note: "Diaspora groups" },
+      { channel: "Creator campaigns", visitors: "884", conversion: "13.2%", note: "Video demos" },
+      { channel: "Direct", visitors: "792", conversion: "10.7%", note: "Returning users" }
+    ],
+    devices: [
+      { device: "Mobile web", share: "38%", trend: "+6%" },
+      { device: "Desktop web", share: "44%", trend: "+3%" },
+      { device: "Tablet", share: "8%", trend: "+1%" },
+      { device: "API/Partner", share: "10%", trend: "+2%" }
+    ]
+  };
+}
+
 function formatAdminTime(timestamp) {
   if (!timestamp) return "Not loaded";
   return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -665,6 +707,18 @@ function fallbackQueueRow(item) {
 
 function safetyQueueRow(item) {
   return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.owner} / ${item.priority}</span></div>`;
+}
+
+function countryRow(item) {
+  return `<div class="table-row"><strong>${item.country}</strong><span>${item.users} users</span><span>${item.growth}</span></div>`;
+}
+
+function channelRow(item) {
+  return `<div class="table-row"><strong>${item.channel}</strong><span>${item.visitors} visitors</span><span>${item.conversion} / ${item.note}</span></div>`;
+}
+
+function deviceRow(item) {
+  return `<div class="table-row"><strong>${item.device}</strong><span>${item.share}</span><span>${item.trend}</span></div>`;
 }
 
 function policySignalRow(item) {
@@ -1107,6 +1161,7 @@ function adminView() {
   if (state.adminSection === "users") loadAdminUsers();
   if (state.adminSection === "models") loadAdminModels();
   if (state.adminSection === "safety") loadAdminSafety();
+  if (state.adminSection === "growth") loadAdminGrowth();
   const readiness = MODEL_REGISTRY.reduce((acc, item) => {
     acc[item.readiness] = (acc[item.readiness] || 0) + 1;
     return acc;
@@ -1252,23 +1307,33 @@ function adminOverview(readiness) {
 }
 
 function adminGrowth() {
+  const growth = adminGrowthData();
+  const summary = growth.summary || {};
   return `
     <div class="admin-grid">
-      ${metric("Visitors today", "4,812")}
-      ${metric("New visitors", adminMetricValue("users.newVisitorsToday", "2,184"))}
-      ${metric("Signup conversion", adminMetricValue("users.signupConversion", "12.4%"))}
-      ${metric("Mobile web share", "38%")}
+      ${metric("Visitors today", summary.visitorsToday || "4,812")}
+      ${metric("New visitors", summary.newVisitors || adminMetricValue("users.newVisitorsToday", "2,184"))}
+      ${metric("Signup conversion", summary.signupConversion || adminMetricValue("users.signupConversion", "12.4%"))}
+      ${metric("Mobile web share", summary.mobileWebShare || "38%")}
       <section class="admin-card wide">
         <h2>Conversion funnel</h2>
-        <div class="funnel-list">${ADMIN_FUNNELS.map(funnelBar).join("")}</div>
+        <div class="funnel-list">${growth.funnel.map(funnelBar).join("")}</div>
       </section>
       <section class="admin-card wide">
         <h2>Country traction</h2>
-        <div class="table">${ADMIN_COUNTRIES.map(country => `<div class="table-row"><strong>${country.country}</strong><span>${country.users} users</span><span>${country.growth}</span></div>`).join("")}</div>
+        <div class="table">${growth.countries.map(countryRow).join("")}</div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Acquisition channels</h2>
+        <div class="table">${growth.channels.map(channelRow).join("")}</div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Device and surface mix</h2>
+        <div class="table">${growth.devices.map(deviceRow).join("")}</div>
       </section>
       <section class="admin-card full-admin">
         <h2>Language adoption by market</h2>
-        <div class="admin-module-grid">${ADMIN_COUNTRIES.map(country => `<article class="admin-module"><h3>${country.country}</h3><p>${country.languages}</p><div class="module-metrics"><span>${country.users}</span><span>${country.growth}</span></div></article>`).join("")}</div>
+        <div class="admin-module-grid">${growth.countries.map(country => `<article class="admin-module"><h3>${country.country}</h3><p>${country.languages}</p><div class="module-metrics"><span>${country.users}</span><span>${country.growth}</span></div></article>`).join("")}</div>
       </section>
     </div>
   `;
@@ -1677,6 +1742,7 @@ function bindEvents() {
       loadAdminUsers(true);
       loadAdminModels(true);
       loadAdminSafety(true);
+      loadAdminGrowth(true);
       setTimeout(() => showToast("Refreshing admin data."), 40);
     }
     if (action === "sign-out") signOut();
