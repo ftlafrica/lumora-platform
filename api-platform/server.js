@@ -358,6 +358,42 @@ const financeOperations = {
   ]
 };
 
+const analyticsOperations = {
+  summary: { d30Retention: "68%", churn: "4.2%", activation: "78.2%", voiceUsage: "21%", savedWorkflows: "14.6K" },
+  retention: [
+    { cohort: "Week 1", users: "4,820", d7: "74%", d30: "68%", note: "Strong language passport completion" },
+    { cohort: "Week 2", users: "5,104", d7: "71%", d30: "64%", note: "Mobile web lift" },
+    { cohort: "Week 3", users: "4,612", d7: "69%", d30: "61%", note: "Creator mode adoption" },
+    { cohort: "Week 4", users: "5,880", d7: "76%", d30: "Projected 70%", note: "New welcome flow" }
+  ],
+  featureUsage: [
+    { feature: "AI Chat", usage: "72K chats today", adoption: "84%", trend: "+12%" },
+    { feature: "Translate", usage: "18K tasks", adoption: "38%", trend: "+9%" },
+    { feature: "Voice Circle", usage: "21% of users", adoption: "21%", trend: "+6%" },
+    { feature: "Creator Studio", usage: "9.4K tasks", adoption: "18%", trend: "+14%" },
+    { feature: "Market Mode", usage: "7.8K tasks", adoption: "16%", trend: "+11%" }
+  ],
+  languageAdoption: [
+    { language: "Yoruba", users: "5,420", satisfaction: "94%", trend: "+16%" },
+    { language: "Swahili", users: "3,880", satisfaction: "92%", trend: "+11%" },
+    { language: "Hausa", users: "2,710", satisfaction: "90%", trend: "+13%" },
+    { language: "Nigerian Pidgin", users: "2,240", satisfaction: "93%", trend: "+18%" },
+    { language: "Zulu/Xhosa", users: "1,860", satisfaction: "88%", trend: "+8%" }
+  ],
+  churnSignals: [
+    { signal: "No second chat after signup", users: 612, risk: "High", owner: "Growth" },
+    { signal: "Language mismatch correction", users: 284, risk: "Medium", owner: "Language QA" },
+    { signal: "Hit Free plan limit twice", users: 438, risk: "Upgrade opportunity", owner: "Revenue" },
+    { signal: "Voice latency above 2s", users: 91, risk: "Medium", owner: "Voice Ops" }
+  ],
+  experiments: [
+    { test: "Neon centered composer onboarding", segment: "New users", lift: "+8.4%", status: "Winner" },
+    { test: "Language Passport prompt chips", segment: "Mobile", lift: "+5.1%", status: "Running" },
+    { test: "Pro upgrade after third saved workflow", segment: "Creators", lift: "+3.7%", status: "Review" },
+    { test: "Voice Circle first-run guide", segment: "Voice users", lift: "+6.2%", status: "Queued" }
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -551,6 +587,10 @@ function adminFinanceOperations() {
   return financeOperations;
 }
 
+function adminAnalyticsOperations() {
+  return analyticsOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -573,7 +613,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "api:manage",
       "knowledge:operate",
       "support:review",
-      "finance:read"
+      "finance:read",
+      "analytics:read"
     ],
     audit: [
       accessEvent,
@@ -729,6 +770,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminFinanceOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/analytics") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("analytics_center_viewed", "Analytics", "Info", "Leadership");
+      return sendJson(response, 200, adminAnalyticsOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -745,4 +794,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, plans };

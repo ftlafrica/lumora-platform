@@ -67,6 +67,7 @@ const ADMIN_MODULES = [
 const ADMIN_SECTIONS = [
   { id: "overview", label: "Command", desc: "Executive health, growth, revenue, cost, and incident posture." },
   { id: "growth", label: "Growth", desc: "Visitors, activation, countries, devices, campaigns, and funnels." },
+  { id: "analytics", label: "Analytics", desc: "Retention, activation, churn, feature usage, language adoption, and experiments." },
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
   { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
@@ -159,6 +160,8 @@ const DEFAULT_STATE = {
   adminSafetyLoadedAt: null,
   adminGrowth: null,
   adminGrowthLoadedAt: null,
+  adminAnalytics: null,
+  adminAnalyticsLoadedAt: null,
   adminAccess: null,
   adminAccessLoadedAt: null,
   adminActions: null,
@@ -419,6 +422,26 @@ async function loadAdminGrowth(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminAnalytics(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminAnalyticsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/analytics`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Analytics center unavailable.");
+    state.adminAnalytics = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminAnalyticsLoadedAt = Date.now();
+  } catch {
+    state.adminAnalyticsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminAccess(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminAccessLoadedAt || 0;
@@ -527,7 +550,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -802,6 +825,44 @@ function adminGrowthData() {
       { device: "Desktop web", share: "44%", trend: "+3%" },
       { device: "Tablet", share: "8%", trend: "+1%" },
       { device: "API/Partner", share: "10%", trend: "+2%" }
+    ]
+  };
+}
+
+function adminAnalyticsData() {
+  return state.adminAnalytics || {
+    summary: { d30Retention: "68%", churn: "4.2%", activation: "78.2%", voiceUsage: "21%", savedWorkflows: "14.6K" },
+    retention: [
+      { cohort: "Week 1", users: "4,820", d7: "74%", d30: "68%", note: "Strong language passport completion" },
+      { cohort: "Week 2", users: "5,104", d7: "71%", d30: "64%", note: "Mobile web lift" },
+      { cohort: "Week 3", users: "4,612", d7: "69%", d30: "61%", note: "Creator mode adoption" },
+      { cohort: "Week 4", users: "5,880", d7: "76%", d30: "Projected 70%", note: "New welcome flow" }
+    ],
+    featureUsage: [
+      { feature: "AI Chat", usage: "72K chats today", adoption: "84%", trend: "+12%" },
+      { feature: "Translate", usage: "18K tasks", adoption: "38%", trend: "+9%" },
+      { feature: "Voice Circle", usage: "21% of users", adoption: "21%", trend: "+6%" },
+      { feature: "Creator Studio", usage: "9.4K tasks", adoption: "18%", trend: "+14%" },
+      { feature: "Market Mode", usage: "7.8K tasks", adoption: "16%", trend: "+11%" }
+    ],
+    languageAdoption: [
+      { language: "Yoruba", users: "5,420", satisfaction: "94%", trend: "+16%" },
+      { language: "Swahili", users: "3,880", satisfaction: "92%", trend: "+11%" },
+      { language: "Hausa", users: "2,710", satisfaction: "90%", trend: "+13%" },
+      { language: "Nigerian Pidgin", users: "2,240", satisfaction: "93%", trend: "+18%" },
+      { language: "Zulu/Xhosa", users: "1,860", satisfaction: "88%", trend: "+8%" }
+    ],
+    churnSignals: [
+      { signal: "No second chat after signup", users: 612, risk: "High", owner: "Growth" },
+      { signal: "Language mismatch correction", users: 284, risk: "Medium", owner: "Language QA" },
+      { signal: "Hit Free plan limit twice", users: 438, risk: "Upgrade opportunity", owner: "Revenue" },
+      { signal: "Voice latency above 2s", users: 91, risk: "Medium", owner: "Voice Ops" }
+    ],
+    experiments: [
+      { test: "Neon centered composer onboarding", segment: "New users", lift: "+8.4%", status: "Winner" },
+      { test: "Language Passport prompt chips", segment: "Mobile", lift: "+5.1%", status: "Running" },
+      { test: "Pro upgrade after third saved workflow", segment: "Creators", lift: "+3.7%", status: "Review" },
+      { test: "Voice Circle first-run guide", segment: "Voice users", lift: "+6.2%", status: "Queued" }
     ]
   };
 }
@@ -1087,6 +1148,26 @@ function channelRow(item) {
 
 function deviceRow(item) {
   return `<div class="table-row"><strong>${item.device}</strong><span>${item.share}</span><span>${item.trend}</span></div>`;
+}
+
+function retentionRow(item) {
+  return `<div class="table-row"><strong>${item.cohort}</strong><span>${item.users} users</span><span>${item.d30}</span></div>`;
+}
+
+function featureUsageRow(item) {
+  return `<div class="table-row"><strong>${item.feature}</strong><span>${item.usage}</span><span>${item.adoption} / ${item.trend}</span></div>`;
+}
+
+function languageAdoptionRow(item) {
+  return `<div class="table-row"><strong>${item.language}</strong><span>${item.users}</span><span>${item.satisfaction} satisfaction</span></div>`;
+}
+
+function churnSignalRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.users} users</span><span>${item.risk}</span></div>`;
+}
+
+function experimentRow(item) {
+  return `<div class="table-row"><strong>${item.test}</strong><span>${item.segment}</span><span>${item.lift} / ${item.status}</span></div>`;
 }
 
 function roleRow(item) {
@@ -1544,6 +1625,7 @@ function adminView() {
   if (state.adminSection === "models") loadAdminModels();
   if (state.adminSection === "safety") loadAdminSafety();
   if (state.adminSection === "growth") loadAdminGrowth();
+  if (state.adminSection === "analytics") loadAdminAnalytics();
   if (state.adminSection === "access") loadAdminAccess();
   if (state.adminSection === "operations") loadAdminActions();
   if (state.adminSection === "api") loadAdminApi();
@@ -1638,6 +1720,7 @@ function adminSectionView(section, readiness) {
   const sections = {
     overview: () => adminOverview(readiness),
     growth: adminGrowth,
+    analytics: adminAnalytics,
     payments: adminPayments,
     finance: adminFinance,
     users: adminUsers,
@@ -1726,6 +1809,49 @@ function adminGrowth() {
       <section class="admin-card full-admin">
         <h2>Language adoption by market</h2>
         <div class="admin-module-grid">${growth.countries.map(country => `<article class="admin-module"><h3>${country.country}</h3><p>${country.languages}</p><div class="module-metrics"><span>${country.users}</span><span>${country.growth}</span></div></article>`).join("")}</div>
+      </section>
+    </div>
+  `;
+}
+
+function adminAnalytics() {
+  const analytics = adminAnalyticsData();
+  const summary = analytics.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("D30 retention", summary.d30Retention || "68%")}
+      ${metric("Churn", summary.churn || "4.2%")}
+      ${metric("Activation", summary.activation || "78.2%")}
+      ${metric("Voice usage", summary.voiceUsage || "21%")}
+      <section class="admin-card wide">
+        <h2>Retention cohorts</h2>
+        <div class="table">
+          ${analytics.retention.map(retentionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Feature usage</h2>
+        <div class="table">
+          ${analytics.featureUsage.map(featureUsageRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Language adoption</h2>
+        <div class="table">
+          ${analytics.languageAdoption.map(languageAdoptionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Churn signals</h2>
+        <div class="table">
+          ${analytics.churnSignals.map(churnSignalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Experiment board</h2>
+        <div class="table">
+          ${analytics.experiments.map(experimentRow).join("")}
+        </div>
       </section>
     </div>
   `;
@@ -2451,6 +2577,7 @@ function bindEvents() {
       loadAdminModels(true);
       loadAdminSafety(true);
       loadAdminGrowth(true);
+      loadAdminAnalytics(true);
       loadAdminAccess(true);
       loadAdminActions(true);
       loadAdminApi(true);
