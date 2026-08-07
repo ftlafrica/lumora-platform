@@ -770,6 +770,40 @@ const salesOperations = {
   ]
 };
 
+const riskOperations = {
+  summary: { openRisks: 17, criticalRisks: 2, mitigationsDue: 6, boardItems: 4, riskTrend: "Stable" },
+  register: [
+    { risk: "Voice latency in noisy environments", category: "Product", severity: "High", owner: "Voice Ops", status: "Mitigating" },
+    { risk: "Enterprise privacy questionnaire gaps", category: "Compliance", severity: "High", owner: "Security", status: "Review" },
+    { risk: "Payment retries in selected markets", category: "Revenue", severity: "Medium", owner: "Finance", status: "Watching" },
+    { risk: "Language reviewer bottleneck", category: "Operations", severity: "Medium", owner: "Language QA", status: "Hiring" }
+  ],
+  mitigations: [
+    { plan: "Fallback speech route", risk: "Voice latency", owner: "AI Ops", due: "Aug 14", confidence: "Medium" },
+    { plan: "Enterprise security packet", risk: "Procurement delays", owner: "Security", due: "Aug 16", confidence: "High" },
+    { plan: "Market payment retry rules", risk: "Failed upgrades", owner: "Finance", due: "Aug 20", confidence: "Medium" },
+    { plan: "Reviewer queue prioritization", risk: "Language quality", owner: "Language QA", due: "Aug 18", confidence: "High" }
+  ],
+  board: [
+    { item: "Data residency readiness", exposure: "Enterprise deals", owner: "Legal", nextReview: "Aug 21" },
+    { item: "Model release gate discipline", exposure: "Quality and safety", owner: "AI QA", nextReview: "Aug 15" },
+    { item: "Mobile launch reliability", exposure: "iOS/Android rollout", owner: "Platform", nextReview: "Aug 19" },
+    { item: "Procurement and DPA cycle time", exposure: "Teams revenue", owner: "Enterprise Sales", nextReview: "Aug 23" }
+  ],
+  heatmap: [
+    { area: "AI Quality", likelihood: "Medium", impact: "High", score: "12", trend: "Down" },
+    { area: "Security", likelihood: "Low", impact: "High", score: "8", trend: "Stable" },
+    { area: "Revenue", likelihood: "Medium", impact: "Medium", score: "9", trend: "Up" },
+    { area: "Operations", likelihood: "High", impact: "Medium", score: "12", trend: "Stable" }
+  ],
+  guardrails: [
+    "Risks should include owner, severity, mitigation, due date, confidence, and evidence before leadership review.",
+    "Critical risks must link to incident, security, legal, model-evaluation, or finance context before closeout.",
+    "Board-facing risk summaries should be factual, concise, and separated from private user content.",
+    "No risk should be downgraded without a mitigation result, measurable signal, or named executive approval."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1011,6 +1045,10 @@ function adminSalesOperations() {
   return salesOperations;
 }
 
+function adminRiskOperations() {
+  return riskOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1045,7 +1083,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "experiments:operate",
       "evals:review",
       "success:manage",
-      "sales:manage"
+      "sales:manage",
+      "risk:review"
     ],
     audit: [
       accessEvent,
@@ -1297,6 +1336,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminSalesOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/risk") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("risk_register_viewed", "Risk", "Info", "Enterprise Risk");
+      return sendJson(response, 200, adminRiskOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1313,4 +1360,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, plans };

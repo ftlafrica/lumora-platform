@@ -70,6 +70,7 @@ const ADMIN_SECTIONS = [
   { id: "analytics", label: "Analytics", desc: "Retention, activation, churn, feature usage, language adoption, and experiments." },
   { id: "experiments", label: "Experiments", desc: "A/B tests, feature flags, rollouts, kill switches, results, and product decision guardrails." },
   { id: "reports", label: "Reports", desc: "Leadership packs, scheduled exports, report destinations, datasets, and evidence guardrails." },
+  { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
   { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
@@ -177,6 +178,8 @@ const DEFAULT_STATE = {
   adminAnalyticsLoadedAt: null,
   adminReports: null,
   adminReportsLoadedAt: null,
+  adminRisk: null,
+  adminRiskLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -390,6 +393,26 @@ async function loadAdminReports(force = false) {
     state.adminReportsLoadedAt = Date.now();
   } catch {
     state.adminReportsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminRisk(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminRiskLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/risk`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Risk register unavailable.");
+    state.adminRisk = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminRiskLoadedAt = Date.now();
+  } catch {
+    state.adminRiskLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -803,7 +826,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1321,6 +1344,42 @@ function adminSalesData() {
       "Deals involving schools, healthcare, governments, or children require privacy, security, and legal review before pilot expansion.",
       "Sales promises must map to live product capability, model readiness, supported languages, and operational capacity.",
       "Partner motions require clear ownership, data-sharing boundaries, co-selling terms, and support handoff."
+    ]
+  };
+}
+
+function adminRiskData() {
+  return state.adminRisk || {
+    summary: { openRisks: 17, criticalRisks: 2, mitigationsDue: 6, boardItems: 4, riskTrend: "Stable" },
+    register: [
+      { risk: "Voice latency in noisy environments", category: "Product", severity: "High", owner: "Voice Ops", status: "Mitigating" },
+      { risk: "Enterprise privacy questionnaire gaps", category: "Compliance", severity: "High", owner: "Security", status: "Review" },
+      { risk: "Payment retries in selected markets", category: "Revenue", severity: "Medium", owner: "Finance", status: "Watching" },
+      { risk: "Language reviewer bottleneck", category: "Operations", severity: "Medium", owner: "Language QA", status: "Hiring" }
+    ],
+    mitigations: [
+      { plan: "Fallback speech route", risk: "Voice latency", owner: "AI Ops", due: "Aug 14", confidence: "Medium" },
+      { plan: "Enterprise security packet", risk: "Procurement delays", owner: "Security", due: "Aug 16", confidence: "High" },
+      { plan: "Market payment retry rules", risk: "Failed upgrades", owner: "Finance", due: "Aug 20", confidence: "Medium" },
+      { plan: "Reviewer queue prioritization", risk: "Language quality", owner: "Language QA", due: "Aug 18", confidence: "High" }
+    ],
+    board: [
+      { item: "Data residency readiness", exposure: "Enterprise deals", owner: "Legal", nextReview: "Aug 21" },
+      { item: "Model release gate discipline", exposure: "Quality and safety", owner: "AI QA", nextReview: "Aug 15" },
+      { item: "Mobile launch reliability", exposure: "iOS/Android rollout", owner: "Platform", nextReview: "Aug 19" },
+      { item: "Procurement and DPA cycle time", exposure: "Teams revenue", owner: "Enterprise Sales", nextReview: "Aug 23" }
+    ],
+    heatmap: [
+      { area: "AI Quality", likelihood: "Medium", impact: "High", score: "12", trend: "Down" },
+      { area: "Security", likelihood: "Low", impact: "High", score: "8", trend: "Stable" },
+      { area: "Revenue", likelihood: "Medium", impact: "Medium", score: "9", trend: "Up" },
+      { area: "Operations", likelihood: "High", impact: "Medium", score: "12", trend: "Stable" }
+    ],
+    guardrails: [
+      "Risks should include owner, severity, mitigation, due date, confidence, and evidence before leadership review.",
+      "Critical risks must link to incident, security, legal, model-evaluation, or finance context before closeout.",
+      "Board-facing risk summaries should be factual, concise, and separated from private user content.",
+      "No risk should be downgraded without a mitigation result, measurable signal, or named executive approval."
     ]
   };
 }
@@ -1893,6 +1952,22 @@ function partnerLeadRow(item) {
   return `<div class="table-row"><strong>${item.partner}</strong><span>${item.region}</span><span>${item.leads} leads</span><span>${item.status}</span></div>`;
 }
 
+function riskRegisterRow(item) {
+  return `<div class="table-row"><strong>${item.risk}</strong><span>${item.category}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
+function riskMitigationRow(item) {
+  return `<div class="table-row"><strong>${item.plan}</strong><span>${item.risk}</span><span>${item.owner}</span><span>${item.due}</span></div>`;
+}
+
+function boardRiskRow(item) {
+  return `<div class="table-row"><strong>${item.item}</strong><span>${item.exposure}</span><span>${item.owner}</span><span>${item.nextReview}</span></div>`;
+}
+
+function riskHeatmapRow(item) {
+  return `<div class="table-row"><strong>${item.area}</strong><span>${item.likelihood}</span><span>${item.impact}</span><span>${item.score} / ${item.trend}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -2460,6 +2535,7 @@ function adminView() {
   if (state.adminSection === "analytics") loadAdminAnalytics();
   if (state.adminSection === "experiments") loadAdminExperiments();
   if (state.adminSection === "reports") loadAdminReports();
+  if (state.adminSection === "risk") loadAdminRisk();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -2561,6 +2637,7 @@ function adminSectionView(section, readiness) {
     analytics: adminAnalytics,
     experiments: adminExperiments,
     reports: adminReports,
+    risk: adminRisk,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -3082,6 +3159,49 @@ function adminReports() {
         <h2>Reporting guardrails</h2>
         <div class="admin-checklist">
           ${reports.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminRisk() {
+  const risk = adminRiskData();
+  const summary = risk.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Open risks", summary.openRisks || "17")}
+      ${metric("Critical", summary.criticalRisks || "2")}
+      ${metric("Mitigations due", summary.mitigationsDue || "6")}
+      ${metric("Risk trend", summary.riskTrend || "Stable")}
+      <section class="admin-card full-admin">
+        <h2>Enterprise risk register</h2>
+        <div class="table admin-table-4">
+          ${risk.register.map(riskRegisterRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Mitigation plans</h2>
+        <div class="table admin-table-4">
+          ${risk.mitigations.map(riskMitigationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Board review items</h2>
+        <div class="table admin-table-4">
+          ${risk.board.map(boardRiskRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Risk heatmap</h2>
+        <div class="table admin-table-4">
+          ${risk.heatmap.map(riskHeatmapRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Risk governance guardrails</h2>
+        <div class="admin-checklist">
+          ${risk.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -3907,6 +4027,7 @@ function bindEvents() {
       loadAdminAnalytics(true);
       loadAdminExperiments(true);
       loadAdminReports(true);
+      loadAdminRisk(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);
