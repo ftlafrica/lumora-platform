@@ -1158,6 +1158,16 @@ body.sheet-open .sheet {
     linear-gradient(135deg, rgba(255, 209, 102, .12), rgba(0, 245, 212, .055));
 }
 
+.admin-preview-banner.connected {
+  border-color: rgba(0, 245, 212, .32);
+  background:
+    linear-gradient(135deg, rgba(0, 245, 212, .13), rgba(255, 209, 102, .055));
+}
+
+.admin-preview-banner.connected strong {
+  color: var(--cyan);
+}
+
 .admin-preview-banner strong {
   color: var(--gold);
   white-space: nowrap;

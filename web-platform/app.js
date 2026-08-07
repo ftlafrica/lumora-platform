@@ -134,6 +134,9 @@ const DEFAULT_STATE = {
   activeMode: "chat",
   adminUnlocked: false,
   adminSection: "overview",
+  adminApiStatus: "preview",
+  adminMetrics: null,
+  adminMetricsLoadedAt: null,
   user: {
     name: "Murewa Oyetoro",
     email: "murewa@example.com",
@@ -200,6 +203,30 @@ function saveState() {
   localStorage.setItem("lumora-web-state", JSON.stringify(state));
 }
 
+async function loadAdminMetrics(force = false) {
+  if (!state.adminUnlocked) return;
+  if (!force && state.adminApiStatus === "loading") return;
+  const lastLoaded = state.adminMetricsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  state.adminApiStatus = "loading";
+  saveState();
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/metrics`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Admin metrics unavailable.");
+    state.adminMetrics = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminMetricsLoadedAt = Date.now();
+  } catch {
+    state.adminApiStatus = "preview";
+    state.adminMetricsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 function routeTo(route, params = {}) {
   if (!ROUTES.includes(route)) route = "welcome";
   if (route === "admin-preview") {
@@ -253,6 +280,33 @@ function selectRouteForPrompt(text) {
   if (lower.includes("voice") || lower.includes("speak")) return "MMS -> Simba-H eval -> Lumora tone layer";
   if (lower.includes("market") || lower.includes("customer")) return "AfroXLMR-Social -> General LLM -> Market Mode";
   return "InkubaLM/AfroXLMR -> General LLM -> Lumora tone layer";
+}
+
+function adminMetricValue(path, fallback) {
+  const value = path.split(".").reduce((current, key) => current && current[key], state.adminMetrics);
+  return value === undefined || value === null ? fallback : value;
+}
+
+function formatAdminTime(timestamp) {
+  if (!timestamp) return "Not loaded";
+  return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function adminStatusLabel() {
+  if (state.adminApiStatus === "connected") return "API connected";
+  if (state.adminApiStatus === "loading") return "Connecting API";
+  return "Preview fallback";
+}
+
+function adminLiveKpis() {
+  return [
+    { label: "Total users", value: adminMetricValue("users.total", "18.4K"), trend: "+18% month", tone: "good" },
+    { label: "New visitors", value: adminMetricValue("users.newVisitorsToday", "2,184"), trend: adminMetricValue("users.signupConversion", "12.4% conversion"), tone: "gold" },
+    { label: "Requests today", value: adminMetricValue("ai.requestsToday", "1.28M"), trend: `${adminMetricValue("ai.successRate", "99.1%")} success`, tone: "good" },
+    { label: "Revenue", value: adminMetricValue("revenue.mrr", "$184K"), trend: `${adminMetricValue("revenue.arr", "$2.2M")} ARR`, tone: "gold" },
+    { label: "API errors", value: adminMetricValue("platform.apiErrors", "0.8%"), trend: `${adminMetricValue("platform.webUptime", "99.98%")} web uptime`, tone: "warn" },
+    { label: "Safety flags", value: adminMetricValue("safety.moderationFlags", "418"), trend: `${adminMetricValue("safety.appeals", "44")} appeals`, tone: "warn" }
+  ];
 }
 
 function generateReply(text) {
@@ -684,11 +738,13 @@ function dashboardView() {
 
 function adminView() {
   if (!state.adminUnlocked) return adminGateView();
+  loadAdminMetrics();
   const readiness = MODEL_REGISTRY.reduce((acc, item) => {
     acc[item.readiness] = (acc[item.readiness] || 0) + 1;
     return acc;
   }, {});
   const active = ADMIN_SECTIONS.find(section => section.id === state.adminSection) || ADMIN_SECTIONS[0];
+  const status = adminStatusLabel();
   return appShell(`
     <main class="view admin-layout enterprise-admin">
       ${adminSidebar()}
@@ -704,9 +760,10 @@ function adminView() {
             <button class="pill gold" data-action="lock-admin">Lock admin</button>
           </div>
         </header>
-        <section class="admin-preview-banner">
-          <strong>Preview mode</strong>
-          <span>This is a non-production console preview with simulated metrics. Production access will require seed-admin approval, SSO/MFA, RBAC/ABAC, and audit logging.</span>
+        <section class="admin-preview-banner ${state.adminApiStatus === "connected" ? "connected" : ""}">
+          <strong>${status}</strong>
+          <span>${state.adminApiStatus === "connected" ? `Metrics loaded from Lumora API at ${formatAdminTime(state.adminMetricsLoadedAt)}.` : "Using non-production preview metrics until the local API is running. Production access will require seed-admin approval, SSO/MFA, RBAC/ABAC, and audit logging."}</span>
+          <button class="mini-action" data-action="refresh-admin">Refresh</button>
         </section>
         <nav class="admin-tabs">
           ${ADMIN_SECTIONS.map(section => `<button class="${active.id === section.id ? "active" : ""}" data-admin-section="${section.id}">${section.label}</button>`).join("")}
@@ -783,7 +840,7 @@ function adminSectionView(section, readiness) {
 function adminOverview(readiness) {
   return `
     <div class="admin-grid">
-      ${ADMIN_KPIS.map(adminMetric).join("")}
+      ${adminLiveKpis().map(adminMetric).join("")}
       <section class="admin-card wide">
         <h2>Live command pulse</h2>
         <div class="admin-chart">
@@ -821,8 +878,8 @@ function adminGrowth() {
   return `
     <div class="admin-grid">
       ${metric("Visitors today", "4,812")}
-      ${metric("New visitors", "2,184")}
-      ${metric("Signup conversion", "12.4%")}
+      ${metric("New visitors", adminMetricValue("users.newVisitorsToday", "2,184"))}
+      ${metric("Signup conversion", adminMetricValue("users.signupConversion", "12.4%"))}
       ${metric("Mobile web share", "38%")}
       <section class="admin-card wide">
         <h2>Conversion funnel</h2>
@@ -843,10 +900,10 @@ function adminGrowth() {
 function adminPayments() {
   return `
     <div class="admin-grid">
-      ${metric("MRR", "$184K")}
-      ${metric("ARR", "$2.2M")}
-      ${metric("Upgrades today", "842")}
-      ${metric("Failed payments", "31")}
+      ${metric("MRR", adminMetricValue("revenue.mrr", "$184K"))}
+      ${metric("ARR", adminMetricValue("revenue.arr", "$2.2M"))}
+      ${metric("Upgrades today", adminMetricValue("revenue.upgradesToday", "842"))}
+      ${metric("Failed payments", adminMetricValue("revenue.failedPayments", "31"))}
       <section class="admin-card full-admin">
         <h2>Plan performance</h2>
         <div class="table admin-table-4">
@@ -869,7 +926,7 @@ function adminPayments() {
 function adminUsers() {
   return `
     <div class="admin-grid">
-      ${metric("Consumer users", "18.4K")}
+      ${metric("Consumer users", adminMetricValue("users.total", "18.4K"))}
       ${metric("Organizations", "47")}
       ${metric("Enterprise seats", "1,280")}
       ${metric("Risk reviews", "92")}
@@ -892,9 +949,9 @@ function adminUsers() {
 function adminModels(readiness) {
   return `
     <div class="admin-grid">
-      ${metric("Model sources", MODEL_REGISTRY.length)}
-      ${metric("Avg route", "428ms")}
-      ${metric("Success rate", "99.1%")}
+      ${metric("Model sources", adminMetricValue("ai.modelSources", MODEL_REGISTRY.length))}
+      ${metric("Avg route", `${adminMetricValue("ai.averageRouteMs", 428)}ms`)}
+      ${metric("Success rate", adminMetricValue("ai.successRate", "99.1%"))}
       ${metric("Fallback chains", "3")}
       <section class="admin-card full-admin">
         <h2>Hugging Face model registry</h2>
@@ -917,10 +974,10 @@ function adminModels(readiness) {
 function adminSafety() {
   return `
     <div class="admin-grid">
-      ${metric("Moderation flags", "418")}
-      ${metric("Appeals", "44")}
+      ${metric("Moderation flags", adminMetricValue("safety.moderationFlags", "418"))}
+      ${metric("Appeals", adminMetricValue("safety.appeals", "44"))}
       ${metric("Corrections", "1,284")}
-      ${metric("Red-team reports", "3")}
+      ${metric("Pending corrections", adminMetricValue("safety.correctionsPending", "312"))}
       <section class="admin-card wide">
         <h2>Safety queues</h2>
         <div class="table">${ADMIN_ALERTS.filter(alert => alert.area !== "Billing").map(alertRow).join("")}</div>
@@ -934,19 +991,20 @@ function adminSafety() {
 }
 
 function adminPlatform() {
+  const releases = adminMetricValue("platform.mobileReleases", ["iOS 1.0.4 beta", "Android 1.0.6 beta"]);
   return `
     <div class="admin-grid">
-      ${metric("Web uptime", "99.98%")}
+      ${metric("Web uptime", adminMetricValue("platform.webUptime", "99.98%"))}
       ${metric("API calls", "9.2M")}
-      ${metric("Mobile releases", "2 live")}
+      ${metric("Mobile releases", Array.isArray(releases) ? releases.length : "2 live")}
       ${metric("Open incidents", "0")}
       <section class="admin-card wide">
         <h2>Release control</h2>
         <div class="table">
           <div class="table-row"><strong>Web</strong><span>3 feature flags</span><span>Stable</span></div>
-          <div class="table-row"><strong>iOS</strong><span>1.0.4 beta</span><span>Crash review</span></div>
-          <div class="table-row"><strong>Android</strong><span>1.0.6 beta</span><span>Healthy</span></div>
-          <div class="table-row"><strong>API</strong><span>0.8% errors</span><span>Watch</span></div>
+          <div class="table-row"><strong>iOS</strong><span>${Array.isArray(releases) ? releases[0] : "1.0.4 beta"}</span><span>Crash review</span></div>
+          <div class="table-row"><strong>Android</strong><span>${Array.isArray(releases) ? releases[1] : "1.0.6 beta"}</span><span>Healthy</span></div>
+          <div class="table-row"><strong>API</strong><span>${adminMetricValue("platform.apiErrors", "0.8%")} errors</span><span>Watch</span></div>
         </div>
       </section>
       <section class="admin-card wide">
@@ -1138,6 +1196,10 @@ function bindEvents() {
     if (action === "send") sendMessage();
     if (action === "voice") showToast("Voice capture prototype is ready for ASR integration.");
     if (action === "correction") { closeOverlays(); setTimeout(() => showToast("Correction submitted for review."), 40); }
+    if (action === "refresh-admin") {
+      loadAdminMetrics(true);
+      setTimeout(() => showToast("Refreshing admin metrics."), 40);
+    }
     if (action === "sign-out") signOut();
     if (action === "preview-admin") {
       state.adminUnlocked = true;

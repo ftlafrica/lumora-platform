@@ -33,6 +33,8 @@ The API listens on `http://localhost:8787` by default.
 
 Both clients currently expect `http://localhost:8787` as the local API base URL. They call `POST /v1/chat` for replies and fall back to local simulation if the API is unavailable.
 
+The Enterprise Admin Console calls `GET /v1/admin/metrics` with `X-Seed-Admin-Code` to populate leadership, growth, payments, AI Ops, safety, and platform preview metrics.
+
 ## Example Requests
 
 Route a task:
