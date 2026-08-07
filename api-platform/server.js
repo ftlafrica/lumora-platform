@@ -599,6 +599,41 @@ const dataGovernanceOperations = {
   ]
 };
 
+const integrationOperations = {
+  summary: { connectedServices: 18, degradedServices: 2, webhookRetries: 42, partnerAccounts: 11, secretsRotating: 3 },
+  services: [
+    { service: "Hugging Face", category: "Model hosting", status: "Healthy", owner: "AI Ops", risk: "Latency watch" },
+    { service: "Payment processor", category: "Billing", status: "Retry watch", owner: "Finance", risk: "31 failed payments" },
+    { service: "Email provider", category: "Communications", status: "Healthy", owner: "Growth", risk: "Normal" },
+    { service: "Push notification gateway", category: "Mobile", status: "Token cleanup", owner: "Mobile", risk: "Android retries" },
+    { service: "Analytics warehouse", category: "Analytics", status: "Healthy", owner: "Analytics", risk: "5 min freshness" }
+  ],
+  webhooks: [
+    { event: "payment.upgraded", destination: "Billing ledger", retries: 3, status: "Retrying", owner: "Revenue Ops" },
+    { event: "message.completed", destination: "Partner apps", retries: 18, status: "Healthy", owner: "Developer Support" },
+    { event: "safety.escalated", destination: "Trust queue", retries: 0, status: "Protected", owner: "Trust" },
+    { event: "report.generated", destination: "Leadership archive", retries: 2, status: "Watch", owner: "Operations" }
+  ],
+  partners: [
+    { partner: "EduBridge Africa", integration: "API + SSO", usage: "1.8M calls", status: "Expansion" },
+    { partner: "MarketUnion NG", integration: "API + webhooks", usage: "940K calls", status: "Rate watch" },
+    { partner: "Creator Desk", integration: "Creator API", usage: "284K calls", status: "Healthy" },
+    { partner: "Swahili Learning Hub", integration: "Teams workspace", usage: "184 seats", status: "Onboarding" }
+  ],
+  secrets: [
+    { secret: "Model provider token", owner: "AI Ops", rotation: "14 days", status: "Scheduled" },
+    { secret: "Payment webhook signing key", owner: "Finance", rotation: "30 days", status: "Active" },
+    { secret: "Email API key", owner: "Growth", rotation: "45 days", status: "Queued" },
+    { secret: "Mobile push certificate", owner: "Mobile", rotation: "90 days", status: "Healthy" }
+  ],
+  guardrails: [
+    "Every external service needs owner, category, health, credentials, retry policy, and incident runbook.",
+    "Webhook payloads must be signed, retried safely, and routed through dead-letter queues when needed.",
+    "Partner access must use scoped API keys, quotas, audit logs, and environment separation.",
+    "Secrets must rotate on schedule and never appear in browser code, logs, reports, or support views."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -820,6 +855,10 @@ function adminDataGovernanceOperations() {
   return dataGovernanceOperations;
 }
 
+function adminIntegrationOperations() {
+  return integrationOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -849,7 +888,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "reporting:export",
       "communications:send",
       "language:review",
-      "data:govern"
+      "data:govern",
+      "integrations:manage"
     ],
     audit: [
       accessEvent,
@@ -1061,6 +1101,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminDataGovernanceOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/integrations") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("integrations_partner_ops_viewed", "Integrations", "Info", "Developer");
+      return sendJson(response, 200, adminIntegrationOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1077,4 +1125,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, plans };

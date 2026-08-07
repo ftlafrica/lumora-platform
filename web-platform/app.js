@@ -83,6 +83,7 @@ const ADMIN_SECTIONS = [
   { id: "platform", label: "Platform", desc: "Web, mobile, API, infrastructure, incidents, releases, and feature flags." },
   { id: "infrastructure", label: "Infrastructure", desc: "Services, queues, GPU clusters, databases, incidents, uptime, and reliability guardrails." },
   { id: "api", label: "API", desc: "Keys, quotas, SDKs, webhooks, rate limits, errors, and partner integration health." },
+  { id: "integrations", label: "Integrations", desc: "Connected services, partner systems, webhook retries, secrets, and vendor health." },
   { id: "access", label: "Access", desc: "Seed-admin grants, RBAC, audit logs, compliance, data residency, and SSO." },
   { id: "operations", label: "Operations", desc: "Incidents, decisions, follow-ups, runbooks, owners, ETAs, and leadership action tracking." }
 ];
@@ -178,6 +179,8 @@ const DEFAULT_STATE = {
   adminLanguagesLoadedAt: null,
   adminDataGovernance: null,
   adminDataGovernanceLoadedAt: null,
+  adminIntegrations: null,
+  adminIntegrationsLoadedAt: null,
   adminInfrastructure: null,
   adminInfrastructureLoadedAt: null,
   adminAccess: null,
@@ -440,6 +443,26 @@ async function loadAdminDataGovernance(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminIntegrations(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminIntegrationsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/integrations`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Integrations unavailable.");
+    state.adminIntegrations = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminIntegrationsLoadedAt = Date.now();
+  } catch {
+    state.adminIntegrationsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminPayments(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminPaymentsLoadedAt || 0;
@@ -688,7 +711,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "communications:send", "language:review", "data:govern"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "communications:send", "language:review", "data:govern", "integrations:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1025,6 +1048,43 @@ function adminDataGovernanceData() {
       "Memory, voice, and reviewer access must honor user consent, country rules, and tenant boundaries.",
       "Model training or evaluation datasets must remove PII and track source license, reviewer, and retention.",
       "Consumer dashboards can show personal privacy status but never expose admin data governance controls."
+    ]
+  };
+}
+
+function adminIntegrationsData() {
+  return state.adminIntegrations || {
+    summary: { connectedServices: 18, degradedServices: 2, webhookRetries: 42, partnerAccounts: 11, secretsRotating: 3 },
+    services: [
+      { service: "Hugging Face", category: "Model hosting", status: "Healthy", owner: "AI Ops", risk: "Latency watch" },
+      { service: "Payment processor", category: "Billing", status: "Retry watch", owner: "Finance", risk: "31 failed payments" },
+      { service: "Email provider", category: "Communications", status: "Healthy", owner: "Growth", risk: "Normal" },
+      { service: "Push notification gateway", category: "Mobile", status: "Token cleanup", owner: "Mobile", risk: "Android retries" },
+      { service: "Analytics warehouse", category: "Analytics", status: "Healthy", owner: "Analytics", risk: "5 min freshness" }
+    ],
+    webhooks: [
+      { event: "payment.upgraded", destination: "Billing ledger", retries: 3, status: "Retrying", owner: "Revenue Ops" },
+      { event: "message.completed", destination: "Partner apps", retries: 18, status: "Healthy", owner: "Developer Support" },
+      { event: "safety.escalated", destination: "Trust queue", retries: 0, status: "Protected", owner: "Trust" },
+      { event: "report.generated", destination: "Leadership archive", retries: 2, status: "Watch", owner: "Operations" }
+    ],
+    partners: [
+      { partner: "EduBridge Africa", integration: "API + SSO", usage: "1.8M calls", status: "Expansion" },
+      { partner: "MarketUnion NG", integration: "API + webhooks", usage: "940K calls", status: "Rate watch" },
+      { partner: "Creator Desk", integration: "Creator API", usage: "284K calls", status: "Healthy" },
+      { partner: "Swahili Learning Hub", integration: "Teams workspace", usage: "184 seats", status: "Onboarding" }
+    ],
+    secrets: [
+      { secret: "Model provider token", owner: "AI Ops", rotation: "14 days", status: "Scheduled" },
+      { secret: "Payment webhook signing key", owner: "Finance", rotation: "30 days", status: "Active" },
+      { secret: "Email API key", owner: "Growth", rotation: "45 days", status: "Queued" },
+      { secret: "Mobile push certificate", owner: "Mobile", rotation: "90 days", status: "Healthy" }
+    ],
+    guardrails: [
+      "Every external service needs owner, category, health, credentials, retry policy, and incident runbook.",
+      "Webhook payloads must be signed, retried safely, and routed through dead-letter queues when needed.",
+      "Partner access must use scoped API keys, quotas, audit logs, and environment separation.",
+      "Secrets must rotate on schedule and never appear in browser code, logs, reports, or support views."
     ]
   };
 }
@@ -1515,6 +1575,22 @@ function residencyRow(item) {
 
 function privacyRequestRow(item) {
   return `<div class="table-row"><strong>${item.request}</strong><span>${item.count} open</span><span>${item.sla}</span><span>${item.status}</span></div>`;
+}
+
+function integrationServiceRow(item) {
+  return `<div class="table-row"><strong>${item.service}</strong><span>${item.category}</span><span>${item.status}</span><span>${item.owner}</span></div>`;
+}
+
+function integrationWebhookRow(item) {
+  return `<div class="table-row"><strong>${item.event}</strong><span>${item.destination}</span><span>${item.retries} retries</span><span>${item.status}</span></div>`;
+}
+
+function partnerIntegrationRow(item) {
+  return `<div class="table-row"><strong>${item.partner}</strong><span>${item.integration}</span><span>${item.usage}</span><span>${item.status}</span></div>`;
+}
+
+function secretRotationRow(item) {
+  return `<div class="table-row"><strong>${item.secret}</strong><span>${item.owner}</span><span>${item.rotation}</span><span>${item.status}</span></div>`;
 }
 
 function paymentPlanRow(item) {
@@ -2086,6 +2162,7 @@ function adminView() {
   if (state.adminSection === "access") loadAdminAccess();
   if (state.adminSection === "operations") loadAdminActions();
   if (state.adminSection === "api") loadAdminApi();
+  if (state.adminSection === "integrations") loadAdminIntegrations();
   if (state.adminSection === "knowledge") loadAdminKnowledge();
   const readiness = MODEL_REGISTRY.reduce((acc, item) => {
     acc[item.readiness] = (acc[item.readiness] || 0) + 1;
@@ -2193,6 +2270,7 @@ function adminSectionView(section, readiness) {
     platform: adminPlatform,
     infrastructure: adminInfrastructure,
     api: adminApiManagement,
+    integrations: adminIntegrations,
     access: adminAccess,
     operations: adminOperations
   };
@@ -2831,6 +2909,49 @@ function adminDataGovernance() {
   `;
 }
 
+function adminIntegrations() {
+  const integrations = adminIntegrationsData();
+  const summary = integrations.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Connected services", summary.connectedServices || "18")}
+      ${metric("Degraded services", summary.degradedServices || "2")}
+      ${metric("Webhook retries", summary.webhookRetries || "42")}
+      ${metric("Secrets rotating", summary.secretsRotating || "3")}
+      <section class="admin-card full-admin">
+        <h2>Connected services</h2>
+        <div class="table admin-table-4">
+          ${integrations.services.map(integrationServiceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Webhook delivery</h2>
+        <div class="table admin-table-4">
+          ${integrations.webhooks.map(integrationWebhookRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Partner accounts</h2>
+        <div class="table admin-table-4">
+          ${integrations.partners.map(partnerIntegrationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Secrets and credentials</h2>
+        <div class="table admin-table-4">
+          ${integrations.secrets.map(secretRotationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Integration guardrails</h2>
+        <div class="admin-checklist">
+          ${integrations.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminPlatform() {
   const platform = adminPlatformData();
   const releases = adminMetricValue("platform.mobileReleases", ["iOS 1.0.4 beta", "Android 1.0.6 beta"]);
@@ -3308,6 +3429,7 @@ function bindEvents() {
       loadAdminAccess(true);
       loadAdminActions(true);
       loadAdminApi(true);
+      loadAdminIntegrations(true);
       loadAdminKnowledge(true);
       setTimeout(() => showToast("Refreshing admin data."), 40);
     }
