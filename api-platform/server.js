@@ -394,6 +394,40 @@ const analyticsOperations = {
   ]
 };
 
+const infrastructureOperations = {
+  summary: { uptime: "99.98%", incidents: 0, gpuUtilization: "61%", queuePressure: "Normal", deployHealth: "Stable" },
+  services: [
+    { service: "API gateway", status: "Healthy", latency: "82ms p95", owner: "Platform" },
+    { service: "Model router", status: "Watch", latency: "428ms avg", owner: "AI Ops" },
+    { service: "Vector database", status: "Healthy", latency: "34ms p95", owner: "Knowledge Ops" },
+    { service: "Realtime chat sync", status: "Healthy", latency: "61ms p95", owner: "Web/Mobile" },
+    { service: "Billing webhooks", status: "Retry watch", latency: "42 queued", owner: "Revenue Ops" }
+  ],
+  clusters: [
+    { cluster: "GPU inference A", region: "West Africa edge", load: "61%", status: "Healthy" },
+    { cluster: "GPU inference B", region: "EU fallback", load: "38%", status: "Standby" },
+    { cluster: "Embedding workers", region: "Africa/EU", load: "74%", status: "Busy" },
+    { cluster: "Batch jobs", region: "Global", load: "49%", status: "Normal" }
+  ],
+  queues: [
+    { queue: "Model route requests", depth: 1280, oldest: "11s", status: "Normal" },
+    { queue: "Embedding indexing", depth: 8120, oldest: "4m", status: "Busy" },
+    { queue: "Webhook retries", depth: 42, oldest: "18m", status: "Watch" },
+    { queue: "Audit log writes", depth: 0, oldest: "0s", status: "Healthy" }
+  ],
+  incidents: [
+    { id: "REL-904", title: "iOS beta crash cluster", severity: "High", owner: "Mobile", status: "Contained" },
+    { id: "OPS-221", title: "Speech latency watch", severity: "Medium", owner: "Voice Ops", status: "Mitigating" },
+    { id: "OPS-222", title: "Webhook retry backlog", severity: "Medium", owner: "Platform", status: "Retrying" }
+  ],
+  guardrails: [
+    "Maintain rollback-ready deployment artifacts for web, mobile, and API.",
+    "Escalate when API errors exceed 1% for 10 minutes or model route p95 exceeds 900ms.",
+    "Protect audit logging and billing events as durable, never-loss queues.",
+    "Keep GPU fallback capacity ready for high-traffic language launches."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -591,6 +625,10 @@ function adminAnalyticsOperations() {
   return analyticsOperations;
 }
 
+function adminInfrastructureOperations() {
+  return infrastructureOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -614,7 +652,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "knowledge:operate",
       "support:review",
       "finance:read",
-      "analytics:read"
+      "analytics:read",
+      "infrastructure:operate"
     ],
     audit: [
       accessEvent,
@@ -778,6 +817,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminAnalyticsOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/infrastructure") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("infrastructure_reliability_viewed", "Infrastructure", "Info", "Developer");
+      return sendJson(response, 200, adminInfrastructureOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -794,4 +841,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, plans };

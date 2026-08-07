@@ -76,6 +76,7 @@ const ADMIN_SECTIONS = [
   { id: "knowledge", label: "Knowledge", desc: "RAG collections, sources, indexing, embeddings, permissions, freshness, and quality queues." },
   { id: "safety", label: "Safety", desc: "Moderation, corrections, privacy, red-team findings, appeals, and policy." },
   { id: "platform", label: "Platform", desc: "Web, mobile, API, infrastructure, incidents, releases, and feature flags." },
+  { id: "infrastructure", label: "Infrastructure", desc: "Services, queues, GPU clusters, databases, incidents, uptime, and reliability guardrails." },
   { id: "api", label: "API", desc: "Keys, quotas, SDKs, webhooks, rate limits, errors, and partner integration health." },
   { id: "access", label: "Access", desc: "Seed-admin grants, RBAC, audit logs, compliance, data residency, and SSO." },
   { id: "operations", label: "Operations", desc: "Incidents, decisions, follow-ups, runbooks, owners, ETAs, and leadership action tracking." }
@@ -162,6 +163,8 @@ const DEFAULT_STATE = {
   adminGrowthLoadedAt: null,
   adminAnalytics: null,
   adminAnalyticsLoadedAt: null,
+  adminInfrastructure: null,
+  adminInfrastructureLoadedAt: null,
   adminAccess: null,
   adminAccessLoadedAt: null,
   adminActions: null,
@@ -297,6 +300,26 @@ async function loadAdminPlatform(force = false) {
     state.adminPlatformLoadedAt = Date.now();
   } catch {
     state.adminPlatformLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminInfrastructure(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminInfrastructureLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/infrastructure`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Infrastructure reliability unavailable.");
+    state.adminInfrastructure = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminInfrastructureLoadedAt = Date.now();
+  } catch {
+    state.adminInfrastructureLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -550,7 +573,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -671,6 +694,42 @@ function adminPlatformData() {
       { key: "force_mobile_update", surface: "Mobile", state: "armed", rollout: 0, owner: "Platform" }
     ],
     guardrails: { maintenanceMode: false, rollbackReady: true, forceUpdateArmed: true, killSwitches: 1 }
+  };
+}
+
+function adminInfrastructureData() {
+  return state.adminInfrastructure || {
+    summary: { uptime: "99.98%", incidents: 0, gpuUtilization: "61%", queuePressure: "Normal", deployHealth: "Stable" },
+    services: [
+      { service: "API gateway", status: "Healthy", latency: "82ms p95", owner: "Platform" },
+      { service: "Model router", status: "Watch", latency: "428ms avg", owner: "AI Ops" },
+      { service: "Vector database", status: "Healthy", latency: "34ms p95", owner: "Knowledge Ops" },
+      { service: "Realtime chat sync", status: "Healthy", latency: "61ms p95", owner: "Web/Mobile" },
+      { service: "Billing webhooks", status: "Retry watch", latency: "42 queued", owner: "Revenue Ops" }
+    ],
+    clusters: [
+      { cluster: "GPU inference A", region: "West Africa edge", load: "61%", status: "Healthy" },
+      { cluster: "GPU inference B", region: "EU fallback", load: "38%", status: "Standby" },
+      { cluster: "Embedding workers", region: "Africa/EU", load: "74%", status: "Busy" },
+      { cluster: "Batch jobs", region: "Global", load: "49%", status: "Normal" }
+    ],
+    queues: [
+      { queue: "Model route requests", depth: 1280, oldest: "11s", status: "Normal" },
+      { queue: "Embedding indexing", depth: 8120, oldest: "4m", status: "Busy" },
+      { queue: "Webhook retries", depth: 42, oldest: "18m", status: "Watch" },
+      { queue: "Audit log writes", depth: 0, oldest: "0s", status: "Healthy" }
+    ],
+    incidents: [
+      { id: "REL-904", title: "iOS beta crash cluster", severity: "High", owner: "Mobile", status: "Contained" },
+      { id: "OPS-221", title: "Speech latency watch", severity: "Medium", owner: "Voice Ops", status: "Mitigating" },
+      { id: "OPS-222", title: "Webhook retry backlog", severity: "Medium", owner: "Platform", status: "Retrying" }
+    ],
+    guardrails: [
+      "Maintain rollback-ready deployment artifacts for web, mobile, and API.",
+      "Escalate when API errors exceed 1% for 10 minutes or model route p95 exceeds 900ms.",
+      "Protect audit logging and billing events as durable, never-loss queues.",
+      "Keep GPU fallback capacity ready for high-traffic language launches."
+    ]
   };
 }
 
@@ -1064,6 +1123,22 @@ function releaseRow(release) {
 
 function flagRow(flag) {
   return `<div class="table-row"><strong>${flag.key}</strong><span>${flag.surface} / ${flag.owner}</span><span>${flag.state} - ${flag.rollout}%</span></div>`;
+}
+
+function infrastructureServiceRow(item) {
+  return `<div class="table-row"><strong>${item.service}</strong><span>${item.latency}</span><span>${item.status}</span></div>`;
+}
+
+function infrastructureClusterRow(item) {
+  return `<div class="table-row"><strong>${item.cluster}</strong><span>${item.region}</span><span>${item.load} / ${item.status}</span></div>`;
+}
+
+function infrastructureQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.depth} depth</span><span>${item.oldest} / ${item.status}</span></div>`;
+}
+
+function infrastructureIncidentRow(item) {
+  return `<div class="table-row"><strong>${item.id}</strong><span>${item.title}</span><span>${item.severity} / ${item.status}</span></div>`;
 }
 
 function paymentPlanRow(item) {
@@ -1624,6 +1699,7 @@ function adminView() {
   if (state.adminSection === "support") loadAdminSupport();
   if (state.adminSection === "models") loadAdminModels();
   if (state.adminSection === "safety") loadAdminSafety();
+  if (state.adminSection === "infrastructure") loadAdminInfrastructure();
   if (state.adminSection === "growth") loadAdminGrowth();
   if (state.adminSection === "analytics") loadAdminAnalytics();
   if (state.adminSection === "access") loadAdminAccess();
@@ -1729,6 +1805,7 @@ function adminSectionView(section, readiness) {
     knowledge: adminKnowledge,
     safety: adminSafety,
     platform: adminPlatform,
+    infrastructure: adminInfrastructure,
     api: adminApiManagement,
     access: adminAccess,
     operations: adminOperations
@@ -2192,6 +2269,49 @@ function adminPlatform() {
   `;
 }
 
+function adminInfrastructure() {
+  const infrastructure = adminInfrastructureData();
+  const summary = infrastructure.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Uptime", summary.uptime || adminMetricValue("platform.webUptime", "99.98%"))}
+      ${metric("Incidents", summary.incidents ?? "0")}
+      ${metric("GPU utilization", summary.gpuUtilization || "61%")}
+      ${metric("Queue pressure", summary.queuePressure || "Normal")}
+      <section class="admin-card full-admin">
+        <h2>Service health</h2>
+        <div class="table admin-table-4">
+          ${infrastructure.services.map(service => `<div class="table-row"><strong>${service.service}</strong><span>${service.status}</span><span>${service.latency}</span><span>${service.owner}</span></div>`).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>GPU and worker clusters</h2>
+        <div class="table">
+          ${infrastructure.clusters.map(infrastructureClusterRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Runtime queues</h2>
+        <div class="table">
+          ${infrastructure.queues.map(infrastructureQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Reliability incidents</h2>
+        <div class="table">
+          ${infrastructure.incidents.map(infrastructureIncidentRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Reliability guardrails</h2>
+        <div class="admin-checklist">
+          ${infrastructure.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminApiManagement() {
   const api = adminApiData();
   const summary = api.summary || {};
@@ -2576,6 +2696,7 @@ function bindEvents() {
       loadAdminSupport(true);
       loadAdminModels(true);
       loadAdminSafety(true);
+      loadAdminInfrastructure(true);
       loadAdminGrowth(true);
       loadAdminAnalytics(true);
       loadAdminAccess(true);
