@@ -62,6 +62,28 @@ const paymentOperations = {
   revenueMix: { proTeamsPercent: 73, consumerPercent: 27, churnRisk: "4.2%", dunningRecovery: "$11.4K" }
 };
 
+const userOperations = {
+  summary: { consumers: "18.4K", organizations: 47, enterpriseSeats: 1280, riskReviews: 92 },
+  accountQueues: [
+    { queue: "Account support", count: 214, owner: "Support", status: "SLA 91%" },
+    { queue: "Suspensions", count: 17, owner: "Trust", status: "Active" },
+    { queue: "Data export requests", count: 9, owner: "Privacy", status: "Pending" },
+    { queue: "High-risk sessions", count: 31, owner: "Security", status: "Review" }
+  ],
+  organizations: [
+    { name: "EduBridge Africa", seats: 320, country: "Nigeria", controls: "SSO ready", health: "Expansion" },
+    { name: "MarketUnion NG", seats: 210, country: "Nigeria", controls: "Domain claim", health: "Healthy" },
+    { name: "Swahili Learning Hub", seats: 184, country: "Kenya", controls: "SCIM planned", health: "Onboarding" },
+    { name: "Creator Desk", seats: 96, country: "Ghana", controls: "Policy templates", health: "Support watch" }
+  ],
+  controls: [
+    { control: "SSO readiness", status: "14 orgs enabled", owner: "Security" },
+    { control: "SCIM provisioning", status: "6 orgs queued", owner: "Enterprise" },
+    { control: "Domain claims", status: "11 pending", owner: "Support" },
+    { control: "Workspace policy templates", status: "Drafted", owner: "Product" }
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -199,6 +221,10 @@ function adminPaymentOperations() {
   return paymentOperations;
 }
 
+function adminUserOperations() {
+  return userOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -293,6 +319,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminPaymentOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/users") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("user_operations_viewed", "Users", "Info", "Support");
+      return sendJson(response, 200, adminUserOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -309,4 +343,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, plans };

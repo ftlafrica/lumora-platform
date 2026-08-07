@@ -144,6 +144,8 @@ const DEFAULT_STATE = {
   adminPlatformLoadedAt: null,
   adminPayments: null,
   adminPaymentsLoadedAt: null,
+  adminUsers: null,
+  adminUsersLoadedAt: null,
   user: {
     name: "Murewa Oyetoro",
     email: "murewa@example.com",
@@ -289,6 +291,26 @@ async function loadAdminPayments(force = false) {
     state.adminPaymentsLoadedAt = Date.now();
   } catch {
     state.adminPaymentsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminUsers(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminUsersLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/users`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("User operations unavailable.");
+    state.adminUsers = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminUsersLoadedAt = Date.now();
+  } catch {
+    state.adminUsersLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -444,6 +466,30 @@ function adminPaymentData() {
   };
 }
 
+function adminUserData() {
+  return state.adminUsers || {
+    summary: { consumers: "18.4K", organizations: 47, enterpriseSeats: 1280, riskReviews: 92 },
+    accountQueues: [
+      { queue: "Account support", count: 214, owner: "Support", status: "SLA 91%" },
+      { queue: "Suspensions", count: 17, owner: "Trust", status: "Active" },
+      { queue: "Data export requests", count: 9, owner: "Privacy", status: "Pending" },
+      { queue: "High-risk sessions", count: 31, owner: "Security", status: "Review" }
+    ],
+    organizations: [
+      { name: "EduBridge Africa", seats: 320, country: "Nigeria", controls: "SSO ready", health: "Expansion" },
+      { name: "MarketUnion NG", seats: 210, country: "Nigeria", controls: "Domain claim", health: "Healthy" },
+      { name: "Swahili Learning Hub", seats: 184, country: "Kenya", controls: "SCIM planned", health: "Onboarding" },
+      { name: "Creator Desk", seats: 96, country: "Ghana", controls: "Policy templates", health: "Support watch" }
+    ],
+    controls: [
+      { control: "SSO readiness", status: "14 orgs enabled", owner: "Security" },
+      { control: "SCIM provisioning", status: "6 orgs queued", owner: "Enterprise" },
+      { control: "Domain claims", status: "11 pending", owner: "Support" },
+      { control: "Workspace policy templates", status: "Drafted", owner: "Product" }
+    ]
+  };
+}
+
 function formatAdminTime(timestamp) {
   if (!timestamp) return "Not loaded";
   return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -490,6 +536,18 @@ function paymentQueueRow(item) {
 
 function invoiceRow(item) {
   return `<div class="table-row"><strong>${item.id}</strong><span>${item.account}</span><span>${item.amount} / ${item.status}</span></div>`;
+}
+
+function userQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.owner} / ${item.status}</span></div>`;
+}
+
+function orgRow(item) {
+  return `<div class="table-row"><strong>${item.name}</strong><span>${item.seats} seats / ${item.country}</span><span>${item.controls} / ${item.health}</span></div>`;
+}
+
+function orgControlRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.status}</span><span>${item.owner}</span></div>`;
 }
 
 function generateReply(text) {
@@ -925,6 +983,7 @@ function adminView() {
   loadAdminAudit();
   if (state.adminSection === "platform") loadAdminPlatform();
   if (state.adminSection === "payments") loadAdminPayments();
+  if (state.adminSection === "users") loadAdminUsers();
   const readiness = MODEL_REGISTRY.reduce((acc, item) => {
     acc[item.readiness] = (acc[item.readiness] || 0) + 1;
     return acc;
@@ -1133,23 +1192,35 @@ function adminPayments() {
 }
 
 function adminUsers() {
+  const users = adminUserData();
+  const summary = users.summary || {};
   return `
     <div class="admin-grid">
-      ${metric("Consumer users", adminMetricValue("users.total", "18.4K"))}
-      ${metric("Organizations", "47")}
-      ${metric("Enterprise seats", "1,280")}
-      ${metric("Risk reviews", "92")}
+      ${metric("Consumer users", summary.consumers || adminMetricValue("users.total", "18.4K"))}
+      ${metric("Organizations", summary.organizations || "47")}
+      ${metric("Enterprise seats", summary.enterpriseSeats || "1,280")}
+      ${metric("Risk reviews", summary.riskReviews || "92")}
       <section class="admin-card wide">
         <h2>User operations</h2>
         <div class="table">
-          <div class="table-row"><strong>Account support</strong><span>214 linked users</span><span>Support</span></div>
-          <div class="table-row"><strong>Suspensions</strong><span>17 active</span><span>Trust</span></div>
-          <div class="table-row"><strong>Data export requests</strong><span>9 pending</span><span>Privacy</span></div>
+          ${users.accountQueues.map(userQueueRow).join("")}
         </div>
       </section>
       <section class="admin-card wide">
         <h2>Organization controls</h2>
-        <div class="admin-checklist"><span>SSO and SCIM readiness</span><span>Domain claim approval queue</span><span>Workspace policy templates</span></div>
+        <div class="table">
+          ${users.controls.map(orgControlRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Enterprise organizations</h2>
+        <div class="table admin-table-4">
+          ${users.organizations.map(orgRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Account governance</h2>
+        <div class="admin-checklist"><span>Support can see non-sensitive user context only.</span><span>Data export requests must remain privacy-reviewed.</span><span>Suspensions require trust-owner approval.</span><span>Enterprise domain claims require organization verification.</span></div>
       </section>
     </div>
   `;
@@ -1441,6 +1512,7 @@ function bindEvents() {
       loadAdminAudit(true);
       loadAdminPlatform(true);
       loadAdminPayments(true);
+      loadAdminUsers(true);
       setTimeout(() => showToast("Refreshing admin data."), 40);
     }
     if (action === "sign-out") signOut();
