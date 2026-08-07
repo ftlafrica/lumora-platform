@@ -152,6 +152,8 @@ const DEFAULT_STATE = {
   adminSafetyLoadedAt: null,
   adminGrowth: null,
   adminGrowthLoadedAt: null,
+  adminAccess: null,
+  adminAccessLoadedAt: null,
   user: {
     name: "Murewa Oyetoro",
     email: "murewa@example.com",
@@ -377,6 +379,26 @@ async function loadAdminGrowth(force = false) {
     state.adminGrowthLoadedAt = Date.now();
   } catch {
     state.adminGrowthLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminAccess(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminAccessLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/access`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Access operations unavailable.");
+    state.adminAccess = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminAccessLoadedAt = Date.now();
+  } catch {
+    state.adminAccessLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -633,6 +655,32 @@ function adminGrowthData() {
   };
 }
 
+function adminAccessData() {
+  return state.adminAccess || {
+    summary: { roles: ADMIN_ROLES.length, auditEvents: 1904, criticalThreats: 0, ssoEnabledOrgs: 14, pendingApprovals: 7 },
+    roles: ADMIN_ROLES,
+    approvals: [
+      { request: "Finance role elevation", requester: "Revenue Ops", owner: "CFO", status: "Pending" },
+      { request: "Developer incident view", requester: "Platform", owner: "Engineering lead", status: "Approved" },
+      { request: "Support market escalation", requester: "Support", owner: "Support lead", status: "Pending" },
+      { request: "Moderator queue expansion", requester: "Trust", owner: "Trust lead", status: "Review" }
+    ],
+    compliance: [
+      { control: "MFA/passkeys", status: "Required", owner: "Security" },
+      { control: "RBAC/ABAC policy engine", status: "Prototype", owner: "Platform" },
+      { control: "Immutable audit log", status: "Designed", owner: "Security" },
+      { control: "GDPR/data residency requests", status: "Privacy reviewed", owner: "Legal" },
+      { control: "SSO/SCIM", status: "14 orgs enabled", owner: "Enterprise" }
+    ],
+    seedPolicy: [
+      "Only seed admins can grant admin access.",
+      "Limited access must be scoped by role, product surface, country, and approval workflow.",
+      "Sensitive admin data must never appear in consumer profiles.",
+      "Production requires SSO, MFA/passkeys, RBAC/ABAC, immutable audit logs, and device trust."
+    ]
+  };
+}
+
 function formatAdminTime(timestamp) {
   if (!timestamp) return "Not loaded";
   return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -719,6 +767,18 @@ function channelRow(item) {
 
 function deviceRow(item) {
   return `<div class="table-row"><strong>${item.device}</strong><span>${item.share}</span><span>${item.trend}</span></div>`;
+}
+
+function roleRow(item) {
+  return `<div class="table-row"><strong>${item.role}</strong><span>${item.access}</span><span>${item.users} users</span><span>${item.approval}</span></div>`;
+}
+
+function approvalRow(item) {
+  return `<div class="table-row"><strong>${item.request}</strong><span>${item.requester}</span><span>${item.owner} / ${item.status}</span></div>`;
+}
+
+function complianceRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.status}</span><span>${item.owner}</span></div>`;
 }
 
 function policySignalRow(item) {
@@ -1162,6 +1222,7 @@ function adminView() {
   if (state.adminSection === "models") loadAdminModels();
   if (state.adminSection === "safety") loadAdminSafety();
   if (state.adminSection === "growth") loadAdminGrowth();
+  if (state.adminSection === "access") loadAdminAccess();
   const readiness = MODEL_REGISTRY.reduce((acc, item) => {
     acc[item.readiness] = (acc[item.readiness] || 0) + 1;
     return acc;
@@ -1540,12 +1601,14 @@ function adminAccess() {
   const session = state.adminSession || localAdminSession();
   const scopes = session.scopes || [];
   const audit = adminAuditEvents();
+  const access = adminAccessData();
+  const summary = access.summary || {};
   return `
     <div class="admin-grid">
-      ${metric("Roles", ADMIN_ROLES.length)}
-      ${metric("Audit events", adminMetricValue("access.auditEvents", adminAuditSummaryValue("summary.total", "1,904")))}
-      ${metric("Critical threats", "0")}
-      ${metric("SSO enabled orgs", "14")}
+      ${metric("Roles", summary.roles || ADMIN_ROLES.length)}
+      ${metric("Audit events", adminMetricValue("access.auditEvents", adminAuditSummaryValue("summary.total", summary.auditEvents || "1,904")))}
+      ${metric("Critical threats", summary.criticalThreats || "0")}
+      ${metric("SSO enabled orgs", summary.ssoEnabledOrgs || "14")}
       <section class="admin-card wide">
         <h2>Current admin session</h2>
         <div class="table">
@@ -1561,7 +1624,19 @@ function adminAccess() {
       <section class="admin-card full-admin">
         <h2>Role access matrix</h2>
         <div class="table admin-table-4">
-          ${ADMIN_ROLES.map(role => `<div class="table-row"><strong>${role.role}</strong><span>${role.access}</span><span>${role.users} users</span><span>${role.approval}</span></div>`).join("")}
+          ${access.roles.map(roleRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Approval queue</h2>
+        <div class="table">
+          ${access.approvals.map(approvalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Compliance controls</h2>
+        <div class="table">
+          ${access.compliance.map(complianceRow).join("")}
         </div>
       </section>
       <section class="admin-card wide">
@@ -1572,7 +1647,9 @@ function adminAccess() {
       </section>
       <section class="admin-card wide">
         <h2>Seed admin policy</h2>
-        <p class="hero-lead">Only seed admins can grant admin access. Limited areas should be assigned by role, country, product surface, and approval workflow.</p>
+        <div class="admin-checklist">
+          ${access.seedPolicy.map(item => `<span>${item}</span>`).join("")}
+        </div>
       </section>
     </div>
   `;
@@ -1743,6 +1820,7 @@ function bindEvents() {
       loadAdminModels(true);
       loadAdminSafety(true);
       loadAdminGrowth(true);
+      loadAdminAccess(true);
       setTimeout(() => showToast("Refreshing admin data."), 40);
     }
     if (action === "sign-out") signOut();

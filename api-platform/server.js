@@ -164,6 +164,37 @@ const growthOperations = {
   ]
 };
 
+const accessOperations = {
+  summary: { roles: 6, auditEvents: 1904, criticalThreats: 0, ssoEnabledOrgs: 14, pendingApprovals: 7 },
+  roles: [
+    { role: "Seed Admin", access: "Full platform", users: 1, approval: "Root approval" },
+    { role: "Leadership", access: "Executive metrics, finance summaries, growth", users: 5, approval: "Seed admin" },
+    { role: "Developer", access: "Models, API, logs, releases, feature flags", users: 12, approval: "Engineering lead" },
+    { role: "Finance", access: "Payments, invoices, plans, refunds, taxes", users: 4, approval: "CFO/Seed admin" },
+    { role: "Support", access: "Tickets, account assistance, non-sensitive user context", users: 18, approval: "Support lead" },
+    { role: "Moderator", access: "Safety queues, appeals, content policy", users: 24, approval: "Trust lead" }
+  ],
+  approvals: [
+    { request: "Finance role elevation", requester: "Revenue Ops", owner: "CFO", status: "Pending" },
+    { request: "Developer incident view", requester: "Platform", owner: "Engineering lead", status: "Approved" },
+    { request: "Support market escalation", requester: "Support", owner: "Support lead", status: "Pending" },
+    { request: "Moderator queue expansion", requester: "Trust", owner: "Trust lead", status: "Review" }
+  ],
+  compliance: [
+    { control: "MFA/passkeys", status: "Required", owner: "Security" },
+    { control: "RBAC/ABAC policy engine", status: "Prototype", owner: "Platform" },
+    { control: "Immutable audit log", status: "Designed", owner: "Security" },
+    { control: "GDPR/data residency requests", status: "Privacy reviewed", owner: "Legal" },
+    { control: "SSO/SCIM", status: "14 orgs enabled", owner: "Enterprise" }
+  ],
+  seedPolicy: [
+    "Only seed admins can grant admin access.",
+    "Limited access must be scoped by role, product surface, country, and approval workflow.",
+    "Sensitive admin data must never appear in consumer profiles.",
+    "Production requires SSO, MFA/passkeys, RBAC/ABAC, immutable audit logs, and device trust."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -333,6 +364,10 @@ function adminGrowthOperations() {
   return growthOperations;
 }
 
+function adminAccessOperations() {
+  return accessOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -459,6 +494,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminGrowthOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/access") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("access_operations_viewed", "Access", "Info", "Seed Admin");
+      return sendJson(response, 200, adminAccessOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -475,4 +518,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, plans };

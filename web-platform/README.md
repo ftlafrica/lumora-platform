@@ -51,7 +51,7 @@ npm run start
 
 The web app posts chat prompts to `http://localhost:8787/v1/chat`. If the API is not running, the interface still works using the local Lumora simulation so design and product review can continue.
 
-The Admin Console calls `http://localhost:8787/v1/admin/access/verify` to validate the prototype seed-admin code, then calls `http://localhost:8787/v1/admin/metrics`, `http://localhost:8787/v1/admin/audit`, `http://localhost:8787/v1/admin/platform`, `http://localhost:8787/v1/admin/payments`, `http://localhost:8787/v1/admin/users`, `http://localhost:8787/v1/admin/models`, `http://localhost:8787/v1/admin/safety`, and `http://localhost:8787/v1/admin/growth` with the prototype seed-admin header. When the API is offline, it stays usable with preview metrics and labels the dashboard as `Preview fallback`.
+The Admin Console calls `http://localhost:8787/v1/admin/access/verify` to validate the prototype seed-admin code, then calls `http://localhost:8787/v1/admin/metrics`, `http://localhost:8787/v1/admin/audit`, `http://localhost:8787/v1/admin/platform`, `http://localhost:8787/v1/admin/payments`, `http://localhost:8787/v1/admin/users`, `http://localhost:8787/v1/admin/models`, `http://localhost:8787/v1/admin/safety`, `http://localhost:8787/v1/admin/growth`, and `http://localhost:8787/v1/admin/access` with the prototype seed-admin header. When the API is offline, it stays usable with preview metrics and labels the dashboard as `Preview fallback`.
 
 ## Admin Separation
 
@@ -71,6 +71,7 @@ The consumer app should never expose sensitive admin operations in the normal us
 - The AI Ops section shows model health, Hugging Face registry, route policies, fallback queues, and readiness snapshots.
 - The Safety section shows moderation queues, appeals, language quality loops, policy signals, and guardrails.
 - The Growth section shows visitor intelligence, conversion funnel, markets, acquisition channels, and device mix.
+- The Access section shows RBAC roles, approval queues, compliance controls, scopes, audit, and seed-admin policy.
 - Production must replace this with SSO/MFA, RBAC/ABAC, audit logs, and seed-admin-issued access.
 
 ## Future Production Stack
