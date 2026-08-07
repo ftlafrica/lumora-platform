@@ -148,6 +148,8 @@ const DEFAULT_STATE = {
   adminUsersLoadedAt: null,
   adminModels: null,
   adminModelsLoadedAt: null,
+  adminSafety: null,
+  adminSafetyLoadedAt: null,
   user: {
     name: "Murewa Oyetoro",
     email: "murewa@example.com",
@@ -333,6 +335,26 @@ async function loadAdminModels(force = false) {
     state.adminModelsLoadedAt = Date.now();
   } catch {
     state.adminModelsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminSafety(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminSafetyLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/safety`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Safety operations unavailable.");
+    state.adminSafety = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminSafetyLoadedAt = Date.now();
+  } catch {
+    state.adminSafetyLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -539,6 +561,36 @@ function adminModelData(readiness = {}) {
   };
 }
 
+function adminSafetyData() {
+  return state.adminSafety || {
+    summary: { moderationFlags: 418, appeals: 44, corrections: 1284, correctionsPending: 312, safetyAlerts: 19 },
+    moderationQueues: [
+      { queue: "Unsafe content", count: 118, owner: "Trust", priority: "High" },
+      { queue: "Spam and abuse", count: 73, owner: "Trust", priority: "Medium" },
+      { queue: "PII review", count: 29, owner: "Privacy", priority: "High" },
+      { queue: "Appeals", count: 44, owner: "Moderator", priority: "Today" }
+    ],
+    languageQuality: [
+      { queue: "Native-speaker review", count: 312, owner: "Language QA", priority: "High" },
+      { queue: "Dialect confidence", count: 128, owner: "Language Quality", priority: "High" },
+      { queue: "Tone corrections", count: 284, owner: "Community Ops", priority: "Medium" },
+      { queue: "Meaning changed reports", count: 41, owner: "Reviewers", priority: "Today" }
+    ],
+    policySignals: [
+      { signal: "Jailbreak attempts", count: 19, trend: "3 high", owner: "Safety" },
+      { signal: "Hallucination reports", count: 27, trend: "7 eval regressions", owner: "AI QA" },
+      { signal: "Bias reports", count: 11, trend: "Watch", owner: "Policy" },
+      { signal: "Red-team findings", count: 3, trend: "Open", owner: "Security" }
+    ],
+    guardrails: [
+      "No sensitive admin data in consumer profile.",
+      "Escalate medical, legal, and financial advice risk.",
+      "Route dialect corrections to native-speaker review.",
+      "Log moderation decisions with reviewer identity."
+    ]
+  };
+}
+
 function formatAdminTime(timestamp) {
   if (!timestamp) return "Not loaded";
   return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -609,6 +661,14 @@ function routePolicyRow(item) {
 
 function fallbackQueueRow(item) {
   return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.owner} / ${item.priority}</span></div>`;
+}
+
+function safetyQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.owner} / ${item.priority}</span></div>`;
+}
+
+function policySignalRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.count} reports</span><span>${item.owner} / ${item.trend}</span></div>`;
 }
 
 function generateReply(text) {
@@ -1046,6 +1106,7 @@ function adminView() {
   if (state.adminSection === "payments") loadAdminPayments();
   if (state.adminSection === "users") loadAdminUsers();
   if (state.adminSection === "models") loadAdminModels();
+  if (state.adminSection === "safety") loadAdminSafety();
   const readiness = MODEL_REGISTRY.reduce((acc, item) => {
     acc[item.readiness] = (acc[item.readiness] || 0) + 1;
     return acc;
@@ -1335,19 +1396,37 @@ function adminModels(readiness) {
 }
 
 function adminSafety() {
+  const safety = adminSafetyData();
+  const summary = safety.summary || {};
   return `
     <div class="admin-grid">
-      ${metric("Moderation flags", adminMetricValue("safety.moderationFlags", "418"))}
-      ${metric("Appeals", adminMetricValue("safety.appeals", "44"))}
-      ${metric("Corrections", "1,284")}
-      ${metric("Pending corrections", adminMetricValue("safety.correctionsPending", "312"))}
+      ${metric("Moderation flags", summary.moderationFlags || adminMetricValue("safety.moderationFlags", "418"))}
+      ${metric("Appeals", summary.appeals || adminMetricValue("safety.appeals", "44"))}
+      ${metric("Corrections", summary.corrections || "1,284")}
+      ${metric("Pending corrections", summary.correctionsPending || adminMetricValue("safety.correctionsPending", "312"))}
       <section class="admin-card wide">
         <h2>Safety queues</h2>
-        <div class="table">${ADMIN_ALERTS.filter(alert => alert.area !== "Billing").map(alertRow).join("")}</div>
+        <div class="table">
+          ${safety.moderationQueues.map(safetyQueueRow).join("")}
+        </div>
       </section>
       <section class="admin-card wide">
         <h2>Language quality loop</h2>
-        <div class="admin-checklist"><span>Native-speaker review queue</span><span>Dialect confidence scoring</span><span>Bias and hallucination report triage</span><span>Community correction feedback loop</span></div>
+        <div class="table">
+          ${safety.languageQuality.map(safetyQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Policy signals</h2>
+        <div class="table">
+          ${safety.policySignals.map(policySignalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Safety guardrails</h2>
+        <div class="admin-checklist">
+          ${safety.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
       </section>
     </div>
   `;
@@ -1597,6 +1676,7 @@ function bindEvents() {
       loadAdminPayments(true);
       loadAdminUsers(true);
       loadAdminModels(true);
+      loadAdminSafety(true);
       setTimeout(() => showToast("Refreshing admin data."), 40);
     }
     if (action === "sign-out") signOut();

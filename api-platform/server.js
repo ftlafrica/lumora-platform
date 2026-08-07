@@ -106,6 +106,34 @@ const modelOperations = {
   }))
 };
 
+const safetyOperations = {
+  summary: { moderationFlags: 418, appeals: 44, corrections: 1284, correctionsPending: 312, safetyAlerts: 19 },
+  moderationQueues: [
+    { queue: "Unsafe content", count: 118, owner: "Trust", priority: "High" },
+    { queue: "Spam and abuse", count: 73, owner: "Trust", priority: "Medium" },
+    { queue: "PII review", count: 29, owner: "Privacy", priority: "High" },
+    { queue: "Appeals", count: 44, owner: "Moderator", priority: "Today" }
+  ],
+  languageQuality: [
+    { queue: "Native-speaker review", count: 312, owner: "Language QA", priority: "High" },
+    { queue: "Dialect confidence", count: 128, owner: "Language Quality", priority: "High" },
+    { queue: "Tone corrections", count: 284, owner: "Community Ops", priority: "Medium" },
+    { queue: "Meaning changed reports", count: 41, owner: "Reviewers", priority: "Today" }
+  ],
+  policySignals: [
+    { signal: "Jailbreak attempts", count: 19, trend: "3 high", owner: "Safety" },
+    { signal: "Hallucination reports", count: 27, trend: "7 eval regressions", owner: "AI QA" },
+    { signal: "Bias reports", count: 11, trend: "Watch", owner: "Policy" },
+    { signal: "Red-team findings", count: 3, trend: "Open", owner: "Security" }
+  ],
+  guardrails: [
+    "No sensitive admin data in consumer profile.",
+    "Escalate medical, legal, and financial advice risk.",
+    "Route dialect corrections to native-speaker review.",
+    "Log moderation decisions with reviewer identity."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -267,6 +295,10 @@ function adminModelOperations() {
   };
 }
 
+function adminSafetyOperations() {
+  return safetyOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -377,6 +409,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminModelOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/safety") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("safety_operations_viewed", "Safety", "Info", "Moderator");
+      return sendJson(response, 200, adminSafetyOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -393,4 +433,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, plans };
