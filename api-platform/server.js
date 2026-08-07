@@ -634,6 +634,40 @@ const integrationOperations = {
   ]
 };
 
+const experimentationOperations = {
+  summary: { activeExperiments: 9, winningTests: 3, rolloutFlags: 18, guardedRollouts: 4, killSwitches: 1 },
+  experiments: [
+    { test: "Neon centered composer onboarding", segment: "New users", lift: "+8.4%", owner: "Growth", status: "Winner" },
+    { test: "Language Passport prompt chips", segment: "Mobile", lift: "+5.1%", owner: "Product", status: "Running" },
+    { test: "Pro upgrade after third saved workflow", segment: "Creators", lift: "+3.7%", owner: "Revenue", status: "Review" },
+    { test: "Voice Circle first-run guide", segment: "Voice users", lift: "+6.2%", owner: "Mobile", status: "Queued" }
+  ],
+  flags: [
+    { flag: "api_chat_router", surface: "Web/Mobile", rollout: "100%", owner: "AI Ops", status: "On" },
+    { flag: "voice_circle_native", surface: "Mobile", rollout: "20%", owner: "Mobile", status: "Beta" },
+    { flag: "premium_upgrade_flow", surface: "Web", rollout: "100%", owner: "Growth", status: "On" },
+    { flag: "force_mobile_update", surface: "Mobile", rollout: "0%", owner: "Platform", status: "Armed" }
+  ],
+  rollouts: [
+    { rollout: "Mobile Voice Circle beta", audience: "Android beta users", exposure: "20%", guardrail: "Crash-free > 99.5%" },
+    { rollout: "Language Passport chips", audience: "New mobile users", exposure: "50%", guardrail: "Signup completion stable" },
+    { rollout: "Model routing policy", audience: "Pro/Teams", exposure: "25%", guardrail: "Fallback < 8%" },
+    { rollout: "Creator upgrade prompt", audience: "High usage creators", exposure: "35%", guardrail: "Refund requests stable" }
+  ],
+  decisions: [
+    { decision: "Promote centered composer onboarding", evidence: "+8.4% activation", owner: "Product", status: "Approved" },
+    { decision: "Hold force mobile update", evidence: "Beta crash cluster contained", owner: "Platform", status: "Hold" },
+    { decision: "Expand Language Passport chips", evidence: "+5.1% mobile completion", owner: "Growth", status: "Review" },
+    { decision: "Delay speech latency test", evidence: "Voice p95 above threshold", owner: "Voice Ops", status: "Blocked" }
+  ],
+  guardrails: [
+    "Every experiment needs owner, hypothesis, segment, exposure, success metric, and rollback criteria.",
+    "AI/model experiments require safety, language-quality, latency, and fallback guardrails before rollout.",
+    "Revenue experiments must watch refunds, churn, support volume, and country/payment constraints.",
+    "Kill switches must be fast, audited, and scoped by surface, country, plan, and version."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -859,6 +893,10 @@ function adminIntegrationOperations() {
   return integrationOperations;
 }
 
+function adminExperimentationOperations() {
+  return experimentationOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -889,7 +927,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "communications:send",
       "language:review",
       "data:govern",
-      "integrations:manage"
+      "integrations:manage",
+      "experiments:operate"
     ],
     audit: [
       accessEvent,
@@ -1109,6 +1148,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminIntegrationOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/experiments") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("experimentation_center_viewed", "Experiments", "Info", "Product");
+      return sendJson(response, 200, adminExperimentationOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1125,4 +1172,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, plans };

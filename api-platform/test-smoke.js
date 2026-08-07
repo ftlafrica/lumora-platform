@@ -26,7 +26,8 @@ const {
   adminCommunicationsOperations,
   adminLanguageOperations,
   adminDataGovernanceOperations,
-  adminIntegrationOperations
+  adminIntegrationOperations,
+  adminExperimentationOperations
 } = require("./server");
 const { modelRegistry } = require("./model-registry");
 
@@ -69,6 +70,7 @@ assert.ok(accessSession.scopes.includes("communications:send"));
 assert.ok(accessSession.scopes.includes("language:review"));
 assert.ok(accessSession.scopes.includes("data:govern"));
 assert.ok(accessSession.scopes.includes("integrations:manage"));
+assert.ok(accessSession.scopes.includes("experiments:operate"));
 assert.ok(accessSession.audit.length >= 2);
 
 const adminContracts = [
@@ -92,7 +94,8 @@ const adminContracts = [
   ["communications", adminCommunicationsOperations(), data => data.summary && Array.isArray(data.campaigns) && Array.isArray(data.broadcasts) && Array.isArray(data.delivery)],
   ["languages", adminLanguageOperations(), data => data.summary && Array.isArray(data.coverage) && Array.isArray(data.dialectQueues) && Array.isArray(data.benchmarks)],
   ["data governance", adminDataGovernanceOperations(), data => data.summary && Array.isArray(data.retention) && Array.isArray(data.consent) && Array.isArray(data.requests)],
-  ["integrations", adminIntegrationOperations(), data => data.summary && Array.isArray(data.services) && Array.isArray(data.webhooks) && Array.isArray(data.partners)]
+  ["integrations", adminIntegrationOperations(), data => data.summary && Array.isArray(data.services) && Array.isArray(data.webhooks) && Array.isArray(data.partners)],
+  ["experiments", adminExperimentationOperations(), data => data.summary && Array.isArray(data.experiments) && Array.isArray(data.flags) && Array.isArray(data.rollouts)]
 ];
 
 adminContracts.forEach(([name, data, isValid]) => {

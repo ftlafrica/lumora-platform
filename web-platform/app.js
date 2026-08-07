@@ -68,6 +68,7 @@ const ADMIN_SECTIONS = [
   { id: "overview", label: "Command", desc: "Executive health, growth, revenue, cost, and incident posture." },
   { id: "growth", label: "Growth", desc: "Visitors, activation, countries, devices, campaigns, and funnels." },
   { id: "analytics", label: "Analytics", desc: "Retention, activation, churn, feature usage, language adoption, and experiments." },
+  { id: "experiments", label: "Experiments", desc: "A/B tests, feature flags, rollouts, kill switches, results, and product decision guardrails." },
   { id: "reports", label: "Reports", desc: "Leadership packs, scheduled exports, report destinations, datasets, and evidence guardrails." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
@@ -181,6 +182,8 @@ const DEFAULT_STATE = {
   adminDataGovernanceLoadedAt: null,
   adminIntegrations: null,
   adminIntegrationsLoadedAt: null,
+  adminExperiments: null,
+  adminExperimentsLoadedAt: null,
   adminInfrastructure: null,
   adminInfrastructureLoadedAt: null,
   adminAccess: null,
@@ -463,6 +466,26 @@ async function loadAdminIntegrations(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminExperiments(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminExperimentsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/experiments`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Experimentation center unavailable.");
+    state.adminExperiments = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminExperimentsLoadedAt = Date.now();
+  } catch {
+    state.adminExperimentsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminPayments(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminPaymentsLoadedAt || 0;
@@ -711,7 +734,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "communications:send", "language:review", "data:govern", "integrations:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1085,6 +1108,42 @@ function adminIntegrationsData() {
       "Webhook payloads must be signed, retried safely, and routed through dead-letter queues when needed.",
       "Partner access must use scoped API keys, quotas, audit logs, and environment separation.",
       "Secrets must rotate on schedule and never appear in browser code, logs, reports, or support views."
+    ]
+  };
+}
+
+function adminExperimentsData() {
+  return state.adminExperiments || {
+    summary: { activeExperiments: 9, winningTests: 3, rolloutFlags: 18, guardedRollouts: 4, killSwitches: 1 },
+    experiments: [
+      { test: "Neon centered composer onboarding", segment: "New users", lift: "+8.4%", owner: "Growth", status: "Winner" },
+      { test: "Language Passport prompt chips", segment: "Mobile", lift: "+5.1%", owner: "Product", status: "Running" },
+      { test: "Pro upgrade after third saved workflow", segment: "Creators", lift: "+3.7%", owner: "Revenue", status: "Review" },
+      { test: "Voice Circle first-run guide", segment: "Voice users", lift: "+6.2%", owner: "Mobile", status: "Queued" }
+    ],
+    flags: [
+      { flag: "api_chat_router", surface: "Web/Mobile", rollout: "100%", owner: "AI Ops", status: "On" },
+      { flag: "voice_circle_native", surface: "Mobile", rollout: "20%", owner: "Mobile", status: "Beta" },
+      { flag: "premium_upgrade_flow", surface: "Web", rollout: "100%", owner: "Growth", status: "On" },
+      { flag: "force_mobile_update", surface: "Mobile", rollout: "0%", owner: "Platform", status: "Armed" }
+    ],
+    rollouts: [
+      { rollout: "Mobile Voice Circle beta", audience: "Android beta users", exposure: "20%", guardrail: "Crash-free > 99.5%" },
+      { rollout: "Language Passport chips", audience: "New mobile users", exposure: "50%", guardrail: "Signup completion stable" },
+      { rollout: "Model routing policy", audience: "Pro/Teams", exposure: "25%", guardrail: "Fallback < 8%" },
+      { rollout: "Creator upgrade prompt", audience: "High usage creators", exposure: "35%", guardrail: "Refund requests stable" }
+    ],
+    decisions: [
+      { decision: "Promote centered composer onboarding", evidence: "+8.4% activation", owner: "Product", status: "Approved" },
+      { decision: "Hold force mobile update", evidence: "Beta crash cluster contained", owner: "Platform", status: "Hold" },
+      { decision: "Expand Language Passport chips", evidence: "+5.1% mobile completion", owner: "Growth", status: "Review" },
+      { decision: "Delay speech latency test", evidence: "Voice p95 above threshold", owner: "Voice Ops", status: "Blocked" }
+    ],
+    guardrails: [
+      "Every experiment needs owner, hypothesis, segment, exposure, success metric, and rollback criteria.",
+      "AI/model experiments require safety, language-quality, latency, and fallback guardrails before rollout.",
+      "Revenue experiments must watch refunds, churn, support volume, and country/payment constraints.",
+      "Kill switches must be fast, audited, and scoped by surface, country, plan, and version."
     ]
   };
 }
@@ -1591,6 +1650,22 @@ function partnerIntegrationRow(item) {
 
 function secretRotationRow(item) {
   return `<div class="table-row"><strong>${item.secret}</strong><span>${item.owner}</span><span>${item.rotation}</span><span>${item.status}</span></div>`;
+}
+
+function experimentRowAdmin(item) {
+  return `<div class="table-row"><strong>${item.test}</strong><span>${item.segment}</span><span>${item.lift}</span><span>${item.status}</span></div>`;
+}
+
+function experimentFlagRow(item) {
+  return `<div class="table-row"><strong>${item.flag}</strong><span>${item.surface}</span><span>${item.rollout}</span><span>${item.status}</span></div>`;
+}
+
+function rolloutRow(item) {
+  return `<div class="table-row"><strong>${item.rollout}</strong><span>${item.audience}</span><span>${item.exposure}</span><span>${item.guardrail}</span></div>`;
+}
+
+function experimentDecisionRow(item) {
+  return `<div class="table-row"><strong>${item.decision}</strong><span>${item.evidence}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
 }
 
 function paymentPlanRow(item) {
@@ -2157,6 +2232,7 @@ function adminView() {
   if (state.adminSection === "infrastructure") loadAdminInfrastructure();
   if (state.adminSection === "growth") loadAdminGrowth();
   if (state.adminSection === "analytics") loadAdminAnalytics();
+  if (state.adminSection === "experiments") loadAdminExperiments();
   if (state.adminSection === "reports") loadAdminReports();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "access") loadAdminAccess();
@@ -2255,6 +2331,7 @@ function adminSectionView(section, readiness) {
     overview: () => adminOverview(readiness),
     growth: adminGrowth,
     analytics: adminAnalytics,
+    experiments: adminExperiments,
     reports: adminReports,
     communications: adminCommunications,
     payments: adminPayments,
@@ -2952,6 +3029,49 @@ function adminIntegrations() {
   `;
 }
 
+function adminExperiments() {
+  const experiments = adminExperimentsData();
+  const summary = experiments.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active experiments", summary.activeExperiments || "9")}
+      ${metric("Winning tests", summary.winningTests || "3")}
+      ${metric("Rollout flags", summary.rolloutFlags || "18")}
+      ${metric("Kill switches", summary.killSwitches || "1")}
+      <section class="admin-card full-admin">
+        <h2>Experiment results</h2>
+        <div class="table admin-table-4">
+          ${experiments.experiments.map(experimentRowAdmin).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Feature flags</h2>
+        <div class="table admin-table-4">
+          ${experiments.flags.map(experimentFlagRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Guarded rollouts</h2>
+        <div class="table admin-table-4">
+          ${experiments.rollouts.map(rolloutRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Product decisions</h2>
+        <div class="table admin-table-4">
+          ${experiments.decisions.map(experimentDecisionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Experiment guardrails</h2>
+        <div class="admin-checklist">
+          ${experiments.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminPlatform() {
   const platform = adminPlatformData();
   const releases = adminMetricValue("platform.mobileReleases", ["iOS 1.0.4 beta", "Android 1.0.6 beta"]);
@@ -3424,6 +3544,7 @@ function bindEvents() {
       loadAdminInfrastructure(true);
       loadAdminGrowth(true);
       loadAdminAnalytics(true);
+      loadAdminExperiments(true);
       loadAdminReports(true);
       loadAdminCommunications(true);
       loadAdminAccess(true);
