@@ -76,6 +76,7 @@ const ADMIN_SECTIONS = [
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
   { id: "support", label: "Support", desc: "Tickets, SLA, escalations, CSAT, macros, user-impact signals, and safe support boundaries." },
   { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
+  { id: "evaluations", label: "Evals", desc: "Model eval suites, benchmark runs, regressions, human samples, and release gates." },
   { id: "languages", label: "Languages", desc: "Country coverage, dialect readiness, reviewer queues, benchmarks, and expansion quality." },
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
   { id: "knowledge", label: "Knowledge", desc: "RAG collections, sources, indexing, embeddings, permissions, freshness, and quality queues." },
@@ -184,6 +185,8 @@ const DEFAULT_STATE = {
   adminIntegrationsLoadedAt: null,
   adminExperiments: null,
   adminExperimentsLoadedAt: null,
+  adminEvaluations: null,
+  adminEvaluationsLoadedAt: null,
   adminInfrastructure: null,
   adminInfrastructureLoadedAt: null,
   adminAccess: null,
@@ -486,6 +489,26 @@ async function loadAdminExperiments(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminEvaluations(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminEvaluationsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/evaluations`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Model evaluation lab unavailable.");
+    state.adminEvaluations = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminEvaluationsLoadedAt = Date.now();
+  } catch {
+    state.adminEvaluationsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminPayments(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminPaymentsLoadedAt || 0;
@@ -734,7 +757,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1144,6 +1167,42 @@ function adminExperimentsData() {
       "AI/model experiments require safety, language-quality, latency, and fallback guardrails before rollout.",
       "Revenue experiments must watch refunds, churn, support volume, and country/payment constraints.",
       "Kill switches must be fast, audited, and scoped by surface, country, plan, and version."
+    ]
+  };
+}
+
+function adminEvaluationsData() {
+  return state.adminEvaluations || {
+    summary: { evalSuites: 14, runsToday: 38, regressions: 7, humanSamples: 312, releaseGates: 5 },
+    suites: [
+      { suite: "African language translation", scope: "Yoruba, Swahili, Hausa, Zulu", score: "92%", owner: "AI QA", status: "Passing" },
+      { suite: "Dialect and tone preservation", scope: "Pidgin, street, elder, business", score: "89%", owner: "Language QA", status: "Watch" },
+      { suite: "Safety refusal quality", scope: "High-risk advice and abuse", score: "94%", owner: "Trust", status: "Passing" },
+      { suite: "Code-switching comprehension", scope: "Mixed African languages + English", score: "87%", owner: "Model Ops", status: "Review" }
+    ],
+    runs: [
+      { run: "AfriNLLB route eval", model: "AfriNLLB", samples: 1240, result: "Pass", owner: "AI Ops" },
+      { run: "AfroXLMR-Social tone eval", model: "AfroXLMR-Social", samples: 860, result: "Watch", owner: "Language QA" },
+      { run: "Meta MMS noisy audio eval", model: "Meta MMS", samples: 540, result: "Regression", owner: "Voice Ops" },
+      { run: "InkubaLM lightweight generation eval", model: "InkubaLM", samples: 420, result: "Pass", owner: "Model Ops" }
+    ],
+    regressions: [
+      { issue: "Noisy mobile speech recognition", severity: "High", affected: "Voice Circle", owner: "Voice Ops", status: "Mitigating" },
+      { issue: "Youth tone too formal", severity: "Medium", affected: "Creator Studio", owner: "Language QA", status: "Sampling" },
+      { issue: "Idioms translated literally", severity: "Medium", affected: "Translate", owner: "AI QA", status: "Review" },
+      { issue: "Fallback route too slow", severity: "High", affected: "Pro/Teams", owner: "Model Ops", status: "Investigating" }
+    ],
+    releaseGates: [
+      { gate: "Safety score", threshold: ">= 93%", current: "94%", status: "Pass" },
+      { gate: "Language confidence", threshold: ">= 90%", current: "91%", status: "Pass" },
+      { gate: "Fallback rate", threshold: "< 8%", current: "7.6%", status: "Pass" },
+      { gate: "Voice p95 latency", threshold: "< 2s", current: "2.3s", status: "Block" }
+    ],
+    guardrails: [
+      "No model, prompt, or route policy should ship without eval results tied to owner and release gate.",
+      "African language evals must include native reviewer samples, code-switching, dialect, and tone preservation.",
+      "Safety regressions block rollout even when latency, cost, or conversion improves.",
+      "Release gates must compare current model, fallback model, and previous production baseline."
     ]
   };
 }
@@ -1666,6 +1725,22 @@ function rolloutRow(item) {
 
 function experimentDecisionRow(item) {
   return `<div class="table-row"><strong>${item.decision}</strong><span>${item.evidence}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
+function evalSuiteRow(item) {
+  return `<div class="table-row"><strong>${item.suite}</strong><span>${item.scope}</span><span>${item.score}</span><span>${item.status}</span></div>`;
+}
+
+function evalRunRow(item) {
+  return `<div class="table-row"><strong>${item.run}</strong><span>${item.model}</span><span>${item.samples} samples</span><span>${item.result}</span></div>`;
+}
+
+function evalRegressionRow(item) {
+  return `<div class="table-row"><strong>${item.issue}</strong><span>${item.affected}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
+function evalGateRow(item) {
+  return `<div class="table-row"><strong>${item.gate}</strong><span>${item.threshold}</span><span>${item.current}</span><span>${item.status}</span></div>`;
 }
 
 function paymentPlanRow(item) {
@@ -2225,6 +2300,7 @@ function adminView() {
   if (state.adminSection === "users") loadAdminUsers();
   if (state.adminSection === "support") loadAdminSupport();
   if (state.adminSection === "models") loadAdminModels();
+  if (state.adminSection === "evaluations") loadAdminEvaluations();
   if (state.adminSection === "languages") loadAdminLanguages();
   if (state.adminSection === "data") loadAdminDataGovernance();
   if (state.adminSection === "safety") loadAdminSafety();
@@ -2339,6 +2415,7 @@ function adminSectionView(section, readiness) {
     users: adminUsers,
     support: adminSupport,
     models: () => adminModels(readiness),
+    evaluations: adminEvaluations,
     languages: adminLanguages,
     data: adminDataGovernance,
     knowledge: adminKnowledge,
@@ -3072,6 +3149,49 @@ function adminExperiments() {
   `;
 }
 
+function adminEvaluations() {
+  const evaluations = adminEvaluationsData();
+  const summary = evaluations.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Eval suites", summary.evalSuites || "14")}
+      ${metric("Runs today", summary.runsToday || "38")}
+      ${metric("Regressions", summary.regressions || "7")}
+      ${metric("Human samples", summary.humanSamples || "312")}
+      <section class="admin-card full-admin">
+        <h2>Evaluation suites</h2>
+        <div class="table admin-table-4">
+          ${evaluations.suites.map(evalSuiteRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Benchmark runs</h2>
+        <div class="table admin-table-4">
+          ${evaluations.runs.map(evalRunRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Regressions</h2>
+        <div class="table admin-table-4">
+          ${evaluations.regressions.map(evalRegressionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Release gates</h2>
+        <div class="table admin-table-4">
+          ${evaluations.releaseGates.map(evalGateRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Evaluation guardrails</h2>
+        <div class="admin-checklist">
+          ${evaluations.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminPlatform() {
   const platform = adminPlatformData();
   const releases = adminMetricValue("platform.mobileReleases", ["iOS 1.0.4 beta", "Android 1.0.6 beta"]);
@@ -3537,6 +3657,7 @@ function bindEvents() {
       loadAdminUsers(true);
       loadAdminSupport(true);
       loadAdminModels(true);
+      loadAdminEvaluations(true);
       loadAdminLanguages(true);
       loadAdminDataGovernance(true);
       loadAdminSafety(true);

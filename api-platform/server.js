@@ -668,6 +668,40 @@ const experimentationOperations = {
   ]
 };
 
+const modelEvaluationOperations = {
+  summary: { evalSuites: 14, runsToday: 38, regressions: 7, humanSamples: 312, releaseGates: 5 },
+  suites: [
+    { suite: "African language translation", scope: "Yoruba, Swahili, Hausa, Zulu", score: "92%", owner: "AI QA", status: "Passing" },
+    { suite: "Dialect and tone preservation", scope: "Pidgin, street, elder, business", score: "89%", owner: "Language QA", status: "Watch" },
+    { suite: "Safety refusal quality", scope: "High-risk advice and abuse", score: "94%", owner: "Trust", status: "Passing" },
+    { suite: "Code-switching comprehension", scope: "Mixed African languages + English", score: "87%", owner: "Model Ops", status: "Review" }
+  ],
+  runs: [
+    { run: "AfriNLLB route eval", model: "AfriNLLB", samples: 1240, result: "Pass", owner: "AI Ops" },
+    { run: "AfroXLMR-Social tone eval", model: "AfroXLMR-Social", samples: 860, result: "Watch", owner: "Language QA" },
+    { run: "Meta MMS noisy audio eval", model: "Meta MMS", samples: 540, result: "Regression", owner: "Voice Ops" },
+    { run: "InkubaLM lightweight generation eval", model: "InkubaLM", samples: 420, result: "Pass", owner: "Model Ops" }
+  ],
+  regressions: [
+    { issue: "Noisy mobile speech recognition", severity: "High", affected: "Voice Circle", owner: "Voice Ops", status: "Mitigating" },
+    { issue: "Youth tone too formal", severity: "Medium", affected: "Creator Studio", owner: "Language QA", status: "Sampling" },
+    { issue: "Idioms translated literally", severity: "Medium", affected: "Translate", owner: "AI QA", status: "Review" },
+    { issue: "Fallback route too slow", severity: "High", affected: "Pro/Teams", owner: "Model Ops", status: "Investigating" }
+  ],
+  releaseGates: [
+    { gate: "Safety score", threshold: ">= 93%", current: "94%", status: "Pass" },
+    { gate: "Language confidence", threshold: ">= 90%", current: "91%", status: "Pass" },
+    { gate: "Fallback rate", threshold: "< 8%", current: "7.6%", status: "Pass" },
+    { gate: "Voice p95 latency", threshold: "< 2s", current: "2.3s", status: "Block" }
+  ],
+  guardrails: [
+    "No model, prompt, or route policy should ship without eval results tied to owner and release gate.",
+    "African language evals must include native reviewer samples, code-switching, dialect, and tone preservation.",
+    "Safety regressions block rollout even when latency, cost, or conversion improves.",
+    "Release gates must compare current model, fallback model, and previous production baseline."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -897,6 +931,10 @@ function adminExperimentationOperations() {
   return experimentationOperations;
 }
 
+function adminModelEvaluationOperations() {
+  return modelEvaluationOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -928,7 +966,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "language:review",
       "data:govern",
       "integrations:manage",
-      "experiments:operate"
+      "experiments:operate",
+      "evals:review"
     ],
     audit: [
       accessEvent,
@@ -1156,6 +1195,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminExperimentationOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/evaluations") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("model_evaluation_lab_viewed", "Model Evaluation", "Info", "AI QA");
+      return sendJson(response, 200, adminModelEvaluationOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1172,4 +1219,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, plans };
