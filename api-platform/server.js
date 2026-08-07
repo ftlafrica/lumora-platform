@@ -19,6 +19,28 @@ const adminAuditEvents = [
   { time: "2026-08-07T07:42:00.000Z", action: "moderation_appeal_queue_sampled", area: "Safety", severity: "Medium", actor: "Moderator" }
 ];
 
+const platformControls = {
+  releases: [
+    { surface: "Web", version: "2026.08.07-web.4", channel: "production", status: "Stable", rollout: 100, health: "99.98% uptime" },
+    { surface: "iOS", version: "1.0.4 beta", channel: "testflight", status: "Crash review", rollout: 24, health: "12 crash clusters" },
+    { surface: "Android", version: "1.0.6 beta", channel: "internal", status: "Healthy", rollout: 36, health: "0 critical crashes" },
+    { surface: "API", version: "0.3.0-admin", channel: "local", status: "Watch", rollout: 100, health: "0.8% errors" }
+  ],
+  featureFlags: [
+    { key: "admin_audit_feed", surface: "Admin", state: "on", rollout: 100, owner: "Platform" },
+    { key: "api_chat_router", surface: "Web/Mobile", state: "on", rollout: 100, owner: "AI Ops" },
+    { key: "voice_circle_native", surface: "Mobile", state: "beta", rollout: 20, owner: "Mobile" },
+    { key: "premium_upgrade_flow", surface: "Web", state: "on", rollout: 100, owner: "Growth" },
+    { key: "force_mobile_update", surface: "Mobile", state: "armed", rollout: 0, owner: "Platform" }
+  ],
+  guardrails: {
+    maintenanceMode: false,
+    rollbackReady: true,
+    forceUpdateArmed: true,
+    killSwitches: 1
+  }
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -118,7 +140,13 @@ function adminMetrics() {
     users: { total: 18420, newVisitorsToday: 2184, signupConversion: "12.4%" },
     revenue: { mrr: "$184K", arr: "$2.2M", upgradesToday: 842, failedPayments: 31 },
     ai: { requestsToday: "1.28M", averageRouteMs: 428, successRate: "99.1%", modelSources: modelRegistry.length },
-    platform: { webUptime: "99.98%", apiErrors: "0.8%", mobileReleases: ["iOS 1.0.4 beta", "Android 1.0.6 beta"] },
+    platform: {
+      webUptime: "99.98%",
+      apiErrors: "0.8%",
+      mobileReleases: ["iOS 1.0.4 beta", "Android 1.0.6 beta"],
+      activeFlags: platformControls.featureFlags.filter(flag => flag.state === "on" || flag.state === "beta").length,
+      canaries: platformControls.releases.filter(release => release.rollout < 100).length
+    },
     safety: { moderationFlags: 418, appeals: 44, correctionsPending: 312 },
     access: { auditEvents: adminAuditEvents.length, activeAdminSessions: 1 }
   };
@@ -140,6 +168,10 @@ function adminAuditTrail() {
       mediumSeverity: adminAuditEvents.filter(event => event.severity === "Medium").length
     }
   };
+}
+
+function adminPlatformControls() {
+  return platformControls;
 }
 
 function adminAccessSession(operator = "Seed Admin") {
@@ -220,6 +252,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminAuditTrail());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/platform") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("platform_controls_viewed", "Platform", "Info", "Developer");
+      return sendJson(response, 200, adminPlatformControls());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -236,4 +276,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, adminAuditTrail, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, adminAuditTrail, adminPlatformControls, plans };

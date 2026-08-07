@@ -140,6 +140,8 @@ const DEFAULT_STATE = {
   adminSession: null,
   adminAudit: null,
   adminAuditLoadedAt: null,
+  adminPlatform: null,
+  adminPlatformLoadedAt: null,
   user: {
     name: "Murewa Oyetoro",
     email: "murewa@example.com",
@@ -245,6 +247,26 @@ async function loadAdminAudit(force = false) {
     state.adminAuditLoadedAt = Date.now();
   } catch {
     state.adminAuditLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminPlatform(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminPlatformLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/platform`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Platform controls unavailable.");
+    state.adminPlatform = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminPlatformLoadedAt = Date.now();
+  } catch {
+    state.adminPlatformLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -364,6 +386,24 @@ function adminAuditSummaryValue(path, fallback) {
   return value === undefined || value === null ? fallback : value;
 }
 
+function adminPlatformData() {
+  return state.adminPlatform || {
+    releases: [
+      { surface: "Web", version: "2026.08.07-web.4", channel: "production", status: "Stable", rollout: 100, health: "99.98% uptime" },
+      { surface: "iOS", version: "1.0.4 beta", channel: "testflight", status: "Crash review", rollout: 24, health: "12 crash clusters" },
+      { surface: "Android", version: "1.0.6 beta", channel: "internal", status: "Healthy", rollout: 36, health: "0 critical crashes" },
+      { surface: "API", version: "0.3.0-admin", channel: "local", status: "Watch", rollout: 100, health: "0.8% errors" }
+    ],
+    featureFlags: [
+      { key: "admin_audit_feed", surface: "Admin", state: "on", rollout: 100, owner: "Platform" },
+      { key: "api_chat_router", surface: "Web/Mobile", state: "on", rollout: 100, owner: "AI Ops" },
+      { key: "voice_circle_native", surface: "Mobile", state: "beta", rollout: 20, owner: "Mobile" },
+      { key: "force_mobile_update", surface: "Mobile", state: "armed", rollout: 0, owner: "Platform" }
+    ],
+    guardrails: { maintenanceMode: false, rollbackReady: true, forceUpdateArmed: true, killSwitches: 1 }
+  };
+}
+
 function formatAdminTime(timestamp) {
   if (!timestamp) return "Not loaded";
   return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -390,6 +430,14 @@ function adminLiveKpis() {
 function auditRow(event) {
   const time = event.time ? formatAdminTime(Date.parse(event.time)) : "Now";
   return `<div class="table-row"><strong>${event.action}</strong><span>${event.area || "Admin"}</span><span>${event.actor || event.severity || time}</span></div>`;
+}
+
+function releaseRow(release) {
+  return `<div class="table-row"><strong>${release.surface}</strong><span>${release.version} / ${release.channel}</span><span>${release.status} - ${release.rollout}%</span></div>`;
+}
+
+function flagRow(flag) {
+  return `<div class="table-row"><strong>${flag.key}</strong><span>${flag.surface} / ${flag.owner}</span><span>${flag.state} - ${flag.rollout}%</span></div>`;
 }
 
 function generateReply(text) {
@@ -823,6 +871,7 @@ function adminView() {
   if (!state.adminUnlocked) return adminGateView();
   loadAdminMetrics();
   loadAdminAudit();
+  if (state.adminSection === "platform") loadAdminPlatform();
   const readiness = MODEL_REGISTRY.reduce((acc, item) => {
     acc[item.readiness] = (acc[item.readiness] || 0) + 1;
     return acc;
@@ -1084,25 +1133,39 @@ function adminSafety() {
 }
 
 function adminPlatform() {
+  const platform = adminPlatformData();
   const releases = adminMetricValue("platform.mobileReleases", ["iOS 1.0.4 beta", "Android 1.0.6 beta"]);
+  const activeFlags = platform.featureFlags.filter(flag => flag.state === "on" || flag.state === "beta").length;
   return `
     <div class="admin-grid">
       ${metric("Web uptime", adminMetricValue("platform.webUptime", "99.98%"))}
-      ${metric("API calls", "9.2M")}
+      ${metric("Active flags", adminMetricValue("platform.activeFlags", activeFlags))}
+      ${metric("Canaries", adminMetricValue("platform.canaries", platform.releases.filter(release => release.rollout < 100).length))}
       ${metric("Mobile releases", Array.isArray(releases) ? releases.length : "2 live")}
-      ${metric("Open incidents", "0")}
-      <section class="admin-card wide">
+      <section class="admin-card full-admin">
         <h2>Release control</h2>
-        <div class="table">
-          <div class="table-row"><strong>Web</strong><span>3 feature flags</span><span>Stable</span></div>
-          <div class="table-row"><strong>iOS</strong><span>${Array.isArray(releases) ? releases[0] : "1.0.4 beta"}</span><span>Crash review</span></div>
-          <div class="table-row"><strong>Android</strong><span>${Array.isArray(releases) ? releases[1] : "1.0.6 beta"}</span><span>Healthy</span></div>
-          <div class="table-row"><strong>API</strong><span>${adminMetricValue("platform.apiErrors", "0.8%")} errors</span><span>Watch</span></div>
+        <div class="table admin-table-4">
+          ${platform.releases.map(releaseRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Feature flags</h2>
+        <div class="table admin-table-4">
+          ${platform.featureFlags.map(flagRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Operational guardrails</h2>
+        <div class="admin-checklist">
+          <span>Maintenance mode: ${platform.guardrails.maintenanceMode ? "on" : "off"}</span>
+          <span>Rollback ready: ${platform.guardrails.rollbackReady ? "yes" : "no"}</span>
+          <span>Force mobile update: ${platform.guardrails.forceUpdateArmed ? "armed" : "off"}</span>
+          <span>Kill switches: ${platform.guardrails.killSwitches}</span>
         </div>
       </section>
       <section class="admin-card wide">
         <h2>Infrastructure</h2>
-        <div class="admin-checklist"><span>GPU utilization: 61%</span><span>Queue pressure: normal</span><span>Vector indexing jobs: 8</span><span>CDN and object storage healthy</span></div>
+        <div class="admin-checklist"><span>GPU utilization: 61%</span><span>Queue pressure: normal</span><span>Vector indexing jobs: 8</span><span>CDN and object storage healthy</span><span>API errors: ${adminMetricValue("platform.apiErrors", "0.8%")}</span></div>
       </section>
     </div>
   `;
@@ -1309,6 +1372,7 @@ function bindEvents() {
     if (action === "refresh-admin") {
       loadAdminMetrics(true);
       loadAdminAudit(true);
+      loadAdminPlatform(true);
       setTimeout(() => showToast("Refreshing admin data."), 40);
     }
     if (action === "sign-out") signOut();
