@@ -68,6 +68,7 @@ const ADMIN_SECTIONS = [
   { id: "overview", label: "Command", desc: "Executive health, growth, revenue, cost, and incident posture." },
   { id: "growth", label: "Growth", desc: "Visitors, activation, countries, devices, campaigns, and funnels." },
   { id: "analytics", label: "Analytics", desc: "Retention, activation, churn, feature usage, language adoption, and experiments." },
+  { id: "reports", label: "Reports", desc: "Leadership packs, scheduled exports, report destinations, datasets, and evidence guardrails." },
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
   { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
@@ -166,6 +167,8 @@ const DEFAULT_STATE = {
   adminGrowthLoadedAt: null,
   adminAnalytics: null,
   adminAnalyticsLoadedAt: null,
+  adminReports: null,
+  adminReportsLoadedAt: null,
   adminInfrastructure: null,
   adminInfrastructureLoadedAt: null,
   adminAccess: null,
@@ -343,6 +346,26 @@ async function loadAdminSecurity(force = false) {
     state.adminSecurityLoadedAt = Date.now();
   } catch {
     state.adminSecurityLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminReports(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminReportsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/reports`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Reporting and exports unavailable.");
+    state.adminReports = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminReportsLoadedAt = Date.now();
+  } catch {
+    state.adminReportsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -596,7 +619,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -788,6 +811,42 @@ function adminSecurityData() {
       "Security events require immutable audit logs with actor, time, scope, and source.",
       "Production admin access requires SSO/MFA, device trust, scoped roles, and approval workflow.",
       "Privacy requests must be reviewed before exports, deletion, or legal holds."
+    ]
+  };
+}
+
+function adminReportsData() {
+  return state.adminReports || {
+    summary: { scheduledReports: 12, exportsToday: 48, boardPacks: 3, dataFreshness: "5 min", restrictedReports: 7 },
+    reportPacks: [
+      { pack: "Leadership daily pulse", audience: "Leadership", cadence: "Daily 08:00", owner: "Operations", status: "Ready" },
+      { pack: "Investor board pack", audience: "Board", cadence: "Monthly", owner: "Finance", status: "Drafting" },
+      { pack: "Model quality review", audience: "AI Ops", cadence: "Weekly", owner: "Model Ops", status: "Ready" },
+      { pack: "Security and compliance brief", audience: "Seed Admin", cadence: "Weekly", owner: "Security", status: "Restricted" }
+    ],
+    exports: [
+      { export: "Revenue summary", format: "CSV/PDF", scope: "Finance", lastRun: "18 min ago", status: "Complete" },
+      { export: "Visitor funnel", format: "CSV", scope: "Growth", lastRun: "42 min ago", status: "Complete" },
+      { export: "Audit log evidence", format: "JSON/PDF", scope: "Security", lastRun: "2 hrs ago", status: "Restricted" },
+      { export: "Language quality backlog", format: "CSV", scope: "AI Ops", lastRun: "3 hrs ago", status: "Queued" }
+    ],
+    schedules: [
+      { schedule: "Daily leadership email", destination: "Leadership inbox", cadence: "Weekdays", nextRun: "Tomorrow 08:00" },
+      { schedule: "Finance month-close pack", destination: "Finance drive", cadence: "Monthly", nextRun: "Aug 31" },
+      { schedule: "Security evidence archive", destination: "Compliance vault", cadence: "Weekly", nextRun: "Monday" },
+      { schedule: "Model quality scorecard", destination: "AI Ops workspace", cadence: "Friday", nextRun: "Today 17:00" }
+    ],
+    datasets: [
+      { dataset: "Admin metrics warehouse", source: "Metrics API", freshness: "5 min", owner: "Analytics" },
+      { dataset: "Billing events", source: "Payment processor", freshness: "15 min", owner: "Finance" },
+      { dataset: "Audit logs", source: "Admin API", freshness: "Realtime", owner: "Security" },
+      { dataset: "Model routing logs", source: "Model router", freshness: "10 min", owner: "AI Ops" }
+    ],
+    guardrails: [
+      "Exports must preserve seed-admin scope, report owner, destination, and audit event.",
+      "Sensitive reports require watermarking, expiry, and restricted download history.",
+      "Board and investor packs must separate simulated prototype metrics from production data.",
+      "Privacy, payment, and security evidence exports require approval before sharing."
     ]
   };
 }
@@ -1214,6 +1273,22 @@ function complianceProgramRow(item) {
 
 function dataRequestRow(item) {
   return `<div class="table-row"><strong>${item.request}</strong><span>${item.count} open</span><span>${item.owner}</span><span>${item.sla}</span></div>`;
+}
+
+function reportPackRow(item) {
+  return `<div class="table-row"><strong>${item.pack}</strong><span>${item.audience}</span><span>${item.cadence}</span><span>${item.status}</span></div>`;
+}
+
+function exportRow(item) {
+  return `<div class="table-row"><strong>${item.export}</strong><span>${item.format}</span><span>${item.scope}</span><span>${item.status}</span></div>`;
+}
+
+function scheduleRow(item) {
+  return `<div class="table-row"><strong>${item.schedule}</strong><span>${item.destination}</span><span>${item.cadence}</span><span>${item.nextRun}</span></div>`;
+}
+
+function datasetRow(item) {
+  return `<div class="table-row"><strong>${item.dataset}</strong><span>${item.source}</span><span>${item.freshness}</span><span>${item.owner}</span></div>`;
 }
 
 function paymentPlanRow(item) {
@@ -1778,6 +1853,7 @@ function adminView() {
   if (state.adminSection === "infrastructure") loadAdminInfrastructure();
   if (state.adminSection === "growth") loadAdminGrowth();
   if (state.adminSection === "analytics") loadAdminAnalytics();
+  if (state.adminSection === "reports") loadAdminReports();
   if (state.adminSection === "access") loadAdminAccess();
   if (state.adminSection === "operations") loadAdminActions();
   if (state.adminSection === "api") loadAdminApi();
@@ -1873,6 +1949,7 @@ function adminSectionView(section, readiness) {
     overview: () => adminOverview(readiness),
     growth: adminGrowth,
     analytics: adminAnalytics,
+    reports: adminReports,
     payments: adminPayments,
     finance: adminFinance,
     users: adminUsers,
@@ -2350,6 +2427,49 @@ function adminSecurity() {
   `;
 }
 
+function adminReports() {
+  const reports = adminReportsData();
+  const summary = reports.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Scheduled reports", summary.scheduledReports || "12")}
+      ${metric("Exports today", summary.exportsToday || "48")}
+      ${metric("Board packs", summary.boardPacks || "3")}
+      ${metric("Data freshness", summary.dataFreshness || "5 min")}
+      <section class="admin-card full-admin">
+        <h2>Report packs</h2>
+        <div class="table admin-table-4">
+          ${reports.reportPacks.map(reportPackRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Export queue</h2>
+        <div class="table admin-table-4">
+          ${reports.exports.map(exportRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Scheduled destinations</h2>
+        <div class="table admin-table-4">
+          ${reports.schedules.map(scheduleRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Source datasets</h2>
+        <div class="table admin-table-4">
+          ${reports.datasets.map(datasetRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Reporting guardrails</h2>
+        <div class="admin-checklist">
+          ${reports.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminPlatform() {
   const platform = adminPlatformData();
   const releases = adminMetricValue("platform.mobileReleases", ["iOS 1.0.4 beta", "Android 1.0.6 beta"]);
@@ -2820,6 +2940,7 @@ function bindEvents() {
       loadAdminInfrastructure(true);
       loadAdminGrowth(true);
       loadAdminAnalytics(true);
+      loadAdminReports(true);
       loadAdminAccess(true);
       loadAdminActions(true);
       loadAdminApi(true);

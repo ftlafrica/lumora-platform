@@ -462,6 +462,40 @@ const securityOperations = {
   ]
 };
 
+const reportingOperations = {
+  summary: { scheduledReports: 12, exportsToday: 48, boardPacks: 3, dataFreshness: "5 min", restrictedReports: 7 },
+  reportPacks: [
+    { pack: "Leadership daily pulse", audience: "Leadership", cadence: "Daily 08:00", owner: "Operations", status: "Ready" },
+    { pack: "Investor board pack", audience: "Board", cadence: "Monthly", owner: "Finance", status: "Drafting" },
+    { pack: "Model quality review", audience: "AI Ops", cadence: "Weekly", owner: "Model Ops", status: "Ready" },
+    { pack: "Security and compliance brief", audience: "Seed Admin", cadence: "Weekly", owner: "Security", status: "Restricted" }
+  ],
+  exports: [
+    { export: "Revenue summary", format: "CSV/PDF", scope: "Finance", lastRun: "18 min ago", status: "Complete" },
+    { export: "Visitor funnel", format: "CSV", scope: "Growth", lastRun: "42 min ago", status: "Complete" },
+    { export: "Audit log evidence", format: "JSON/PDF", scope: "Security", lastRun: "2 hrs ago", status: "Restricted" },
+    { export: "Language quality backlog", format: "CSV", scope: "AI Ops", lastRun: "3 hrs ago", status: "Queued" }
+  ],
+  schedules: [
+    { schedule: "Daily leadership email", destination: "Leadership inbox", cadence: "Weekdays", nextRun: "Tomorrow 08:00" },
+    { schedule: "Finance month-close pack", destination: "Finance drive", cadence: "Monthly", nextRun: "Aug 31" },
+    { schedule: "Security evidence archive", destination: "Compliance vault", cadence: "Weekly", nextRun: "Monday" },
+    { schedule: "Model quality scorecard", destination: "AI Ops workspace", cadence: "Friday", nextRun: "Today 17:00" }
+  ],
+  datasets: [
+    { dataset: "Admin metrics warehouse", source: "Metrics API", freshness: "5 min", owner: "Analytics" },
+    { dataset: "Billing events", source: "Payment processor", freshness: "15 min", owner: "Finance" },
+    { dataset: "Audit logs", source: "Admin API", freshness: "Realtime", owner: "Security" },
+    { dataset: "Model routing logs", source: "Model router", freshness: "10 min", owner: "AI Ops" }
+  ],
+  guardrails: [
+    "Exports must preserve seed-admin scope, report owner, destination, and audit event.",
+    "Sensitive reports require watermarking, expiry, and restricted download history.",
+    "Board and investor packs must separate simulated prototype metrics from production data.",
+    "Privacy, payment, and security evidence exports require approval before sharing."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -667,6 +701,10 @@ function adminSecurityOperations() {
   return securityOperations;
 }
 
+function adminReportingOperations() {
+  return reportingOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -692,7 +730,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "finance:read",
       "analytics:read",
       "infrastructure:operate",
-      "security:operate"
+      "security:operate",
+      "reporting:export"
     ],
     audit: [
       accessEvent,
@@ -872,6 +911,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminSecurityOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/reports") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("reporting_exports_viewed", "Reporting", "Info", "Leadership");
+      return sendJson(response, 200, adminReportingOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -888,4 +935,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, plans };
