@@ -804,6 +804,40 @@ const riskOperations = {
   ]
 };
 
+const legalOperations = {
+  summary: { openReviews: 12, dpaQueue: 5, policyUpdates: 4, legalRequests: 3, approvalSla: "91%" },
+  contracts: [
+    { contract: "Teams DPA template", account: "Pan-African Tutors", owner: "Legal", status: "Review", due: "Aug 13" },
+    { contract: "Marketplace API terms", account: "TradeMarket Africa", owner: "Legal", status: "Drafting", due: "Aug 16" },
+    { contract: "Research data MOU", account: "Language research network", owner: "Partnerships", status: "Counsel review", due: "Aug 20" },
+    { contract: "Healthcare pilot addendum", account: "HealthBridge Clinics", owner: "Security", status: "Blocked", due: "Aug 18" }
+  ],
+  policies: [
+    { policy: "African language data use", area: "Privacy", owner: "Data Gov", version: "v0.4", status: "Review" },
+    { policy: "Children and classroom usage", area: "Safety", owner: "Trust", version: "v0.2", status: "Draft" },
+    { policy: "Reviewer confidentiality", area: "Language QA", owner: "Legal", version: "v0.5", status: "Ready" },
+    { policy: "Government request handling", area: "Compliance", owner: "Legal", version: "v0.3", status: "Review" }
+  ],
+  requests: [
+    { request: "Data export attestation", region: "EU/Africa", owner: "Privacy", urgency: "Medium", status: "Open" },
+    { request: "Law-enforcement request", region: "West Africa", owner: "Legal", urgency: "High", status: "Counsel only" },
+    { request: "Content takedown review", region: "Global", owner: "Trust", urgency: "Medium", status: "Review" },
+    { request: "Vendor subprocessors list", region: "Enterprise", owner: "Security", urgency: "Low", status: "Ready" }
+  ],
+  approvals: [
+    { approval: "Dataset partnership", requester: "Language Ops", reviewer: "Legal", decision: "Needs privacy addendum" },
+    { approval: "Enterprise data residency claim", requester: "Sales", reviewer: "Legal", decision: "Evidence required" },
+    { approval: "Classroom pilot wording", requester: "Marketing", reviewer: "Trust", decision: "Approved with edits" },
+    { approval: "Partner co-selling terms", requester: "Partnerships", reviewer: "Finance", decision: "Commercial review" }
+  ],
+  guardrails: [
+    "Legal views should summarize status, owner, and risk without exposing privileged legal advice broadly.",
+    "Enterprise promises must align with approved terms, live product capability, security posture, and privacy commitments.",
+    "Data partnerships require provenance, consent basis, permitted use, retention, and deletion obligations before launch.",
+    "Sensitive legal requests should route to counsel-only workflows with audited access and minimal disclosure."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1049,6 +1083,10 @@ function adminRiskOperations() {
   return riskOperations;
 }
 
+function adminLegalOperations() {
+  return legalOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1084,7 +1122,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "evals:review",
       "success:manage",
       "sales:manage",
-      "risk:review"
+      "risk:review",
+      "legal:review"
     ],
     audit: [
       accessEvent,
@@ -1344,6 +1383,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminRiskOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/legal") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("legal_policy_viewed", "Legal", "Info", "Legal and Policy");
+      return sendJson(response, 200, adminLegalOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1360,4 +1407,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, plans };

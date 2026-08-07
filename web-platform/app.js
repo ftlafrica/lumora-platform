@@ -71,6 +71,7 @@ const ADMIN_SECTIONS = [
   { id: "experiments", label: "Experiments", desc: "A/B tests, feature flags, rollouts, kill switches, results, and product decision guardrails." },
   { id: "reports", label: "Reports", desc: "Leadership packs, scheduled exports, report destinations, datasets, and evidence guardrails." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
+  { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
   { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
@@ -180,6 +181,8 @@ const DEFAULT_STATE = {
   adminReportsLoadedAt: null,
   adminRisk: null,
   adminRiskLoadedAt: null,
+  adminLegal: null,
+  adminLegalLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -413,6 +416,26 @@ async function loadAdminRisk(force = false) {
     state.adminRiskLoadedAt = Date.now();
   } catch {
     state.adminRiskLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminLegal(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminLegalLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/legal`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Legal and policy unavailable.");
+    state.adminLegal = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminLegalLoadedAt = Date.now();
+  } catch {
+    state.adminLegalLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -826,7 +849,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1380,6 +1403,42 @@ function adminRiskData() {
       "Critical risks must link to incident, security, legal, model-evaluation, or finance context before closeout.",
       "Board-facing risk summaries should be factual, concise, and separated from private user content.",
       "No risk should be downgraded without a mitigation result, measurable signal, or named executive approval."
+    ]
+  };
+}
+
+function adminLegalData() {
+  return state.adminLegal || {
+    summary: { openReviews: 12, dpaQueue: 5, policyUpdates: 4, legalRequests: 3, approvalSla: "91%" },
+    contracts: [
+      { contract: "Teams DPA template", account: "Pan-African Tutors", owner: "Legal", status: "Review", due: "Aug 13" },
+      { contract: "Marketplace API terms", account: "TradeMarket Africa", owner: "Legal", status: "Drafting", due: "Aug 16" },
+      { contract: "Research data MOU", account: "Language research network", owner: "Partnerships", status: "Counsel review", due: "Aug 20" },
+      { contract: "Healthcare pilot addendum", account: "HealthBridge Clinics", owner: "Security", status: "Blocked", due: "Aug 18" }
+    ],
+    policies: [
+      { policy: "African language data use", area: "Privacy", owner: "Data Gov", version: "v0.4", status: "Review" },
+      { policy: "Children and classroom usage", area: "Safety", owner: "Trust", version: "v0.2", status: "Draft" },
+      { policy: "Reviewer confidentiality", area: "Language QA", owner: "Legal", version: "v0.5", status: "Ready" },
+      { policy: "Government request handling", area: "Compliance", owner: "Legal", version: "v0.3", status: "Review" }
+    ],
+    requests: [
+      { request: "Data export attestation", region: "EU/Africa", owner: "Privacy", urgency: "Medium", status: "Open" },
+      { request: "Law-enforcement request", region: "West Africa", owner: "Legal", urgency: "High", status: "Counsel only" },
+      { request: "Content takedown review", region: "Global", owner: "Trust", urgency: "Medium", status: "Review" },
+      { request: "Vendor subprocessors list", region: "Enterprise", owner: "Security", urgency: "Low", status: "Ready" }
+    ],
+    approvals: [
+      { approval: "Dataset partnership", requester: "Language Ops", reviewer: "Legal", decision: "Needs privacy addendum" },
+      { approval: "Enterprise data residency claim", requester: "Sales", reviewer: "Legal", decision: "Evidence required" },
+      { approval: "Classroom pilot wording", requester: "Marketing", reviewer: "Trust", decision: "Approved with edits" },
+      { approval: "Partner co-selling terms", requester: "Partnerships", reviewer: "Finance", decision: "Commercial review" }
+    ],
+    guardrails: [
+      "Legal views should summarize status, owner, and risk without exposing privileged legal advice broadly.",
+      "Enterprise promises must align with approved terms, live product capability, security posture, and privacy commitments.",
+      "Data partnerships require provenance, consent basis, permitted use, retention, and deletion obligations before launch.",
+      "Sensitive legal requests should route to counsel-only workflows with audited access and minimal disclosure."
     ]
   };
 }
@@ -1968,6 +2027,22 @@ function riskHeatmapRow(item) {
   return `<div class="table-row"><strong>${item.area}</strong><span>${item.likelihood}</span><span>${item.impact}</span><span>${item.score} / ${item.trend}</span></div>`;
 }
 
+function legalContractRow(item) {
+  return `<div class="table-row"><strong>${item.contract}</strong><span>${item.account}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
+function legalPolicyRow(item) {
+  return `<div class="table-row"><strong>${item.policy}</strong><span>${item.area}</span><span>${item.version}</span><span>${item.status}</span></div>`;
+}
+
+function legalRequestRow(item) {
+  return `<div class="table-row"><strong>${item.request}</strong><span>${item.region}</span><span>${item.urgency}</span><span>${item.status}</span></div>`;
+}
+
+function legalApprovalRow(item) {
+  return `<div class="table-row"><strong>${item.approval}</strong><span>${item.requester}</span><span>${item.reviewer}</span><span>${item.decision}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -2536,6 +2611,7 @@ function adminView() {
   if (state.adminSection === "experiments") loadAdminExperiments();
   if (state.adminSection === "reports") loadAdminReports();
   if (state.adminSection === "risk") loadAdminRisk();
+  if (state.adminSection === "legal") loadAdminLegal();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -2638,6 +2714,7 @@ function adminSectionView(section, readiness) {
     experiments: adminExperiments,
     reports: adminReports,
     risk: adminRisk,
+    legal: adminLegal,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -3202,6 +3279,49 @@ function adminRisk() {
         <h2>Risk governance guardrails</h2>
         <div class="admin-checklist">
           ${risk.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminLegal() {
+  const legal = adminLegalData();
+  const summary = legal.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Open reviews", summary.openReviews || "12")}
+      ${metric("DPA queue", summary.dpaQueue || "5")}
+      ${metric("Policy updates", summary.policyUpdates || "4")}
+      ${metric("Approval SLA", summary.approvalSla || "91%")}
+      <section class="admin-card full-admin">
+        <h2>Contracts and DPAs</h2>
+        <div class="table admin-table-4">
+          ${legal.contracts.map(legalContractRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Policy workbench</h2>
+        <div class="table admin-table-4">
+          ${legal.policies.map(legalPolicyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Legal requests</h2>
+        <div class="table admin-table-4">
+          ${legal.requests.map(legalRequestRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Approval queue</h2>
+        <div class="table admin-table-4">
+          ${legal.approvals.map(legalApprovalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Legal and policy guardrails</h2>
+        <div class="admin-checklist">
+          ${legal.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -4028,6 +4148,7 @@ function bindEvents() {
       loadAdminExperiments(true);
       loadAdminReports(true);
       loadAdminRisk(true);
+      loadAdminLegal(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);
