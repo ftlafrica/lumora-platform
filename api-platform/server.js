@@ -11,6 +11,14 @@ const plans = {
   Teams: { messagesPerDay: 5000, voiceMinutes: 1500, modelPriority: "enterprise" }
 };
 
+const adminAuditEvents = [
+  { time: "2026-08-07T08:20:00.000Z", action: "metrics_viewed", area: "Executive Command", severity: "Info", actor: "Leadership" },
+  { time: "2026-08-07T08:13:00.000Z", action: "failed_payment_queue_reviewed", area: "Payments", severity: "Medium", actor: "Finance" },
+  { time: "2026-08-07T08:04:00.000Z", action: "model_fallback_spike_detected", area: "AI Ops", severity: "High", actor: "Model Ops" },
+  { time: "2026-08-07T07:56:00.000Z", action: "mobile_release_health_checked", area: "Platform", severity: "Info", actor: "Developer" },
+  { time: "2026-08-07T07:42:00.000Z", action: "moderation_appeal_queue_sampled", area: "Safety", severity: "Medium", actor: "Moderator" }
+];
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -111,12 +119,33 @@ function adminMetrics() {
     revenue: { mrr: "$184K", arr: "$2.2M", upgradesToday: 842, failedPayments: 31 },
     ai: { requestsToday: "1.28M", averageRouteMs: 428, successRate: "99.1%", modelSources: modelRegistry.length },
     platform: { webUptime: "99.98%", apiErrors: "0.8%", mobileReleases: ["iOS 1.0.4 beta", "Android 1.0.6 beta"] },
-    safety: { moderationFlags: 418, appeals: 44, correctionsPending: 312 }
+    safety: { moderationFlags: 418, appeals: 44, correctionsPending: 312 },
+    access: { auditEvents: adminAuditEvents.length, activeAdminSessions: 1 }
+  };
+}
+
+function recordAdminEvent(action, area = "Admin API", severity = "Info", actor = "Seed Admin") {
+  const event = { time: new Date().toISOString(), action, area, severity, actor };
+  adminAuditEvents.unshift(event);
+  adminAuditEvents.splice(50);
+  return event;
+}
+
+function adminAuditTrail() {
+  return {
+    events: adminAuditEvents,
+    summary: {
+      total: adminAuditEvents.length,
+      highSeverity: adminAuditEvents.filter(event => event.severity === "High").length,
+      mediumSeverity: adminAuditEvents.filter(event => event.severity === "Medium").length
+    }
   };
 }
 
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
+  const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
+  const metricsEvent = recordAdminEvent("metrics_access_enabled", "Admin API", "Info", operator);
   return {
     sessionId: `admin-${Date.now()}`,
     operator,
@@ -134,8 +163,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "access:grant"
     ],
     audit: [
-      { time: issuedAt, action: "seed_admin_session_issued", area: "Access", severity: "Info" },
-      { time: issuedAt, action: "metrics_access_enabled", area: "Admin API", severity: "Info" }
+      accessEvent,
+      metricsEvent
     ]
   };
 }
@@ -183,6 +212,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminMetrics());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/audit") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("audit_feed_viewed", "Access", "Info", "Seed Admin");
+      return sendJson(response, 200, adminAuditTrail());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -199,4 +236,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, adminAuditTrail, plans };

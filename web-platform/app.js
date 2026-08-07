@@ -138,6 +138,8 @@ const DEFAULT_STATE = {
   adminMetrics: null,
   adminMetricsLoadedAt: null,
   adminSession: null,
+  adminAudit: null,
+  adminAuditLoadedAt: null,
   user: {
     name: "Murewa Oyetoro",
     email: "murewa@example.com",
@@ -223,6 +225,26 @@ async function loadAdminMetrics(force = false) {
   } catch {
     state.adminApiStatus = "preview";
     state.adminMetricsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminAudit(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminAuditLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/audit`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Admin audit unavailable.");
+    state.adminAudit = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminAuditLoadedAt = Date.now();
+  } catch {
+    state.adminAuditLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -331,6 +353,17 @@ function adminMetricValue(path, fallback) {
   return value === undefined || value === null ? fallback : value;
 }
 
+function adminAuditEvents() {
+  const session = state.adminSession || localAdminSession();
+  if (state.adminAudit && Array.isArray(state.adminAudit.events) && state.adminAudit.events.length) return state.adminAudit.events;
+  return session.audit || [];
+}
+
+function adminAuditSummaryValue(path, fallback) {
+  const value = path.split(".").reduce((current, key) => current && current[key], state.adminAudit);
+  return value === undefined || value === null ? fallback : value;
+}
+
 function formatAdminTime(timestamp) {
   if (!timestamp) return "Not loaded";
   return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -349,8 +382,14 @@ function adminLiveKpis() {
     { label: "Requests today", value: adminMetricValue("ai.requestsToday", "1.28M"), trend: `${adminMetricValue("ai.successRate", "99.1%")} success`, tone: "good" },
     { label: "Revenue", value: adminMetricValue("revenue.mrr", "$184K"), trend: `${adminMetricValue("revenue.arr", "$2.2M")} ARR`, tone: "gold" },
     { label: "API errors", value: adminMetricValue("platform.apiErrors", "0.8%"), trend: `${adminMetricValue("platform.webUptime", "99.98%")} web uptime`, tone: "warn" },
-    { label: "Safety flags", value: adminMetricValue("safety.moderationFlags", "418"), trend: `${adminMetricValue("safety.appeals", "44")} appeals`, tone: "warn" }
+    { label: "Safety flags", value: adminMetricValue("safety.moderationFlags", "418"), trend: `${adminMetricValue("safety.appeals", "44")} appeals`, tone: "warn" },
+    { label: "Audit events", value: adminMetricValue("access.auditEvents", adminAuditSummaryValue("summary.total", "1,904")), trend: `${adminMetricValue("access.activeAdminSessions", "1")} admin session`, tone: "gold" }
   ];
+}
+
+function auditRow(event) {
+  const time = event.time ? formatAdminTime(Date.parse(event.time)) : "Now";
+  return `<div class="table-row"><strong>${event.action}</strong><span>${event.area || "Admin"}</span><span>${event.actor || event.severity || time}</span></div>`;
 }
 
 function generateReply(text) {
@@ -783,6 +822,7 @@ function dashboardView() {
 function adminView() {
   if (!state.adminUnlocked) return adminGateView();
   loadAdminMetrics();
+  loadAdminAudit();
   const readiness = MODEL_REGISTRY.reduce((acc, item) => {
     acc[item.readiness] = (acc[item.readiness] || 0) + 1;
     return acc;
@@ -884,6 +924,7 @@ function adminSectionView(section, readiness) {
 }
 
 function adminOverview(readiness) {
+  const audit = adminAuditEvents().slice(0, 5);
   return `
     <div class="admin-grid">
       ${adminLiveKpis().map(adminMetric).join("")}
@@ -898,6 +939,12 @@ function adminOverview(readiness) {
         <h2>Critical attention</h2>
         <div class="table">
           ${ADMIN_ALERTS.map(alertRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Admin audit pulse</h2>
+        <div class="table">
+          ${audit.map(auditRow).join("")}
         </div>
       </section>
       <section class="admin-card wide">
@@ -1064,11 +1111,11 @@ function adminPlatform() {
 function adminAccess() {
   const session = state.adminSession || localAdminSession();
   const scopes = session.scopes || [];
-  const audit = session.audit || [];
+  const audit = adminAuditEvents();
   return `
     <div class="admin-grid">
       ${metric("Roles", ADMIN_ROLES.length)}
-      ${metric("Audit events", "1,904")}
+      ${metric("Audit events", adminMetricValue("access.auditEvents", adminAuditSummaryValue("summary.total", "1,904")))}
       ${metric("Critical threats", "0")}
       ${metric("SSO enabled orgs", "14")}
       <section class="admin-card wide">
@@ -1092,7 +1139,7 @@ function adminAccess() {
       <section class="admin-card wide">
         <h2>Audit and compliance</h2>
         <div class="table">
-          ${audit.map(item => `<div class="table-row"><strong>${item.action}</strong><span>${item.area}</span><span>${item.severity}</span></div>`).join("")}
+          ${audit.slice(0, 8).map(auditRow).join("")}
         </div>
       </section>
       <section class="admin-card wide">
@@ -1261,7 +1308,8 @@ function bindEvents() {
     if (action === "correction") { closeOverlays(); setTimeout(() => showToast("Correction submitted for review."), 40); }
     if (action === "refresh-admin") {
       loadAdminMetrics(true);
-      setTimeout(() => showToast("Refreshing admin metrics."), 40);
+      loadAdminAudit(true);
+      setTimeout(() => showToast("Refreshing admin data."), 40);
     }
     if (action === "sign-out") signOut();
     if (action === "preview-admin") {
