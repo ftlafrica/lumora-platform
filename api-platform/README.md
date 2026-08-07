@@ -35,6 +35,8 @@ npm run start
 
 The API listens on `http://localhost:8787` by default.
 
+`npm run smoke` validates the public chat/model routing path and the prototype admin payload contracts used by the Enterprise Admin Console.
+
 ## Connected Clients
 
 - Web Platform: `web-platform/index.html`

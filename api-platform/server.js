@@ -518,4 +518,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, plans };

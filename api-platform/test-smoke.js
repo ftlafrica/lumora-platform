@@ -1,5 +1,20 @@
 const assert = require("assert");
-const { detectTask, routeModel, simulateReply, plans } = require("./server");
+const {
+  detectTask,
+  routeModel,
+  simulateReply,
+  plans,
+  adminMetrics,
+  adminAccessSession,
+  adminAuditTrail,
+  adminPlatformControls,
+  adminPaymentOperations,
+  adminUserOperations,
+  adminModelOperations,
+  adminSafetyOperations,
+  adminGrowthOperations,
+  adminAccessOperations
+} = require("./server");
 const { modelRegistry } = require("./model-registry");
 
 assert.strictEqual(detectTask("Translate this customer message"), "translation");
@@ -16,5 +31,34 @@ assert.ok(route.chain.some(item => item.name === "AfriNLLB"));
 const reply = simulateReply({ text: "Explain AI", language: "Yoruba", bridgeLanguage: "English", tone: "Teacher" });
 assert.strictEqual(reply.role, "assistant");
 assert.ok(reply.text.includes("Yoruba"));
+assert.ok(reply.route.chain.length >= 3);
+
+const metrics = adminMetrics();
+assert.ok(metrics.users.total > 0);
+assert.ok(metrics.revenue.mrr);
+assert.ok(metrics.ai.modelSources >= modelRegistry.length);
+assert.ok(metrics.platform.activeFlags >= 1);
+assert.ok(metrics.safety.moderationFlags > 0);
+assert.ok(metrics.access.auditEvents > 0);
+
+const accessSession = adminAccessSession("Smoke Test Admin");
+assert.strictEqual(accessSession.role, "Seed Admin");
+assert.ok(accessSession.scopes.includes("access:grant"));
+assert.ok(accessSession.audit.length >= 2);
+
+const adminContracts = [
+  ["audit", adminAuditTrail(), data => Array.isArray(data.events) && data.summary.total >= data.events.length],
+  ["platform", adminPlatformControls(), data => Array.isArray(data.releases) && Array.isArray(data.featureFlags) && data.guardrails],
+  ["payments", adminPaymentOperations(), data => Array.isArray(data.plans) && Array.isArray(data.queues) && Array.isArray(data.invoices)],
+  ["users", adminUserOperations(), data => data.summary && Array.isArray(data.accountQueues) && Array.isArray(data.organizations)],
+  ["models", adminModelOperations(), data => Array.isArray(data.registry) && Array.isArray(data.health) && data.summary.modelSources >= modelRegistry.length],
+  ["safety", adminSafetyOperations(), data => data.summary && Array.isArray(data.moderationQueues) && Array.isArray(data.languageQuality)],
+  ["growth", adminGrowthOperations(), data => data.summary && Array.isArray(data.funnel) && Array.isArray(data.countries) && Array.isArray(data.channels)],
+  ["access", adminAccessOperations(), data => data.summary && Array.isArray(data.roles) && Array.isArray(data.approvals) && Array.isArray(data.compliance)]
+];
+
+adminContracts.forEach(([name, data, isValid]) => {
+  assert.ok(isValid(data), `${name} admin contract is invalid`);
+});
 
 console.log("api-platform smoke tests passed");
