@@ -256,6 +256,40 @@ const apiOperations = {
   ]
 };
 
+const knowledgeOperations = {
+  summary: { collections: 36, chunks: "1.9M", indexingJobs: 8, staleSources: 12, restrictedSources: 18 },
+  collections: [
+    { name: "African language guides", owner: "Language QA", chunks: "420K", freshness: "2 hrs", access: "Internal reviewers" },
+    { name: "Education local examples", owner: "Learning", chunks: "310K", freshness: "1 day", access: "Classroom mode" },
+    { name: "Market and business templates", owner: "Growth", chunks: "188K", freshness: "5 hrs", access: "Pro/Teams" },
+    { name: "Enterprise customer workspaces", owner: "Enterprise", chunks: "640K", freshness: "Live sync", access: "Tenant scoped" }
+  ],
+  sources: [
+    { source: "Uploaded documents", volume: "18.4K files", policy: "Tenant scoped", status: "Healthy" },
+    { source: "Language reviewer notes", volume: "42K corrections", policy: "Internal", status: "Growing" },
+    { source: "Public knowledge packs", volume: "86 packs", policy: "Licensed/open", status: "Review" },
+    { source: "Conversation memories", volume: "User opt-in only", policy: "Private", status: "Guarded" }
+  ],
+  indexingJobs: [
+    { job: "Yoruba proverb pack refresh", progress: "82%", owner: "Language QA", status: "Indexing" },
+    { job: "Teams workspace embeddings", progress: "64%", owner: "Enterprise", status: "Running" },
+    { job: "Market Mode template cleanup", progress: "39%", owner: "Growth", status: "Queued" },
+    { job: "Safety policy retrieval pack", progress: "91%", owner: "Trust", status: "Validating" }
+  ],
+  permissions: [
+    { control: "Tenant isolation", status: "Required", owner: "Security" },
+    { control: "Source licensing", status: "Manual review", owner: "Legal" },
+    { control: "User memory opt-in", status: "On by setting", owner: "Privacy" },
+    { control: "PII redaction before indexing", status: "Designed", owner: "Trust" }
+  ],
+  qualityQueues: [
+    { queue: "Stale source review", count: 12, owner: "Knowledge Ops", priority: "This week" },
+    { queue: "Low retrieval confidence", count: 84, owner: "AI QA", priority: "High" },
+    { queue: "License verification", count: 21, owner: "Legal", priority: "Before publish" },
+    { queue: "Dialect mismatch reports", count: 37, owner: "Language QA", priority: "Today" }
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -437,6 +471,10 @@ function adminApiOperations() {
   return apiOperations;
 }
 
+function adminKnowledgeOperations() {
+  return knowledgeOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -456,7 +494,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "safety:review",
       "platform:operate",
       "access:grant",
-      "api:manage"
+      "api:manage",
+      "knowledge:operate"
     ],
     audit: [
       accessEvent,
@@ -588,6 +627,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminApiOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/knowledge") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("knowledge_operations_viewed", "Knowledge", "Info", "AI Ops");
+      return sendJson(response, 200, adminKnowledgeOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -604,4 +651,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, plans };

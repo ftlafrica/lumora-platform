@@ -15,7 +15,8 @@ const {
   adminGrowthOperations,
   adminAccessOperations,
   adminActionOperations,
-  adminApiOperations
+  adminApiOperations,
+  adminKnowledgeOperations
 } = require("./server");
 const { modelRegistry } = require("./model-registry");
 
@@ -47,6 +48,7 @@ const accessSession = adminAccessSession("Smoke Test Admin");
 assert.strictEqual(accessSession.role, "Seed Admin");
 assert.ok(accessSession.scopes.includes("access:grant"));
 assert.ok(accessSession.scopes.includes("api:manage"));
+assert.ok(accessSession.scopes.includes("knowledge:operate"));
 assert.ok(accessSession.audit.length >= 2);
 
 const adminContracts = [
@@ -59,7 +61,8 @@ const adminContracts = [
   ["growth", adminGrowthOperations(), data => data.summary && Array.isArray(data.funnel) && Array.isArray(data.countries) && Array.isArray(data.channels)],
   ["access", adminAccessOperations(), data => data.summary && Array.isArray(data.roles) && Array.isArray(data.approvals) && Array.isArray(data.compliance)],
   ["actions", adminActionOperations(), data => data.summary && Array.isArray(data.incidents) && Array.isArray(data.decisions) && Array.isArray(data.followUps)],
-  ["api", adminApiOperations(), data => data.summary && Array.isArray(data.keys) && Array.isArray(data.quotas) && Array.isArray(data.webhooks) && Array.isArray(data.sdks)]
+  ["api", adminApiOperations(), data => data.summary && Array.isArray(data.keys) && Array.isArray(data.quotas) && Array.isArray(data.webhooks) && Array.isArray(data.sdks)],
+  ["knowledge", adminKnowledgeOperations(), data => data.summary && Array.isArray(data.collections) && Array.isArray(data.sources) && Array.isArray(data.indexingJobs)]
 ];
 
 adminContracts.forEach(([name, data, isValid]) => {

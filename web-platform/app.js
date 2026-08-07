@@ -70,6 +70,7 @@ const ADMIN_SECTIONS = [
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
   { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
+  { id: "knowledge", label: "Knowledge", desc: "RAG collections, sources, indexing, embeddings, permissions, freshness, and quality queues." },
   { id: "safety", label: "Safety", desc: "Moderation, corrections, privacy, red-team findings, appeals, and policy." },
   { id: "platform", label: "Platform", desc: "Web, mobile, API, infrastructure, incidents, releases, and feature flags." },
   { id: "api", label: "API", desc: "Keys, quotas, SDKs, webhooks, rate limits, errors, and partner integration health." },
@@ -160,6 +161,8 @@ const DEFAULT_STATE = {
   adminActionsLoadedAt: null,
   adminApi: null,
   adminApiLoadedAt: null,
+  adminKnowledge: null,
+  adminKnowledgeLoadedAt: null,
   user: {
     name: "Murewa Oyetoro",
     email: "murewa@example.com",
@@ -450,6 +453,26 @@ async function loadAdminApi(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminKnowledge(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminKnowledgeLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/knowledge`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Knowledge operations unavailable.");
+    state.adminKnowledge = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminKnowledgeLoadedAt = Date.now();
+  } catch {
+    state.adminKnowledgeLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 function localAdminSession() {
   const issuedAt = new Date().toISOString();
   return {
@@ -458,7 +481,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -788,6 +811,42 @@ function adminApiData() {
       { queue: "Webhook retries", count: 42, owner: "Platform", priority: "Today" },
       { queue: "Invalid model route requests", count: 128, owner: "AI Ops", priority: "Review" },
       { queue: "Suspicious API behavior", count: 6, owner: "Security", priority: "High" }
+    ]
+  };
+}
+
+function adminKnowledgeData() {
+  return state.adminKnowledge || {
+    summary: { collections: 36, chunks: "1.9M", indexingJobs: 8, staleSources: 12, restrictedSources: 18 },
+    collections: [
+      { name: "African language guides", owner: "Language QA", chunks: "420K", freshness: "2 hrs", access: "Internal reviewers" },
+      { name: "Education local examples", owner: "Learning", chunks: "310K", freshness: "1 day", access: "Classroom mode" },
+      { name: "Market and business templates", owner: "Growth", chunks: "188K", freshness: "5 hrs", access: "Pro/Teams" },
+      { name: "Enterprise customer workspaces", owner: "Enterprise", chunks: "640K", freshness: "Live sync", access: "Tenant scoped" }
+    ],
+    sources: [
+      { source: "Uploaded documents", volume: "18.4K files", policy: "Tenant scoped", status: "Healthy" },
+      { source: "Language reviewer notes", volume: "42K corrections", policy: "Internal", status: "Growing" },
+      { source: "Public knowledge packs", volume: "86 packs", policy: "Licensed/open", status: "Review" },
+      { source: "Conversation memories", volume: "User opt-in only", policy: "Private", status: "Guarded" }
+    ],
+    indexingJobs: [
+      { job: "Yoruba proverb pack refresh", progress: "82%", owner: "Language QA", status: "Indexing" },
+      { job: "Teams workspace embeddings", progress: "64%", owner: "Enterprise", status: "Running" },
+      { job: "Market Mode template cleanup", progress: "39%", owner: "Growth", status: "Queued" },
+      { job: "Safety policy retrieval pack", progress: "91%", owner: "Trust", status: "Validating" }
+    ],
+    permissions: [
+      { control: "Tenant isolation", status: "Required", owner: "Security" },
+      { control: "Source licensing", status: "Manual review", owner: "Legal" },
+      { control: "User memory opt-in", status: "On by setting", owner: "Privacy" },
+      { control: "PII redaction before indexing", status: "Designed", owner: "Trust" }
+    ],
+    qualityQueues: [
+      { queue: "Stale source review", count: 12, owner: "Knowledge Ops", priority: "This week" },
+      { queue: "Low retrieval confidence", count: 84, owner: "AI QA", priority: "High" },
+      { queue: "License verification", count: 21, owner: "Legal", priority: "Before publish" },
+      { queue: "Dialect mismatch reports", count: 37, owner: "Language QA", priority: "Today" }
     ]
   };
 }
@@ -1336,6 +1395,7 @@ function adminView() {
   if (state.adminSection === "access") loadAdminAccess();
   if (state.adminSection === "operations") loadAdminActions();
   if (state.adminSection === "api") loadAdminApi();
+  if (state.adminSection === "knowledge") loadAdminKnowledge();
   const readiness = MODEL_REGISTRY.reduce((acc, item) => {
     acc[item.readiness] = (acc[item.readiness] || 0) + 1;
     return acc;
@@ -1429,6 +1489,7 @@ function adminSectionView(section, readiness) {
     payments: adminPayments,
     users: adminUsers,
     models: () => adminModels(readiness),
+    knowledge: adminKnowledge,
     safety: adminSafety,
     platform: adminPlatform,
     api: adminApiManagement,
@@ -1632,6 +1693,58 @@ function adminModels(readiness) {
       <section class="admin-card wide">
         <h2>AI Ops principles</h2>
         <div class="admin-checklist"><span>Detect language, dialect, task, and tone.</span><span>Route by readiness, license, latency, cost, and safety.</span><span>Fallback to NLLB/MMS/general LLM where local model quality is low.</span><span>Send tone corrections into native-speaker review queues.</span></div>
+      </section>
+    </div>
+  `;
+}
+
+function adminKnowledge() {
+  const knowledge = adminKnowledgeData();
+  const summary = knowledge.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Collections", summary.collections || "36")}
+      ${metric("Indexed chunks", summary.chunks || "1.9M")}
+      ${metric("Indexing jobs", summary.indexingJobs || "8")}
+      ${metric("Stale sources", summary.staleSources || "12")}
+      <section class="admin-card full-admin">
+        <h2>RAG collections</h2>
+        <div class="table admin-table-4">
+          ${knowledge.collections.map(knowledgeCollectionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Knowledge sources</h2>
+        <div class="table">
+          ${knowledge.sources.map(knowledgeSourceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Indexing pipeline</h2>
+        <div class="table">
+          ${knowledge.indexingJobs.map(indexingJobRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Permissions and privacy</h2>
+        <div class="table">
+          ${knowledge.permissions.map(knowledgePermissionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Retrieval quality queues</h2>
+        <div class="table">
+          ${knowledge.qualityQueues.map(knowledgeQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>RAG operating controls</h2>
+        <div class="admin-checklist">
+          <span>Every knowledge collection needs source ownership, license status, tenant scope, and freshness SLA.</span>
+          <span>Enterprise workspaces must never share embeddings, files, memories, or retrieval logs across tenants.</span>
+          <span>Low-confidence retrieval should fall back to model reasoning with clear uncertainty instead of guessing.</span>
+          <span>Language-specific packs require native-review loops before broad release.</span>
+        </div>
       </section>
     </div>
   `;
@@ -1929,6 +2042,26 @@ function apiErrorRow(item) {
   return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count}</span><span>${item.owner}</span></div>`;
 }
 
+function knowledgeCollectionRow(item) {
+  return `<div class="table-row"><strong>${item.name}</strong><span>${item.owner}</span><span>${item.chunks}</span><span>${item.access}</span></div>`;
+}
+
+function knowledgeSourceRow(item) {
+  return `<div class="table-row"><strong>${item.source}</strong><span>${item.volume}</span><span>${item.status}</span></div>`;
+}
+
+function indexingJobRow(item) {
+  return `<div class="table-row"><strong>${item.job}</strong><span>${item.progress}</span><span>${item.owner}</span></div>`;
+}
+
+function knowledgePermissionRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.status}</span><span>${item.owner}</span></div>`;
+}
+
+function knowledgeQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count}</span><span>${item.priority}</span></div>`;
+}
+
 function funnelBar(item) {
   return `<div class="funnel-row"><div><strong>${item.label}</strong><span>${item.value}</span></div><i><b style="width:${item.width}%"></b></i></div>`;
 }
@@ -2079,6 +2212,7 @@ function bindEvents() {
       loadAdminAccess(true);
       loadAdminActions(true);
       loadAdminApi(true);
+      loadAdminKnowledge(true);
       setTimeout(() => showToast("Refreshing admin data."), 40);
     }
     if (action === "sign-out") signOut();
