@@ -68,6 +68,7 @@ const ADMIN_SECTIONS = [
   { id: "overview", label: "Command", desc: "Executive health, growth, revenue, cost, and incident posture." },
   { id: "growth", label: "Growth", desc: "Visitors, activation, countries, devices, campaigns, and funnels." },
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
+  { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
   { id: "support", label: "Support", desc: "Tickets, SLA, escalations, CSAT, macros, user-impact signals, and safe support boundaries." },
   { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
@@ -148,6 +149,8 @@ const DEFAULT_STATE = {
   adminPlatformLoadedAt: null,
   adminPayments: null,
   adminPaymentsLoadedAt: null,
+  adminFinance: null,
+  adminFinanceLoadedAt: null,
   adminUsers: null,
   adminUsersLoadedAt: null,
   adminModels: null,
@@ -311,6 +314,26 @@ async function loadAdminPayments(force = false) {
     state.adminPaymentsLoadedAt = Date.now();
   } catch {
     state.adminPaymentsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminFinance(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminFinanceLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/finance`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Finance operations unavailable.");
+    state.adminFinance = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminFinanceLoadedAt = Date.now();
+  } catch {
+    state.adminFinanceLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -504,7 +527,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -643,6 +666,42 @@ function adminPaymentData() {
       { id: "INV-LUM-1050", account: "Creator Desk", amount: "$890", status: "Retrying card" }
     ],
     revenueMix: { proTeamsPercent: 73, consumerPercent: 27, churnRisk: "4.2%", dunningRecovery: "$11.4K" }
+  };
+}
+
+function adminFinanceData() {
+  return state.adminFinance || {
+    summary: { mrr: "$184K", arr: "$2.2M", grossMargin: "74%", gpuToday: "$9.8K", savingsIdentified: "14%" },
+    costCenters: [
+      { center: "Model inference", spend: "$9.8K today", driver: "1.28M requests", owner: "AI Ops", status: "Optimize" },
+      { center: "Vector storage", spend: "$2.1K today", driver: "1.9M chunks", owner: "Knowledge Ops", status: "Healthy" },
+      { center: "Web/mobile infrastructure", spend: "$1.4K today", driver: "4.8K visitors", owner: "Platform", status: "Stable" },
+      { center: "Support operations", spend: "$620 today", driver: "184 open tickets", owner: "Support", status: "Watch SLA" }
+    ],
+    forecast: [
+      { month: "Aug 2026", revenue: "$184K MRR", cost: "$48K", margin: "74%", note: "Current run rate" },
+      { month: "Sep 2026", revenue: "$214K MRR", cost: "$56K", margin: "73%", note: "Teams growth" },
+      { month: "Oct 2026", revenue: "$252K MRR", cost: "$67K", margin: "73%", note: "Mobile launch lift" },
+      { month: "Nov 2026", revenue: "$301K MRR", cost: "$81K", margin: "72%", note: "Enterprise ramp" }
+    ],
+    refunds: [
+      { queue: "High-value refund review", count: 8, exposure: "$4.2K", owner: "Finance" },
+      { queue: "Failed payment recovery", count: 31, exposure: "$11.4K", owner: "Revenue Ops" },
+      { queue: "Tax/VAT export", count: 3, exposure: "Month close", owner: "Finance" },
+      { queue: "Invoice exception review", count: 6, exposure: "$18.7K", owner: "CFO" }
+    ],
+    optimization: [
+      { action: "Cache repeated translation routes", savings: "$3.1K/mo", owner: "AI Ops", status: "Ready" },
+      { action: "Batch low-priority embeddings", savings: "$1.8K/mo", owner: "Knowledge Ops", status: "Testing" },
+      { action: "Move beta traffic to lower-cost pool", savings: "$2.4K/mo", owner: "Platform", status: "Queued" },
+      { action: "Negotiate enterprise storage tier", savings: "$5.6K/mo", owner: "Finance", status: "In progress" }
+    ],
+    controls: [
+      "Track cost per request by model route, plan, language, and customer segment.",
+      "Separate revenue reporting from operational spend and cloud/model cost.",
+      "Alert leadership when gross margin drops below 70% or failed payment exposure rises.",
+      "Require finance approval for refunds above threshold and enterprise invoice exceptions."
+    ]
   };
 }
 
@@ -956,6 +1015,22 @@ function paymentQueueRow(item) {
 
 function invoiceRow(item) {
   return `<div class="table-row"><strong>${item.id}</strong><span>${item.account}</span><span>${item.amount} / ${item.status}</span></div>`;
+}
+
+function financeCostRow(item) {
+  return `<div class="table-row"><strong>${item.center}</strong><span>${item.spend}</span><span>${item.driver}</span><span>${item.status}</span></div>`;
+}
+
+function financeForecastRow(item) {
+  return `<div class="table-row"><strong>${item.month}</strong><span>${item.revenue}</span><span>${item.cost}</span><span>${item.margin}</span></div>`;
+}
+
+function financeRefundRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.exposure}</span></div>`;
+}
+
+function financeOptimizationRow(item) {
+  return `<div class="table-row"><strong>${item.action}</strong><span>${item.savings}</span><span>${item.status}</span></div>`;
 }
 
 function userQueueRow(item) {
@@ -1463,6 +1538,7 @@ function adminView() {
   loadAdminAudit();
   if (state.adminSection === "platform") loadAdminPlatform();
   if (state.adminSection === "payments") loadAdminPayments();
+  if (state.adminSection === "finance") loadAdminFinance();
   if (state.adminSection === "users") loadAdminUsers();
   if (state.adminSection === "support") loadAdminSupport();
   if (state.adminSection === "models") loadAdminModels();
@@ -1563,6 +1639,7 @@ function adminSectionView(section, readiness) {
     overview: () => adminOverview(readiness),
     growth: adminGrowth,
     payments: adminPayments,
+    finance: adminFinance,
     users: adminUsers,
     support: adminSupport,
     models: () => adminModels(readiness),
@@ -1689,6 +1766,49 @@ function adminPayments() {
       <section class="admin-card wide">
         <h2>Finance actions</h2>
         <div class="admin-checklist"><span>Retry failed payments with smart dunning.</span><span>Review refund requests over $250.</span><span>Prepare Teams invoices and tax exports.</span><span>Projected dunning recovery: ${mix.dunningRecovery || "$11.4K"}</span></div>
+      </section>
+    </div>
+  `;
+}
+
+function adminFinance() {
+  const finance = adminFinanceData();
+  const summary = finance.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("MRR", summary.mrr || adminMetricValue("revenue.mrr", "$184K"))}
+      ${metric("ARR", summary.arr || adminMetricValue("revenue.arr", "$2.2M"))}
+      ${metric("Gross margin", summary.grossMargin || "74%")}
+      ${metric("GPU today", summary.gpuToday || "$9.8K")}
+      <section class="admin-card full-admin">
+        <h2>Cost centers</h2>
+        <div class="table admin-table-4">
+          ${finance.costCenters.map(financeCostRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Forecast and margin</h2>
+        <div class="table admin-table-4">
+          ${finance.forecast.map(financeForecastRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Refund and exposure queues</h2>
+        <div class="table">
+          ${finance.refunds.map(financeRefundRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Optimization actions</h2>
+        <div class="table">
+          ${finance.optimization.map(financeOptimizationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Finance operating controls</h2>
+        <div class="admin-checklist">
+          ${finance.controls.map(item => `<span>${item}</span>`).join("")}
+        </div>
       </section>
     </div>
   `;
@@ -2325,6 +2445,7 @@ function bindEvents() {
       loadAdminAudit(true);
       loadAdminPlatform(true);
       loadAdminPayments(true);
+      loadAdminFinance(true);
       loadAdminUsers(true);
       loadAdminSupport(true);
       loadAdminModels(true);

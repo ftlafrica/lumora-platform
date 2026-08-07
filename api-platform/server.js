@@ -324,6 +324,40 @@ const supportOperations = {
   ]
 };
 
+const financeOperations = {
+  summary: { mrr: "$184K", arr: "$2.2M", grossMargin: "74%", gpuToday: "$9.8K", savingsIdentified: "14%" },
+  costCenters: [
+    { center: "Model inference", spend: "$9.8K today", driver: "1.28M requests", owner: "AI Ops", status: "Optimize" },
+    { center: "Vector storage", spend: "$2.1K today", driver: "1.9M chunks", owner: "Knowledge Ops", status: "Healthy" },
+    { center: "Web/mobile infrastructure", spend: "$1.4K today", driver: "4.8K visitors", owner: "Platform", status: "Stable" },
+    { center: "Support operations", spend: "$620 today", driver: "184 open tickets", owner: "Support", status: "Watch SLA" }
+  ],
+  forecast: [
+    { month: "Aug 2026", revenue: "$184K MRR", cost: "$48K", margin: "74%", note: "Current run rate" },
+    { month: "Sep 2026", revenue: "$214K MRR", cost: "$56K", margin: "73%", note: "Teams growth" },
+    { month: "Oct 2026", revenue: "$252K MRR", cost: "$67K", margin: "73%", note: "Mobile launch lift" },
+    { month: "Nov 2026", revenue: "$301K MRR", cost: "$81K", margin: "72%", note: "Enterprise ramp" }
+  ],
+  refunds: [
+    { queue: "High-value refund review", count: 8, exposure: "$4.2K", owner: "Finance" },
+    { queue: "Failed payment recovery", count: 31, exposure: "$11.4K", owner: "Revenue Ops" },
+    { queue: "Tax/VAT export", count: 3, exposure: "Month close", owner: "Finance" },
+    { queue: "Invoice exception review", count: 6, exposure: "$18.7K", owner: "CFO" }
+  ],
+  optimization: [
+    { action: "Cache repeated translation routes", savings: "$3.1K/mo", owner: "AI Ops", status: "Ready" },
+    { action: "Batch low-priority embeddings", savings: "$1.8K/mo", owner: "Knowledge Ops", status: "Testing" },
+    { action: "Move beta traffic to lower-cost pool", savings: "$2.4K/mo", owner: "Platform", status: "Queued" },
+    { action: "Negotiate enterprise storage tier", savings: "$5.6K/mo", owner: "Finance", status: "In progress" }
+  ],
+  controls: [
+    "Track cost per request by model route, plan, language, and customer segment.",
+    "Separate revenue reporting from operational spend and cloud/model cost.",
+    "Alert leadership when gross margin drops below 70% or failed payment exposure rises.",
+    "Require finance approval for refunds above threshold and enterprise invoice exceptions."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -513,6 +547,10 @@ function adminSupportOperations() {
   return supportOperations;
 }
 
+function adminFinanceOperations() {
+  return financeOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -534,7 +572,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "access:grant",
       "api:manage",
       "knowledge:operate",
-      "support:review"
+      "support:review",
+      "finance:read"
     ],
     audit: [
       accessEvent,
@@ -682,6 +721,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminSupportOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/finance") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("finance_cost_center_viewed", "Finance", "Info", "Finance");
+      return sendJson(response, 200, adminFinanceOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -698,4 +745,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, plans };

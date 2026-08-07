@@ -16,6 +16,7 @@ This is the first backend foundation for connecting the Web Platform, Enterprise
 - `GET /v1/admin/audit`
 - `GET /v1/admin/platform`
 - `GET /v1/admin/payments`
+- `GET /v1/admin/finance`
 - `GET /v1/admin/users`
 - `GET /v1/admin/models`
 - `GET /v1/admin/safety`
@@ -50,7 +51,7 @@ Both clients currently expect `http://localhost:8787` as the local API base URL.
 
 The Enterprise Admin Console calls `GET /v1/admin/metrics` with `X-Seed-Admin-Code` to populate leadership, growth, payments, AI Ops, safety, and platform preview metrics.
 
-It also calls `POST /v1/admin/access/verify` to exchange the prototype seed-admin code for a temporary admin session, scopes, and audit records, `GET /v1/admin/audit` for the current audit feed, `GET /v1/admin/platform` for release and feature-flag controls, `GET /v1/admin/payments` for billing operations, `GET /v1/admin/users` for user/org operations, `GET /v1/admin/models` for AI Ops, `GET /v1/admin/safety` for moderation and language quality, `GET /v1/admin/growth` for visitor intelligence, `GET /v1/admin/access` for RBAC/compliance posture, `GET /v1/admin/actions` for leadership operations, incidents, decisions, follow-ups, and runbooks, `GET /v1/admin/api` for API keys, quotas, SDKs, webhooks, and integration health, `GET /v1/admin/knowledge` for RAG collections, sources, indexing, permissions, and retrieval quality, and `GET /v1/admin/support` for tickets, escalations, SLA, CSAT, macros, and safe support boundaries.
+It also calls `POST /v1/admin/access/verify` to exchange the prototype seed-admin code for a temporary admin session, scopes, and audit records, `GET /v1/admin/audit` for the current audit feed, `GET /v1/admin/platform` for release and feature-flag controls, `GET /v1/admin/payments` for billing operations, `GET /v1/admin/finance` for margin, model/cloud cost, forecasts, refunds, and optimization, `GET /v1/admin/users` for user/org operations, `GET /v1/admin/models` for AI Ops, `GET /v1/admin/safety` for moderation and language quality, `GET /v1/admin/growth` for visitor intelligence, `GET /v1/admin/access` for RBAC/compliance posture, `GET /v1/admin/actions` for leadership operations, incidents, decisions, follow-ups, and runbooks, `GET /v1/admin/api` for API keys, quotas, SDKs, webhooks, and integration health, `GET /v1/admin/knowledge` for RAG collections, sources, indexing, permissions, and retrieval quality, and `GET /v1/admin/support` for tickets, escalations, SLA, CSAT, macros, and safe support boundaries.
 
 ## Example Requests
 
@@ -92,6 +93,12 @@ Payment operations:
 
 ```powershell
 Invoke-RestMethod -Uri http://localhost:8787/v1/admin/payments -Headers @{"X-Seed-Admin-Code"="LUMORA-SEED-2026"}
+```
+
+Finance and cost operations:
+
+```powershell
+Invoke-RestMethod -Uri http://localhost:8787/v1/admin/finance -Headers @{"X-Seed-Admin-Code"="LUMORA-SEED-2026"}
 ```
 
 User and organization operations:
