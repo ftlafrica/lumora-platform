@@ -222,6 +222,40 @@ const actionOperations = {
   ]
 };
 
+const apiOperations = {
+  summary: { customers: 320, callsToday: "9.2M", errorRate: "0.8%", activeKeys: 486, webhooksQueued: 42 },
+  keys: [
+    { name: "EduBridge production", owner: "EduBridge Africa", scope: "chat, translate, voice", usage: "1.8M calls", status: "Healthy" },
+    { name: "MarketUnion server key", owner: "MarketUnion NG", scope: "chat, market, webhooks", usage: "940K calls", status: "Rate watch" },
+    { name: "Creator Desk beta", owner: "Creator Desk", scope: "creator, translate", usage: "284K calls", status: "Healthy" },
+    { name: "Public docs sandbox", owner: "Developer Relations", scope: "demo-only", usage: "18K calls", status: "Restricted" }
+  ],
+  quotas: [
+    { tier: "Free API", limit: "1K/day", used: "68%", action: "Throttle at 90%" },
+    { tier: "Builder", limit: "250K/mo", used: "44%", action: "Normal" },
+    { tier: "Teams", limit: "2M/mo", used: "71%", action: "Notify at 85%" },
+    { tier: "Enterprise", limit: "Custom", used: "58%", action: "Account manager review" }
+  ],
+  webhooks: [
+    { event: "message.completed", deliveries: "2.1M", failures: 18, status: "Healthy" },
+    { event: "translation.reviewed", deliveries: "184K", failures: 7, status: "Healthy" },
+    { event: "payment.upgraded", deliveries: "8.4K", failures: 3, status: "Retrying" },
+    { event: "safety.escalated", deliveries: "412", failures: 0, status: "Protected" }
+  ],
+  sdks: [
+    { sdk: "JavaScript", version: "0.3.1", adoption: "62%", status: "Current" },
+    { sdk: "Python", version: "0.2.8", adoption: "21%", status: "Patch queued" },
+    { sdk: "React Native", version: "0.1.4", adoption: "11%", status: "Beta" },
+    { sdk: "REST only", version: "v1", adoption: "6%", status: "Supported" }
+  ],
+  errorQueues: [
+    { queue: "Rate limit disputes", count: 14, owner: "Developer Support", priority: "Medium" },
+    { queue: "Webhook retries", count: 42, owner: "Platform", priority: "Today" },
+    { queue: "Invalid model route requests", count: 128, owner: "AI Ops", priority: "Review" },
+    { queue: "Suspicious API behavior", count: 6, owner: "Security", priority: "High" }
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -399,6 +433,10 @@ function adminActionOperations() {
   return actionOperations;
 }
 
+function adminApiOperations() {
+  return apiOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -417,7 +455,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "models:operate",
       "safety:review",
       "platform:operate",
-      "access:grant"
+      "access:grant",
+      "api:manage"
     ],
     audit: [
       accessEvent,
@@ -541,6 +580,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminActionOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/api") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("api_management_viewed", "API Management", "Info", "Developer");
+      return sendJson(response, 200, adminApiOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -557,4 +604,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, plans };

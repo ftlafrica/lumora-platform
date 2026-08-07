@@ -72,6 +72,7 @@ const ADMIN_SECTIONS = [
   { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
   { id: "safety", label: "Safety", desc: "Moderation, corrections, privacy, red-team findings, appeals, and policy." },
   { id: "platform", label: "Platform", desc: "Web, mobile, API, infrastructure, incidents, releases, and feature flags." },
+  { id: "api", label: "API", desc: "Keys, quotas, SDKs, webhooks, rate limits, errors, and partner integration health." },
   { id: "access", label: "Access", desc: "Seed-admin grants, RBAC, audit logs, compliance, data residency, and SSO." },
   { id: "operations", label: "Operations", desc: "Incidents, decisions, follow-ups, runbooks, owners, ETAs, and leadership action tracking." }
 ];
@@ -157,6 +158,8 @@ const DEFAULT_STATE = {
   adminAccessLoadedAt: null,
   adminActions: null,
   adminActionsLoadedAt: null,
+  adminApi: null,
+  adminApiLoadedAt: null,
   user: {
     name: "Murewa Oyetoro",
     email: "murewa@example.com",
@@ -422,6 +425,26 @@ async function loadAdminActions(force = false) {
     state.adminActionsLoadedAt = Date.now();
   } catch {
     state.adminActionsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminApi(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminApiLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/api`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("API management unavailable.");
+    state.adminApi = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminApiLoadedAt = Date.now();
+  } catch {
+    state.adminApiLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -729,6 +752,42 @@ function adminActionData() {
       { runbook: "Payment retry surge", trigger: "Failed payment count > 25 today", owner: "Finance" },
       { runbook: "Mobile crash cluster", trigger: "Crash-free sessions below 99.5%", owner: "Mobile" },
       { runbook: "Safety escalation", trigger: "High severity moderation queue > 20", owner: "Trust" }
+    ]
+  };
+}
+
+function adminApiData() {
+  return state.adminApi || {
+    summary: { customers: 320, callsToday: "9.2M", errorRate: "0.8%", activeKeys: 486, webhooksQueued: 42 },
+    keys: [
+      { name: "EduBridge production", owner: "EduBridge Africa", scope: "chat, translate, voice", usage: "1.8M calls", status: "Healthy" },
+      { name: "MarketUnion server key", owner: "MarketUnion NG", scope: "chat, market, webhooks", usage: "940K calls", status: "Rate watch" },
+      { name: "Creator Desk beta", owner: "Creator Desk", scope: "creator, translate", usage: "284K calls", status: "Healthy" },
+      { name: "Public docs sandbox", owner: "Developer Relations", scope: "demo-only", usage: "18K calls", status: "Restricted" }
+    ],
+    quotas: [
+      { tier: "Free API", limit: "1K/day", used: "68%", action: "Throttle at 90%" },
+      { tier: "Builder", limit: "250K/mo", used: "44%", action: "Normal" },
+      { tier: "Teams", limit: "2M/mo", used: "71%", action: "Notify at 85%" },
+      { tier: "Enterprise", limit: "Custom", used: "58%", action: "Account manager review" }
+    ],
+    webhooks: [
+      { event: "message.completed", deliveries: "2.1M", failures: 18, status: "Healthy" },
+      { event: "translation.reviewed", deliveries: "184K", failures: 7, status: "Healthy" },
+      { event: "payment.upgraded", deliveries: "8.4K", failures: 3, status: "Retrying" },
+      { event: "safety.escalated", deliveries: "412", failures: 0, status: "Protected" }
+    ],
+    sdks: [
+      { sdk: "JavaScript", version: "0.3.1", adoption: "62%", status: "Current" },
+      { sdk: "Python", version: "0.2.8", adoption: "21%", status: "Patch queued" },
+      { sdk: "React Native", version: "0.1.4", adoption: "11%", status: "Beta" },
+      { sdk: "REST only", version: "v1", adoption: "6%", status: "Supported" }
+    ],
+    errorQueues: [
+      { queue: "Rate limit disputes", count: 14, owner: "Developer Support", priority: "Medium" },
+      { queue: "Webhook retries", count: 42, owner: "Platform", priority: "Today" },
+      { queue: "Invalid model route requests", count: 128, owner: "AI Ops", priority: "Review" },
+      { queue: "Suspicious API behavior", count: 6, owner: "Security", priority: "High" }
     ]
   };
 }
@@ -1276,6 +1335,7 @@ function adminView() {
   if (state.adminSection === "growth") loadAdminGrowth();
   if (state.adminSection === "access") loadAdminAccess();
   if (state.adminSection === "operations") loadAdminActions();
+  if (state.adminSection === "api") loadAdminApi();
   const readiness = MODEL_REGISTRY.reduce((acc, item) => {
     acc[item.readiness] = (acc[item.readiness] || 0) + 1;
     return acc;
@@ -1371,6 +1431,7 @@ function adminSectionView(section, readiness) {
     models: () => adminModels(readiness),
     safety: adminSafety,
     platform: adminPlatform,
+    api: adminApiManagement,
     access: adminAccess,
     operations: adminOperations
   };
@@ -1652,6 +1713,58 @@ function adminPlatform() {
   `;
 }
 
+function adminApiManagement() {
+  const api = adminApiData();
+  const summary = api.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("API customers", summary.customers || "320")}
+      ${metric("Calls today", summary.callsToday || "9.2M")}
+      ${metric("Error rate", summary.errorRate || adminMetricValue("platform.apiErrors", "0.8%"))}
+      ${metric("Active keys", summary.activeKeys || "486")}
+      <section class="admin-card full-admin">
+        <h2>API keys and customers</h2>
+        <div class="table admin-table-4">
+          ${api.keys.map(apiKeyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Quota and rate-limit policy</h2>
+        <div class="table">
+          ${api.quotas.map(apiQuotaRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Webhook delivery</h2>
+        <div class="table">
+          ${api.webhooks.map(webhookRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>SDK adoption</h2>
+        <div class="admin-module-grid">
+          ${api.sdks.map(sdkCard).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Error and trust queues</h2>
+        <div class="table">
+          ${api.errorQueues.map(apiErrorRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Production API controls</h2>
+        <div class="admin-checklist">
+          <span>Rotate keys with scoped permissions, owner identity, environment, and expiry.</span>
+          <span>Enforce quotas by plan, organization, country, model route, and abuse risk.</span>
+          <span>Protect webhooks with signatures, retries, dead-letter queues, and delivery logs.</span>
+          <span>Track SDK versions so web, mobile, and partners do not drift from supported APIs.</span>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminAccess() {
   const session = state.adminSession || localAdminSession();
   const scopes = session.scopes || [];
@@ -1794,6 +1907,26 @@ function followUpRow(item) {
 
 function runbookRow(item) {
   return `<div class="table-row"><strong>${item.runbook}</strong><span>${item.owner}</span><span>${item.trigger}</span></div>`;
+}
+
+function apiKeyRow(item) {
+  return `<div class="table-row"><strong>${item.name}</strong><span>${item.owner}</span><span>${item.usage}</span><span>${item.status}</span></div>`;
+}
+
+function apiQuotaRow(item) {
+  return `<div class="table-row"><strong>${item.tier}</strong><span>${item.limit}</span><span>${item.used}</span></div>`;
+}
+
+function webhookRow(item) {
+  return `<div class="table-row"><strong>${item.event}</strong><span>${item.deliveries}</span><span>${item.failures} failures</span></div>`;
+}
+
+function sdkCard(item) {
+  return `<article class="admin-module"><h3>${item.sdk}</h3><p>${item.version} - ${item.status}</p><div class="module-metrics"><span>${item.adoption}</span></div></article>`;
+}
+
+function apiErrorRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count}</span><span>${item.owner}</span></div>`;
 }
 
 function funnelBar(item) {
@@ -1945,6 +2078,7 @@ function bindEvents() {
       loadAdminGrowth(true);
       loadAdminAccess(true);
       loadAdminActions(true);
+      loadAdminApi(true);
       setTimeout(() => showToast("Refreshing admin data."), 40);
     }
     if (action === "sign-out") signOut();

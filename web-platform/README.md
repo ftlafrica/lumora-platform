@@ -24,7 +24,7 @@ Admin preview entry: open `admin.html` or `index.html#admin-preview`.
 - Premium plan selection with Free, Plus, Pro, and Teams
 - Personal user dashboard with plan usage, language passport, activity, and preferences
 - Seed-admin-gated enterprise Admin Console
-- Enterprise Admin Dashboard sections: Command, Growth, Payments, Users and Orgs, AI Ops, Safety, Platform, Access, Operations
+- Enterprise Admin Dashboard sections: Command, Growth, Payments, Users and Orgs, AI Ops, Safety, Platform, API, Access, Operations
 - Admin metrics connection to the local API with preview fallback
 - Hugging Face model registry prototype
 - API-first chat calls with local simulated fallback
@@ -51,7 +51,7 @@ npm run start
 
 The web app posts chat prompts to `http://localhost:8787/v1/chat`. If the API is not running, the interface still works using the local Lumora simulation so design and product review can continue.
 
-The Admin Console calls `http://localhost:8787/v1/admin/access/verify` to validate the prototype seed-admin code, then calls `http://localhost:8787/v1/admin/metrics`, `http://localhost:8787/v1/admin/audit`, `http://localhost:8787/v1/admin/platform`, `http://localhost:8787/v1/admin/payments`, `http://localhost:8787/v1/admin/users`, `http://localhost:8787/v1/admin/models`, `http://localhost:8787/v1/admin/safety`, `http://localhost:8787/v1/admin/growth`, `http://localhost:8787/v1/admin/access`, and `http://localhost:8787/v1/admin/actions` with the prototype seed-admin header. When the API is offline, it stays usable with preview metrics and labels the dashboard as `Preview fallback`.
+The Admin Console calls `http://localhost:8787/v1/admin/access/verify` to validate the prototype seed-admin code, then calls `http://localhost:8787/v1/admin/metrics`, `http://localhost:8787/v1/admin/audit`, `http://localhost:8787/v1/admin/platform`, `http://localhost:8787/v1/admin/payments`, `http://localhost:8787/v1/admin/users`, `http://localhost:8787/v1/admin/models`, `http://localhost:8787/v1/admin/safety`, `http://localhost:8787/v1/admin/growth`, `http://localhost:8787/v1/admin/access`, `http://localhost:8787/v1/admin/actions`, and `http://localhost:8787/v1/admin/api` with the prototype seed-admin header. When the API is offline, it stays usable with preview metrics and labels the dashboard as `Preview fallback`.
 
 ## Admin Separation
 
@@ -59,7 +59,7 @@ The consumer app should never expose sensitive admin operations in the normal us
 
 - Users see `Dashboard` for safe plan, language passport, and activity information.
 - Enterprise operators use `admin.html` or `#admin-preview` for prototype previewing.
-- The Admin Console is separated into leadership/dev operating areas: executive command, visitor growth, payments, user/org management, model operations, safety, platform operations, access/compliance, and operations action tracking.
+- The Admin Console is separated into leadership/dev operating areas: executive command, visitor growth, payments, user/org management, model operations, safety, platform operations, API management, access/compliance, and operations action tracking.
 - Production-style access is still represented at `#admin`, which opens a seed-admin access gate when not already unlocked.
 - Prototype seed code: `LUMORA-SEED-2026`.
 - Connected prototype metrics require the local API to be running.
@@ -71,6 +71,7 @@ The consumer app should never expose sensitive admin operations in the normal us
 - The AI Ops section shows model health, Hugging Face registry, route policies, fallback queues, and readiness snapshots.
 - The Safety section shows moderation queues, appeals, language quality loops, policy signals, and guardrails.
 - The Growth section shows visitor intelligence, conversion funnel, markets, acquisition channels, and device mix.
+- The API section shows API keys, customers, quotas, webhook delivery, SDK adoption, error queues, and production API controls.
 - The Access section shows RBAC roles, approval queues, compliance controls, scopes, audit, and seed-admin policy.
 - The Operations section shows incident command, leadership decisions, follow-ups, runbooks, owners, ETAs, and operating cadence.
 - Production must replace this with SSO/MFA, RBAC/ABAC, audit logs, and seed-admin-issued access.
