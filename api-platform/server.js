@@ -84,6 +84,28 @@ const userOperations = {
   ]
 };
 
+const modelOperations = {
+  routePolicies: [
+    { policy: "Translation", primary: "AfriNLLB", fallback: "Meta NLLB-200", status: "Healthy" },
+    { policy: "Speech", primary: "Meta MMS", fallback: "Simba-H", status: "Watch latency" },
+    { policy: "Social tone", primary: "AfroXLMR-Social", fallback: "AfroXLMR", status: "Healthy" },
+    { policy: "General African language", primary: "AfroXLMR", fallback: "InkubaLM", status: "Healthy" }
+  ],
+  fallbackQueues: [
+    { queue: "Low-confidence dialects", count: 128, owner: "Language Quality", priority: "High" },
+    { queue: "Speech model latency", count: 37, owner: "Voice Ops", priority: "Medium" },
+    { queue: "Unsupported language pairs", count: 24, owner: "Model Ops", priority: "High" },
+    { queue: "Tone correction review", count: 312, owner: "Native reviewers", priority: "Today" }
+  ],
+  health: modelRegistry.map((model, index) => ({
+    name: model.name,
+    readiness: model.readiness,
+    latencyMs: 260 + index * 28,
+    successRate: index % 4 === 0 ? "98.6%" : "99.1%",
+    status: model.readiness === "A" ? "Ready" : "Watch"
+  }))
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -225,6 +247,26 @@ function adminUserOperations() {
   return userOperations;
 }
 
+function adminModelOperations() {
+  const readiness = modelRegistry.reduce((acc, model) => {
+    acc[model.readiness] = (acc[model.readiness] || 0) + 1;
+    return acc;
+  }, {});
+  return {
+    registry: modelRegistry,
+    health: modelOperations.health,
+    routePolicies: modelOperations.routePolicies,
+    fallbackQueues: modelOperations.fallbackQueues,
+    readiness,
+    summary: {
+      modelSources: modelRegistry.length,
+      averageRouteMs: 428,
+      successRate: "99.1%",
+      fallbackChains: modelOperations.routePolicies.length
+    }
+  };
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -327,6 +369,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminUserOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/models") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("model_operations_viewed", "AI Ops", "Info", "Model Ops");
+      return sendJson(response, 200, adminModelOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -343,4 +393,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, plans };

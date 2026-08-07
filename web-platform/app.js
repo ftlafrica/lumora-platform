@@ -146,6 +146,8 @@ const DEFAULT_STATE = {
   adminPaymentsLoadedAt: null,
   adminUsers: null,
   adminUsersLoadedAt: null,
+  adminModels: null,
+  adminModelsLoadedAt: null,
   user: {
     name: "Murewa Oyetoro",
     email: "murewa@example.com",
@@ -311,6 +313,26 @@ async function loadAdminUsers(force = false) {
     state.adminUsersLoadedAt = Date.now();
   } catch {
     state.adminUsersLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminModels(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminModelsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/models`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Model operations unavailable.");
+    state.adminModels = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminModelsLoadedAt = Date.now();
+  } catch {
+    state.adminModelsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -490,6 +512,33 @@ function adminUserData() {
   };
 }
 
+function adminModelData(readiness = {}) {
+  return state.adminModels || {
+    registry: MODEL_REGISTRY,
+    health: MODEL_REGISTRY.map((model, index) => ({
+      name: model.name,
+      readiness: model.readiness,
+      latencyMs: 260 + index * 28,
+      successRate: index % 4 === 0 ? "98.6%" : "99.1%",
+      status: model.readiness === "A" ? "Ready" : "Watch"
+    })),
+    routePolicies: [
+      { policy: "Translation", primary: "AfriNLLB", fallback: "Meta NLLB-200", status: "Healthy" },
+      { policy: "Speech", primary: "Meta MMS", fallback: "Simba-H", status: "Watch latency" },
+      { policy: "Social tone", primary: "AfroXLMR-Social", fallback: "AfroXLMR", status: "Healthy" },
+      { policy: "General African language", primary: "AfroXLMR", fallback: "InkubaLM", status: "Healthy" }
+    ],
+    fallbackQueues: [
+      { queue: "Low-confidence dialects", count: 128, owner: "Language Quality", priority: "High" },
+      { queue: "Speech model latency", count: 37, owner: "Voice Ops", priority: "Medium" },
+      { queue: "Unsupported language pairs", count: 24, owner: "Model Ops", priority: "High" },
+      { queue: "Tone correction review", count: 312, owner: "Native reviewers", priority: "Today" }
+    ],
+    readiness,
+    summary: { modelSources: MODEL_REGISTRY.length, averageRouteMs: 428, successRate: "99.1%", fallbackChains: 4 }
+  };
+}
+
 function formatAdminTime(timestamp) {
   if (!timestamp) return "Not loaded";
   return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -548,6 +597,18 @@ function orgRow(item) {
 
 function orgControlRow(item) {
   return `<div class="table-row"><strong>${item.control}</strong><span>${item.status}</span><span>${item.owner}</span></div>`;
+}
+
+function modelHealthRow(item) {
+  return `<div class="table-row"><strong>${item.name}</strong><span>${item.readiness} / ${item.latencyMs}ms</span><span>${item.successRate} / ${item.status}</span></div>`;
+}
+
+function routePolicyRow(item) {
+  return `<div class="table-row"><strong>${item.policy}</strong><span>${item.primary} -> ${item.fallback}</span><span>${item.status}</span></div>`;
+}
+
+function fallbackQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.owner} / ${item.priority}</span></div>`;
 }
 
 function generateReply(text) {
@@ -984,6 +1045,7 @@ function adminView() {
   if (state.adminSection === "platform") loadAdminPlatform();
   if (state.adminSection === "payments") loadAdminPayments();
   if (state.adminSection === "users") loadAdminUsers();
+  if (state.adminSection === "models") loadAdminModels();
   const readiness = MODEL_REGISTRY.reduce((acc, item) => {
     acc[item.readiness] = (acc[item.readiness] || 0) + 1;
     return acc;
@@ -1227,25 +1289,46 @@ function adminUsers() {
 }
 
 function adminModels(readiness) {
+  const models = adminModelData(readiness);
+  const summary = models.summary || {};
+  const readinessSummary = models.readiness || readiness;
   return `
     <div class="admin-grid">
-      ${metric("Model sources", adminMetricValue("ai.modelSources", MODEL_REGISTRY.length))}
-      ${metric("Avg route", `${adminMetricValue("ai.averageRouteMs", 428)}ms`)}
-      ${metric("Success rate", adminMetricValue("ai.successRate", "99.1%"))}
-      ${metric("Fallback chains", "3")}
+      ${metric("Model sources", summary.modelSources || adminMetricValue("ai.modelSources", MODEL_REGISTRY.length))}
+      ${metric("Avg route", `${summary.averageRouteMs || adminMetricValue("ai.averageRouteMs", 428)}ms`)}
+      ${metric("Success rate", summary.successRate || adminMetricValue("ai.successRate", "99.1%"))}
+      ${metric("Fallback chains", summary.fallbackChains || "4")}
+      <section class="admin-card full-admin">
+        <h2>Model health</h2>
+        <div class="table admin-table-4">
+          ${models.health.map(modelHealthRow).join("")}
+        </div>
+      </section>
       <section class="admin-card full-admin">
         <h2>Hugging Face model registry</h2>
         <div class="table admin-table-4">
-          ${MODEL_REGISTRY.map(model => `<div class="table-row"><strong>${model.name}</strong><span>${model.readiness}</span><span>${model.languages}</span><span>${model.task}</span></div>`).join("")}
+          ${models.registry.map(model => `<div class="table-row"><strong>${model.name}</strong><span>${model.readiness}</span><span>${model.languages}</span><span>${Array.isArray(model.tasks) ? model.tasks.join(", ") : model.task}</span></div>`).join("")}
         </div>
       </section>
       <section class="admin-card wide">
         <h2>Routing policy</h2>
-        <div class="admin-checklist"><span>Detect language, dialect, task, and tone.</span><span>Route by readiness, license, latency, cost, and safety.</span><span>Fallback to NLLB/MMS/general LLM where local model quality is low.</span></div>
+        <div class="table">
+          ${models.routePolicies.map(routePolicyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Fallback queues</h2>
+        <div class="table">
+          ${models.fallbackQueues.map(fallbackQueueRow).join("")}
+        </div>
       </section>
       <section class="admin-card wide">
         <h2>Readiness snapshot</h2>
-        <div class="model-list compact-metrics">${metric("A readiness", readiness.A || 0)}${metric("B readiness", readiness.B || 0)}${metric("Priority launch", "Nigeria")}</div>
+        <div class="model-list compact-metrics">${metric("A readiness", readinessSummary.A || 0)}${metric("B readiness", readinessSummary.B || 0)}${metric("Priority launch", "Nigeria")}</div>
+      </section>
+      <section class="admin-card wide">
+        <h2>AI Ops principles</h2>
+        <div class="admin-checklist"><span>Detect language, dialect, task, and tone.</span><span>Route by readiness, license, latency, cost, and safety.</span><span>Fallback to NLLB/MMS/general LLM where local model quality is low.</span><span>Send tone corrections into native-speaker review queues.</span></div>
       </section>
     </div>
   `;
@@ -1513,6 +1596,7 @@ function bindEvents() {
       loadAdminPlatform(true);
       loadAdminPayments(true);
       loadAdminUsers(true);
+      loadAdminModels(true);
       setTimeout(() => showToast("Refreshing admin data."), 40);
     }
     if (action === "sign-out") signOut();
