@@ -137,6 +137,7 @@ const DEFAULT_STATE = {
   adminApiStatus: "preview",
   adminMetrics: null,
   adminMetricsLoadedAt: null,
+  adminSession: null,
   user: {
     name: "Murewa Oyetoro",
     email: "murewa@example.com",
@@ -225,6 +226,49 @@ async function loadAdminMetrics(force = false) {
   }
   saveState();
   if (state.route === "admin") render();
+}
+
+function localAdminSession() {
+  const issuedAt = new Date().toISOString();
+  return {
+    sessionId: `preview-admin-${Date.now()}`,
+    operator: "Seed Admin",
+    role: "Seed Admin",
+    issuedAt,
+    expiresInMinutes: 60,
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant"],
+    audit: [
+      { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
+      { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
+    ]
+  };
+}
+
+async function verifyAdminAccess(code) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/access/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, operator: "Seed Admin" })
+    });
+    if (!response.ok) return { ok: false, message: "Seed admin code was not accepted." };
+    const session = await response.json();
+    state.adminApiStatus = "connected";
+    return { ok: true, session, message: "Seed admin access granted through Lumora API." };
+  } catch {
+    if (code === SEED_ADMIN_CODE) {
+      state.adminApiStatus = "preview";
+      return { ok: true, session: localAdminSession(), message: "Seed admin preview unlocked. API verification is offline." };
+    }
+    return { ok: false, message: "Seed admin code was not accepted." };
+  }
+}
+
+function unlockAdmin(session, route = "admin") {
+  state.adminUnlocked = true;
+  state.adminSession = session || localAdminSession();
+  saveState();
+  routeTo(route);
 }
 
 function routeTo(route, params = {}) {
@@ -755,6 +799,7 @@ function adminView() {
             <h1>${active.desc}</h1>
           </div>
           <div class="top-actions">
+            <span class="admin-session-pill">${state.adminSession ? state.adminSession.role : "No session"}</span>
             <button class="pill mobile-menu" data-action="drawer"><span class="hamburger"><span></span></span></button>
             <button class="pill" data-route="fresh">Consumer app</button>
             <button class="pill gold" data-action="lock-admin">Lock admin</button>
@@ -799,6 +844,7 @@ function adminGateView() {
 }
 
 function adminSidebar() {
+  const session = state.adminSession || localAdminSession();
   return `
     <aside class="sidebar">
       <div>
@@ -817,7 +863,7 @@ function adminSidebar() {
       </div>
       <button class="profile-mini">
         <span class="avatar">SA</span>
-        <span><strong>Seed Admin</strong><small>Full platform access</small></span>
+        <span><strong>${session.operator || "Seed Admin"}</strong><small>${session.role || "Full platform access"} - ${adminStatusLabel()}</small></span>
       </button>
     </aside>
   `;
@@ -1016,12 +1062,27 @@ function adminPlatform() {
 }
 
 function adminAccess() {
+  const session = state.adminSession || localAdminSession();
+  const scopes = session.scopes || [];
+  const audit = session.audit || [];
   return `
     <div class="admin-grid">
       ${metric("Roles", ADMIN_ROLES.length)}
       ${metric("Audit events", "1,904")}
       ${metric("Critical threats", "0")}
       ${metric("SSO enabled orgs", "14")}
+      <section class="admin-card wide">
+        <h2>Current admin session</h2>
+        <div class="table">
+          <div class="table-row"><strong>Operator</strong><span>${session.operator || "Seed Admin"}</span><span>${session.role || "Seed Admin"}</span></div>
+          <div class="table-row"><strong>Session</strong><span>${session.sessionId || "preview"}</span><span>${session.expiresInMinutes || 60} min</span></div>
+          <div class="table-row"><strong>Issued</strong><span>${formatAdminTime(Date.parse(session.issuedAt || new Date().toISOString()))}</span><span>${adminStatusLabel()}</span></div>
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Granted scopes</h2>
+        <div class="admin-checklist">${scopes.map(scope => `<span>${scope}</span>`).join("")}</div>
+      </section>
       <section class="admin-card full-admin">
         <h2>Role access matrix</h2>
         <div class="table admin-table-4">
@@ -1030,7 +1091,9 @@ function adminAccess() {
       </section>
       <section class="admin-card wide">
         <h2>Audit and compliance</h2>
-        <div class="admin-checklist"><span>MFA and passkeys required</span><span>RBAC/ABAC policy engine</span><span>Immutable audit log</span><span>GDPR/data residency request handling</span></div>
+        <div class="table">
+          ${audit.map(item => `<div class="table-row"><strong>${item.action}</strong><span>${item.area}</span><span>${item.severity}</span></div>`).join("")}
+        </div>
       </section>
       <section class="admin-card wide">
         <h2>Seed admin policy</h2>
@@ -1202,13 +1265,12 @@ function bindEvents() {
     }
     if (action === "sign-out") signOut();
     if (action === "preview-admin") {
-      state.adminUnlocked = true;
-      saveState();
-      routeTo("admin");
+      unlockAdmin(localAdminSession());
       setTimeout(() => showToast("Admin Console preview opened."), 40);
     }
     if (action === "lock-admin") {
       state.adminUnlocked = false;
+      state.adminSession = null;
       saveState();
       routeTo("fresh");
       setTimeout(() => showToast("Admin console locked."), 40);
@@ -1242,16 +1304,15 @@ function bindEvents() {
     routeTo("fresh");
     setTimeout(() => showToast("Welcome back. Your Lumora workspace is ready."), 40);
   }));
-  document.querySelectorAll("form[data-action='seed-admin']").forEach(form => form.addEventListener("submit", event => {
+  document.querySelectorAll("form[data-action='seed-admin']").forEach(form => form.addEventListener("submit", async event => {
     event.preventDefault();
     const code = new FormData(form).get("seedCode");
-    if (code === SEED_ADMIN_CODE) {
-      state.adminUnlocked = true;
-      saveState();
-      routeTo("admin");
-      setTimeout(() => showToast("Seed admin access granted."), 40);
+    const result = await verifyAdminAccess(code);
+    if (result.ok) {
+      unlockAdmin(result.session);
+      setTimeout(() => showToast(result.message), 40);
     } else {
-      showToast("Seed admin code was not accepted.");
+      showToast(result.message);
     }
   }));
   document.querySelectorAll("#composerInput").forEach(input => {
@@ -1271,6 +1332,7 @@ function boot() {
   const hashRoute = location.hash.slice(1);
   if (hashRoute === "admin-preview") {
     state.adminUnlocked = true;
+    state.adminSession = state.adminSession || localAdminSession();
     state.route = "admin";
     history.replaceState(null, "", "#admin");
     saveState();
@@ -1284,6 +1346,7 @@ window.addEventListener("hashchange", () => {
   const hashRoute = location.hash.slice(1);
   if (hashRoute === "admin-preview") {
     state.adminUnlocked = true;
+    state.adminSession = state.adminSession || localAdminSession();
     state.route = "admin";
     history.replaceState(null, "", "#admin");
     saveState();

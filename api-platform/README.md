@@ -11,6 +11,7 @@ This is the first backend foundation for connecting the Web Platform, Enterprise
 - `GET /v1/plans`
 - `POST /v1/route`
 - `POST /v1/chat`
+- `POST /v1/admin/access/verify`
 - `GET /v1/admin/metrics`
 
 The model layer is currently simulation mode. The routing response explains which Hugging Face model source should be used, then falls back through a general generation layer and the Lumora tone layer.
@@ -35,6 +36,8 @@ Both clients currently expect `http://localhost:8787` as the local API base URL.
 
 The Enterprise Admin Console calls `GET /v1/admin/metrics` with `X-Seed-Admin-Code` to populate leadership, growth, payments, AI Ops, safety, and platform preview metrics.
 
+It also calls `POST /v1/admin/access/verify` to exchange the prototype seed-admin code for a temporary admin session, scopes, and audit records.
+
 ## Example Requests
 
 Route a task:
@@ -50,6 +53,10 @@ Invoke-RestMethod -Method Post -Uri http://localhost:8787/v1/chat -ContentType "
 ```
 
 Admin metrics require seed-admin access:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:8787/v1/admin/access/verify -ContentType "application/json" -Body '{"code":"LUMORA-SEED-2026","operator":"Seed Admin"}'
+```
 
 ```powershell
 Invoke-RestMethod -Uri http://localhost:8787/v1/admin/metrics -Headers @{"X-Seed-Admin-Code"="LUMORA-SEED-2026"}

@@ -1168,6 +1168,20 @@ body.sheet-open .sheet {
   color: var(--cyan);
 }
 
+.admin-session-pill {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(0, 245, 212, .26);
+  border-radius: 999px;
+  padding: 7px 11px;
+  color: var(--cyan);
+  background: rgba(0, 245, 212, .07);
+  font-size: .78rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
 .admin-preview-banner strong {
   color: var(--gold);
   white-space: nowrap;

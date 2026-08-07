@@ -115,6 +115,31 @@ function adminMetrics() {
   };
 }
 
+function adminAccessSession(operator = "Seed Admin") {
+  const issuedAt = new Date().toISOString();
+  return {
+    sessionId: `admin-${Date.now()}`,
+    operator,
+    role: "Seed Admin",
+    issuedAt,
+    expiresInMinutes: 60,
+    scopes: [
+      "executive:read",
+      "growth:read",
+      "payments:read",
+      "users:read",
+      "models:operate",
+      "safety:review",
+      "platform:operate",
+      "access:grant"
+    ],
+    audit: [
+      { time: issuedAt, action: "seed_admin_session_issued", area: "Access", severity: "Info" },
+      { time: issuedAt, action: "metrics_access_enabled", area: "Admin API", severity: "Info" }
+    ]
+  };
+}
+
 async function handler(request, response) {
   const url = new URL(request.url, `http://${request.headers.host}`);
 
@@ -143,6 +168,14 @@ async function handler(request, response) {
       return sendJson(response, 200, simulateReply(body));
     }
 
+    if (request.method === "POST" && url.pathname === "/v1/admin/access/verify") {
+      const body = await readJson(request);
+      if (body.code !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      return sendJson(response, 200, adminAccessSession(body.operator || "Seed Admin"));
+    }
+
     if (request.method === "GET" && url.pathname === "/v1/admin/metrics") {
       if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
         return sendJson(response, 403, { error: "Seed admin access required" });
@@ -166,4 +199,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, plans };
