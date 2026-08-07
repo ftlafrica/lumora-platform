@@ -428,6 +428,40 @@ const infrastructureOperations = {
   ]
 };
 
+const securityOperations = {
+  summary: { criticalThreats: 0, mfaCoverage: "96%", ssoOrgs: 14, auditIntegrity: "Verified", dataRequests: 9 },
+  threats: [
+    { signal: "Suspicious API behavior", count: 6, severity: "High", owner: "Security", status: "Investigating" },
+    { signal: "High-risk sessions", count: 31, severity: "Medium", owner: "Trust", status: "Review" },
+    { signal: "Failed admin login attempts", count: 12, severity: "Medium", owner: "Security", status: "Rate limited" },
+    { signal: "PII redaction queue", count: 29, severity: "High", owner: "Privacy", status: "Active" }
+  ],
+  accessPosture: [
+    { control: "MFA/passkeys", coverage: "96%", status: "Required", owner: "Security" },
+    { control: "SSO", coverage: "14 orgs", status: "Enabled", owner: "Enterprise" },
+    { control: "Device trust", coverage: "82%", status: "Beta", owner: "Security" },
+    { control: "Admin session expiry", coverage: "60 min", status: "Enforced", owner: "Platform" }
+  ],
+  compliance: [
+    { program: "SOC 2 readiness", status: "Designed", owner: "Security", next: "Evidence collection" },
+    { program: "GDPR/data rights", status: "Privacy reviewed", owner: "Legal", next: "Automated workflow" },
+    { program: "PCI payment boundary", status: "Tokenized", owner: "Finance", next: "Processor attestation" },
+    { program: "Data residency", status: "Policy draft", owner: "Legal", next: "Region mapping" }
+  ],
+  dataRequests: [
+    { request: "Data export", count: 9, owner: "Privacy", sla: "7 days" },
+    { request: "Deletion request", count: 4, owner: "Privacy", sla: "30 days" },
+    { request: "Legal hold", count: 2, owner: "Legal", sla: "Active" },
+    { request: "Enterprise DPA review", count: 6, owner: "Legal", sla: "This week" }
+  ],
+  guardrails: [
+    "Sensitive admin data must never appear in consumer profile or support views.",
+    "Security events require immutable audit logs with actor, time, scope, and source.",
+    "Production admin access requires SSO/MFA, device trust, scoped roles, and approval workflow.",
+    "Privacy requests must be reviewed before exports, deletion, or legal holds."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -629,6 +663,10 @@ function adminInfrastructureOperations() {
   return infrastructureOperations;
 }
 
+function adminSecurityOperations() {
+  return securityOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -653,7 +691,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "support:review",
       "finance:read",
       "analytics:read",
-      "infrastructure:operate"
+      "infrastructure:operate",
+      "security:operate"
     ],
     audit: [
       accessEvent,
@@ -825,6 +864,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminInfrastructureOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/security") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("security_compliance_viewed", "Security", "Info", "Security");
+      return sendJson(response, 200, adminSecurityOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -841,4 +888,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, plans };

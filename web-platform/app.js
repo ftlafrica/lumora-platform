@@ -75,6 +75,7 @@ const ADMIN_SECTIONS = [
   { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
   { id: "knowledge", label: "Knowledge", desc: "RAG collections, sources, indexing, embeddings, permissions, freshness, and quality queues." },
   { id: "safety", label: "Safety", desc: "Moderation, corrections, privacy, red-team findings, appeals, and policy." },
+  { id: "security", label: "Security", desc: "Threats, MFA/SSO, device trust, audit integrity, data requests, and compliance readiness." },
   { id: "platform", label: "Platform", desc: "Web, mobile, API, infrastructure, incidents, releases, and feature flags." },
   { id: "infrastructure", label: "Infrastructure", desc: "Services, queues, GPU clusters, databases, incidents, uptime, and reliability guardrails." },
   { id: "api", label: "API", desc: "Keys, quotas, SDKs, webhooks, rate limits, errors, and partner integration health." },
@@ -159,6 +160,8 @@ const DEFAULT_STATE = {
   adminModelsLoadedAt: null,
   adminSafety: null,
   adminSafetyLoadedAt: null,
+  adminSecurity: null,
+  adminSecurityLoadedAt: null,
   adminGrowth: null,
   adminGrowthLoadedAt: null,
   adminAnalytics: null,
@@ -320,6 +323,26 @@ async function loadAdminInfrastructure(force = false) {
     state.adminInfrastructureLoadedAt = Date.now();
   } catch {
     state.adminInfrastructureLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminSecurity(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminSecurityLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/security`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Security and compliance unavailable.");
+    state.adminSecurity = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminSecurityLoadedAt = Date.now();
+  } catch {
+    state.adminSecurityLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -573,7 +596,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -729,6 +752,42 @@ function adminInfrastructureData() {
       "Escalate when API errors exceed 1% for 10 minutes or model route p95 exceeds 900ms.",
       "Protect audit logging and billing events as durable, never-loss queues.",
       "Keep GPU fallback capacity ready for high-traffic language launches."
+    ]
+  };
+}
+
+function adminSecurityData() {
+  return state.adminSecurity || {
+    summary: { criticalThreats: 0, mfaCoverage: "96%", ssoOrgs: 14, auditIntegrity: "Verified", dataRequests: 9 },
+    threats: [
+      { signal: "Suspicious API behavior", count: 6, severity: "High", owner: "Security", status: "Investigating" },
+      { signal: "High-risk sessions", count: 31, severity: "Medium", owner: "Trust", status: "Review" },
+      { signal: "Failed admin login attempts", count: 12, severity: "Medium", owner: "Security", status: "Rate limited" },
+      { signal: "PII redaction queue", count: 29, severity: "High", owner: "Privacy", status: "Active" }
+    ],
+    accessPosture: [
+      { control: "MFA/passkeys", coverage: "96%", status: "Required", owner: "Security" },
+      { control: "SSO", coverage: "14 orgs", status: "Enabled", owner: "Enterprise" },
+      { control: "Device trust", coverage: "82%", status: "Beta", owner: "Security" },
+      { control: "Admin session expiry", coverage: "60 min", status: "Enforced", owner: "Platform" }
+    ],
+    compliance: [
+      { program: "SOC 2 readiness", status: "Designed", owner: "Security", next: "Evidence collection" },
+      { program: "GDPR/data rights", status: "Privacy reviewed", owner: "Legal", next: "Automated workflow" },
+      { program: "PCI payment boundary", status: "Tokenized", owner: "Finance", next: "Processor attestation" },
+      { program: "Data residency", status: "Policy draft", owner: "Legal", next: "Region mapping" }
+    ],
+    dataRequests: [
+      { request: "Data export", count: 9, owner: "Privacy", sla: "7 days" },
+      { request: "Deletion request", count: 4, owner: "Privacy", sla: "30 days" },
+      { request: "Legal hold", count: 2, owner: "Legal", sla: "Active" },
+      { request: "Enterprise DPA review", count: 6, owner: "Legal", sla: "This week" }
+    ],
+    guardrails: [
+      "Sensitive admin data must never appear in consumer profile or support views.",
+      "Security events require immutable audit logs with actor, time, scope, and source.",
+      "Production admin access requires SSO/MFA, device trust, scoped roles, and approval workflow.",
+      "Privacy requests must be reviewed before exports, deletion, or legal holds."
     ]
   };
 }
@@ -1139,6 +1198,22 @@ function infrastructureQueueRow(item) {
 
 function infrastructureIncidentRow(item) {
   return `<div class="table-row"><strong>${item.id}</strong><span>${item.title}</span><span>${item.severity} / ${item.status}</span></div>`;
+}
+
+function securityThreatRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.count} events</span><span>${item.severity} / ${item.status}</span><span>${item.owner}</span></div>`;
+}
+
+function accessPostureRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.coverage}</span><span>${item.status}</span><span>${item.owner}</span></div>`;
+}
+
+function complianceProgramRow(item) {
+  return `<div class="table-row"><strong>${item.program}</strong><span>${item.status}</span><span>${item.owner}</span><span>${item.next}</span></div>`;
+}
+
+function dataRequestRow(item) {
+  return `<div class="table-row"><strong>${item.request}</strong><span>${item.count} open</span><span>${item.owner}</span><span>${item.sla}</span></div>`;
 }
 
 function paymentPlanRow(item) {
@@ -1699,6 +1774,7 @@ function adminView() {
   if (state.adminSection === "support") loadAdminSupport();
   if (state.adminSection === "models") loadAdminModels();
   if (state.adminSection === "safety") loadAdminSafety();
+  if (state.adminSection === "security") loadAdminSecurity();
   if (state.adminSection === "infrastructure") loadAdminInfrastructure();
   if (state.adminSection === "growth") loadAdminGrowth();
   if (state.adminSection === "analytics") loadAdminAnalytics();
@@ -1804,6 +1880,7 @@ function adminSectionView(section, readiness) {
     models: () => adminModels(readiness),
     knowledge: adminKnowledge,
     safety: adminSafety,
+    security: adminSecurity,
     platform: adminPlatform,
     infrastructure: adminInfrastructure,
     api: adminApiManagement,
@@ -2224,6 +2301,49 @@ function adminSafety() {
         <h2>Safety guardrails</h2>
         <div class="admin-checklist">
           ${safety.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminSecurity() {
+  const security = adminSecurityData();
+  const summary = security.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Critical threats", summary.criticalThreats ?? "0")}
+      ${metric("MFA coverage", summary.mfaCoverage || "96%")}
+      ${metric("SSO orgs", summary.ssoOrgs || "14")}
+      ${metric("Audit integrity", summary.auditIntegrity || "Verified")}
+      <section class="admin-card full-admin">
+        <h2>Threat signals</h2>
+        <div class="table admin-table-4">
+          ${security.threats.map(securityThreatRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Access posture</h2>
+        <div class="table admin-table-4">
+          ${security.accessPosture.map(accessPostureRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Compliance programs</h2>
+        <div class="table admin-table-4">
+          ${security.compliance.map(complianceProgramRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Privacy and legal requests</h2>
+        <div class="table admin-table-4">
+          ${security.dataRequests.map(dataRequestRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Security guardrails</h2>
+        <div class="admin-checklist">
+          ${security.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -2696,6 +2816,7 @@ function bindEvents() {
       loadAdminSupport(true);
       loadAdminModels(true);
       loadAdminSafety(true);
+      loadAdminSecurity(true);
       loadAdminInfrastructure(true);
       loadAdminGrowth(true);
       loadAdminAnalytics(true);
