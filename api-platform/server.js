@@ -530,6 +530,41 @@ const communicationsOperations = {
   ]
 };
 
+const languageOperations = {
+  summary: { trackedLanguages: 54, priorityMarkets: 12, dialectQueues: 128, reviewerBacklog: 312, averageConfidence: "91%" },
+  coverage: [
+    { language: "Yoruba", countries: "Nigeria, diaspora", readiness: "A", confidence: "94%", owner: "Language QA" },
+    { language: "Swahili", countries: "Kenya, Tanzania, Uganda", readiness: "A", confidence: "92%", owner: "Language QA" },
+    { language: "Hausa", countries: "Nigeria, Niger, Ghana", readiness: "B", confidence: "90%", owner: "Native reviewers" },
+    { language: "Zulu/Xhosa", countries: "South Africa", readiness: "B", confidence: "88%", owner: "Language QA" },
+    { language: "Amharic/Oromo", countries: "Ethiopia", readiness: "B", confidence: "84%", owner: "Regional reviewers" }
+  ],
+  dialectQueues: [
+    { queue: "Low-confidence dialects", count: 128, language: "Mixed", owner: "Language Quality", priority: "High" },
+    { queue: "Meaning changed reports", count: 41, language: "Yoruba/Swahili", owner: "Reviewers", priority: "Today" },
+    { queue: "Tone mismatch reports", count: 284, language: "Pidgin/Hausa", owner: "Community Ops", priority: "Medium" },
+    { queue: "Unsupported pairs", count: 24, language: "African pairs", owner: "Model Ops", priority: "High" }
+  ],
+  reviewers: [
+    { region: "West Africa", reviewers: 42, languages: "Yoruba, Hausa, Igbo, Pidgin, Twi", backlog: 186 },
+    { region: "East Africa", reviewers: 28, languages: "Swahili, Amharic, Oromo, Somali", backlog: 91 },
+    { region: "Southern Africa", reviewers: 19, languages: "Zulu, Xhosa, Shona, Sesotho", backlog: 72 },
+    { region: "Central/North Africa", reviewers: 16, languages: "Lingala, Arabic, French bridge", backlog: 58 }
+  ],
+  benchmarks: [
+    { benchmark: "Translation meaning preservation", score: "92%", gap: "Idioms", owner: "AI QA" },
+    { benchmark: "Tone and cultural style", score: "89%", gap: "Youth/street tone", owner: "Language QA" },
+    { benchmark: "Speech recognition", score: "84%", gap: "Noisy mobile audio", owner: "Voice Ops" },
+    { benchmark: "Code-switching", score: "87%", gap: "Pidgin/English mixes", owner: "Model Ops" }
+  ],
+  guardrails: [
+    "Every priority language needs native reviewer ownership before public confidence claims.",
+    "Dialect fixes must preserve meaning, tone, safety context, and user-selected bridge language.",
+    "Low-confidence outputs should admit uncertainty and offer alternatives instead of guessing.",
+    "Country expansion requires readiness, reviewer coverage, safety policy, and model route validation."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -743,6 +778,10 @@ function adminCommunicationsOperations() {
   return communicationsOperations;
 }
 
+function adminLanguageOperations() {
+  return languageOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -770,7 +809,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "infrastructure:operate",
       "security:operate",
       "reporting:export",
-      "communications:send"
+      "communications:send",
+      "language:review"
     ],
     audit: [
       accessEvent,
@@ -966,6 +1006,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminCommunicationsOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/languages") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("language_intelligence_viewed", "Languages", "Info", "Language QA");
+      return sendJson(response, 200, adminLanguageOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -982,4 +1030,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, plans };

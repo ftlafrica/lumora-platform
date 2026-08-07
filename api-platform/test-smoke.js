@@ -23,7 +23,8 @@ const {
   adminInfrastructureOperations,
   adminSecurityOperations,
   adminReportingOperations,
-  adminCommunicationsOperations
+  adminCommunicationsOperations,
+  adminLanguageOperations
 } = require("./server");
 const { modelRegistry } = require("./model-registry");
 
@@ -63,6 +64,7 @@ assert.ok(accessSession.scopes.includes("infrastructure:operate"));
 assert.ok(accessSession.scopes.includes("security:operate"));
 assert.ok(accessSession.scopes.includes("reporting:export"));
 assert.ok(accessSession.scopes.includes("communications:send"));
+assert.ok(accessSession.scopes.includes("language:review"));
 assert.ok(accessSession.audit.length >= 2);
 
 const adminContracts = [
@@ -83,7 +85,8 @@ const adminContracts = [
   ["infrastructure", adminInfrastructureOperations(), data => data.summary && Array.isArray(data.services) && Array.isArray(data.clusters) && Array.isArray(data.queues)],
   ["security", adminSecurityOperations(), data => data.summary && Array.isArray(data.threats) && Array.isArray(data.accessPosture) && Array.isArray(data.compliance)],
   ["reports", adminReportingOperations(), data => data.summary && Array.isArray(data.reportPacks) && Array.isArray(data.exports) && Array.isArray(data.schedules)],
-  ["communications", adminCommunicationsOperations(), data => data.summary && Array.isArray(data.campaigns) && Array.isArray(data.broadcasts) && Array.isArray(data.delivery)]
+  ["communications", adminCommunicationsOperations(), data => data.summary && Array.isArray(data.campaigns) && Array.isArray(data.broadcasts) && Array.isArray(data.delivery)],
+  ["languages", adminLanguageOperations(), data => data.summary && Array.isArray(data.coverage) && Array.isArray(data.dialectQueues) && Array.isArray(data.benchmarks)]
 ];
 
 adminContracts.forEach(([name, data, isValid]) => {

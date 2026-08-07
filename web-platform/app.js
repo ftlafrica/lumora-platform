@@ -75,6 +75,7 @@ const ADMIN_SECTIONS = [
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
   { id: "support", label: "Support", desc: "Tickets, SLA, escalations, CSAT, macros, user-impact signals, and safe support boundaries." },
   { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
+  { id: "languages", label: "Languages", desc: "Country coverage, dialect readiness, reviewer queues, benchmarks, and expansion quality." },
   { id: "knowledge", label: "Knowledge", desc: "RAG collections, sources, indexing, embeddings, permissions, freshness, and quality queues." },
   { id: "safety", label: "Safety", desc: "Moderation, corrections, privacy, red-team findings, appeals, and policy." },
   { id: "security", label: "Security", desc: "Threats, MFA/SSO, device trust, audit integrity, data requests, and compliance readiness." },
@@ -172,6 +173,8 @@ const DEFAULT_STATE = {
   adminReportsLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
+  adminLanguages: null,
+  adminLanguagesLoadedAt: null,
   adminInfrastructure: null,
   adminInfrastructureLoadedAt: null,
   adminAccess: null,
@@ -389,6 +392,26 @@ async function loadAdminCommunications(force = false) {
     state.adminCommunicationsLoadedAt = Date.now();
   } catch {
     state.adminCommunicationsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminLanguages(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminLanguagesLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/languages`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Language intelligence unavailable.");
+    state.adminLanguages = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminLanguagesLoadedAt = Date.now();
+  } catch {
+    state.adminLanguagesLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -642,7 +665,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "communications:send"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "communications:send", "language:review"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -906,6 +929,43 @@ function adminCommunicationsData() {
       "Incident communications must distinguish confirmed facts from investigation updates.",
       "Marketing campaigns must respect opt-in, country rules, language preference, and plan context.",
       "Admin/security broadcasts must never be visible in the consumer profile or normal dashboard."
+    ]
+  };
+}
+
+function adminLanguagesData() {
+  return state.adminLanguages || {
+    summary: { trackedLanguages: 54, priorityMarkets: 12, dialectQueues: 128, reviewerBacklog: 312, averageConfidence: "91%" },
+    coverage: [
+      { language: "Yoruba", countries: "Nigeria, diaspora", readiness: "A", confidence: "94%", owner: "Language QA" },
+      { language: "Swahili", countries: "Kenya, Tanzania, Uganda", readiness: "A", confidence: "92%", owner: "Language QA" },
+      { language: "Hausa", countries: "Nigeria, Niger, Ghana", readiness: "B", confidence: "90%", owner: "Native reviewers" },
+      { language: "Zulu/Xhosa", countries: "South Africa", readiness: "B", confidence: "88%", owner: "Language QA" },
+      { language: "Amharic/Oromo", countries: "Ethiopia", readiness: "B", confidence: "84%", owner: "Regional reviewers" }
+    ],
+    dialectQueues: [
+      { queue: "Low-confidence dialects", count: 128, language: "Mixed", owner: "Language Quality", priority: "High" },
+      { queue: "Meaning changed reports", count: 41, language: "Yoruba/Swahili", owner: "Reviewers", priority: "Today" },
+      { queue: "Tone mismatch reports", count: 284, language: "Pidgin/Hausa", owner: "Community Ops", priority: "Medium" },
+      { queue: "Unsupported pairs", count: 24, language: "African pairs", owner: "Model Ops", priority: "High" }
+    ],
+    reviewers: [
+      { region: "West Africa", reviewers: 42, languages: "Yoruba, Hausa, Igbo, Pidgin, Twi", backlog: 186 },
+      { region: "East Africa", reviewers: 28, languages: "Swahili, Amharic, Oromo, Somali", backlog: 91 },
+      { region: "Southern Africa", reviewers: 19, languages: "Zulu, Xhosa, Shona, Sesotho", backlog: 72 },
+      { region: "Central/North Africa", reviewers: 16, languages: "Lingala, Arabic, French bridge", backlog: 58 }
+    ],
+    benchmarks: [
+      { benchmark: "Translation meaning preservation", score: "92%", gap: "Idioms", owner: "AI QA" },
+      { benchmark: "Tone and cultural style", score: "89%", gap: "Youth/street tone", owner: "Language QA" },
+      { benchmark: "Speech recognition", score: "84%", gap: "Noisy mobile audio", owner: "Voice Ops" },
+      { benchmark: "Code-switching", score: "87%", gap: "Pidgin/English mixes", owner: "Model Ops" }
+    ],
+    guardrails: [
+      "Every priority language needs native reviewer ownership before public confidence claims.",
+      "Dialect fixes must preserve meaning, tone, safety context, and user-selected bridge language.",
+      "Low-confidence outputs should admit uncertainty and offer alternatives instead of guessing.",
+      "Country expansion requires readiness, reviewer coverage, safety policy, and model route validation."
     ]
   };
 }
@@ -1364,6 +1424,22 @@ function templateRow(item) {
 
 function deliveryRow(item) {
   return `<div class="table-row"><strong>${item.channel}</strong><span>${item.sentToday} sent</span><span>${item.success}</span><span>${item.issue}</span></div>`;
+}
+
+function languageCoverageRow(item) {
+  return `<div class="table-row"><strong>${item.language}</strong><span>${item.countries}</span><span>${item.readiness} / ${item.confidence}</span><span>${item.owner}</span></div>`;
+}
+
+function dialectQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.language}</span><span>${item.priority}</span></div>`;
+}
+
+function reviewerRegionRow(item) {
+  return `<div class="table-row"><strong>${item.region}</strong><span>${item.reviewers} reviewers</span><span>${item.languages}</span><span>${item.backlog} backlog</span></div>`;
+}
+
+function languageBenchmarkRow(item) {
+  return `<div class="table-row"><strong>${item.benchmark}</strong><span>${item.score}</span><span>${item.gap}</span><span>${item.owner}</span></div>`;
 }
 
 function paymentPlanRow(item) {
@@ -1923,6 +1999,7 @@ function adminView() {
   if (state.adminSection === "users") loadAdminUsers();
   if (state.adminSection === "support") loadAdminSupport();
   if (state.adminSection === "models") loadAdminModels();
+  if (state.adminSection === "languages") loadAdminLanguages();
   if (state.adminSection === "safety") loadAdminSafety();
   if (state.adminSection === "security") loadAdminSecurity();
   if (state.adminSection === "infrastructure") loadAdminInfrastructure();
@@ -2032,6 +2109,7 @@ function adminSectionView(section, readiness) {
     users: adminUsers,
     support: adminSupport,
     models: () => adminModels(readiness),
+    languages: adminLanguages,
     knowledge: adminKnowledge,
     safety: adminSafety,
     security: adminSecurity,
@@ -2590,6 +2668,49 @@ function adminCommunications() {
   `;
 }
 
+function adminLanguages() {
+  const languages = adminLanguagesData();
+  const summary = languages.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Tracked languages", summary.trackedLanguages || "54")}
+      ${metric("Priority markets", summary.priorityMarkets || "12")}
+      ${metric("Dialect queues", summary.dialectQueues || "128")}
+      ${metric("Avg confidence", summary.averageConfidence || "91%")}
+      <section class="admin-card full-admin">
+        <h2>Language and country coverage</h2>
+        <div class="table admin-table-4">
+          ${languages.coverage.map(languageCoverageRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Dialect and tone queues</h2>
+        <div class="table admin-table-4">
+          ${languages.dialectQueues.map(dialectQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Reviewer network</h2>
+        <div class="table admin-table-4">
+          ${languages.reviewers.map(reviewerRegionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Quality benchmarks</h2>
+        <div class="table admin-table-4">
+          ${languages.benchmarks.map(languageBenchmarkRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Language operating guardrails</h2>
+        <div class="admin-checklist">
+          ${languages.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminPlatform() {
   const platform = adminPlatformData();
   const releases = adminMetricValue("platform.mobileReleases", ["iOS 1.0.4 beta", "Android 1.0.6 beta"]);
@@ -3055,6 +3176,7 @@ function bindEvents() {
       loadAdminUsers(true);
       loadAdminSupport(true);
       loadAdminModels(true);
+      loadAdminLanguages(true);
       loadAdminSafety(true);
       loadAdminSecurity(true);
       loadAdminInfrastructure(true);
