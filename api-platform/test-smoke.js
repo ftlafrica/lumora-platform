@@ -32,7 +32,8 @@ const {
   adminCustomerSuccessOperations,
   adminSalesOperations,
   adminRiskOperations,
-  adminLegalOperations
+  adminLegalOperations,
+  adminPeopleOperations
 } = require("./server");
 const { modelRegistry } = require("./model-registry");
 
@@ -81,6 +82,7 @@ assert.ok(accessSession.scopes.includes("success:manage"));
 assert.ok(accessSession.scopes.includes("sales:manage"));
 assert.ok(accessSession.scopes.includes("risk:review"));
 assert.ok(accessSession.scopes.includes("legal:review"));
+assert.ok(accessSession.scopes.includes("people:read"));
 assert.ok(accessSession.audit.length >= 2);
 
 const adminContracts = [
@@ -110,7 +112,8 @@ const adminContracts = [
   ["customer success", adminCustomerSuccessOperations(), data => data.summary && Array.isArray(data.accounts) && Array.isArray(data.onboarding) && Array.isArray(data.renewals)],
   ["sales", adminSalesOperations(), data => data.summary && Array.isArray(data.pipeline) && Array.isArray(data.demos) && Array.isArray(data.procurement)],
   ["risk", adminRiskOperations(), data => data.summary && Array.isArray(data.register) && Array.isArray(data.mitigations) && Array.isArray(data.board)],
-  ["legal", adminLegalOperations(), data => data.summary && Array.isArray(data.contracts) && Array.isArray(data.policies) && Array.isArray(data.requests)]
+  ["legal", adminLegalOperations(), data => data.summary && Array.isArray(data.contracts) && Array.isArray(data.policies) && Array.isArray(data.requests)],
+  ["people", adminPeopleOperations(), data => data.summary && Array.isArray(data.staffing) && Array.isArray(data.hiring) && Array.isArray(data.rotations)]
 ];
 
 adminContracts.forEach(([name, data, isValid]) => {

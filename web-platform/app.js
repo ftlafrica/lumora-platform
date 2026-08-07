@@ -73,6 +73,7 @@ const ADMIN_SECTIONS = [
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
+  { id: "people", label: "People", desc: "Team coverage, hiring, reviewer capacity, on-call load, enablement, and workforce guardrails." },
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
   { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
@@ -183,6 +184,8 @@ const DEFAULT_STATE = {
   adminRiskLoadedAt: null,
   adminLegal: null,
   adminLegalLoadedAt: null,
+  adminPeople: null,
+  adminPeopleLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -436,6 +439,26 @@ async function loadAdminLegal(force = false) {
     state.adminLegalLoadedAt = Date.now();
   } catch {
     state.adminLegalLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminPeople(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminPeopleLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/people`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("People operations unavailable.");
+    state.adminPeople = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminPeopleLoadedAt = Date.now();
+  } catch {
+    state.adminPeopleLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -849,7 +872,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1439,6 +1462,42 @@ function adminLegalData() {
       "Enterprise promises must align with approved terms, live product capability, security posture, and privacy commitments.",
       "Data partnerships require provenance, consent basis, permitted use, retention, and deletion obligations before launch.",
       "Sensitive legal requests should route to counsel-only workflows with audited access and minimal disclosure."
+    ]
+  };
+}
+
+function adminPeopleData() {
+  return state.adminPeople || {
+    summary: { teamCoverage: "82%", openRoles: 9, reviewerCapacity: "74%", onCallLoad: "Medium", enablementDue: 6 },
+    staffing: [
+      { team: "Language QA", coverage: "74%", gap: "Yoruba/Pidgin reviewers", owner: "People Ops", status: "Hiring" },
+      { team: "AI Ops", coverage: "86%", gap: "Eval automation", owner: "Engineering", status: "Backfill planned" },
+      { team: "Support", coverage: "91%", gap: "Francophone queue", owner: "Support", status: "Training" },
+      { team: "Security", coverage: "79%", gap: "Procurement reviews", owner: "Security", status: "Contractor review" }
+    ],
+    hiring: [
+      { role: "Native language reviewer lead", region: "West Africa", priority: "High", pipeline: "6 candidates", status: "Interview" },
+      { role: "Voice ML engineer", region: "Remote Africa", priority: "High", pipeline: "3 candidates", status: "Sourcing" },
+      { role: "Enterprise support specialist", region: "East Africa", priority: "Medium", pipeline: "8 candidates", status: "Screening" },
+      { role: "Privacy operations analyst", region: "Pan-African", priority: "Medium", pipeline: "4 candidates", status: "Interview" }
+    ],
+    rotations: [
+      { rotation: "Model incident on-call", owner: "AI Ops", load: "Medium", next: "Aug 12", backup: "Platform" },
+      { rotation: "Trust and safety review", owner: "Trust", load: "High", next: "Aug 10", backup: "Legal" },
+      { rotation: "Enterprise launch support", owner: "Customer Success", load: "Medium", next: "Aug 14", backup: "Sales" },
+      { rotation: "Language escalation", owner: "Language QA", load: "High", next: "Aug 11", backup: "Reviewer lead" }
+    ],
+    enablement: [
+      { program: "Seed-admin access training", audience: "Leadership", completion: "88%", owner: "Security" },
+      { program: "Safe support data boundaries", audience: "Support", completion: "76%", owner: "Trust" },
+      { program: "Language reviewer calibration", audience: "Reviewers", completion: "69%", owner: "Language QA" },
+      { program: "Enterprise demo readiness", audience: "Sales/CS", completion: "82%", owner: "Product" }
+    ],
+    guardrails: [
+      "People Ops metrics should show capacity and readiness, not private personnel details or sensitive HR records.",
+      "Reviewer capacity must include language, dialect, region, quality, and burnout signals before expansion decisions.",
+      "Seed-admin and support access require training completion, least privilege, and periodic recertification.",
+      "On-call rotations should protect team health while keeping incidents, customer launches, and safety queues covered."
     ]
   };
 }
@@ -2043,6 +2102,22 @@ function legalApprovalRow(item) {
   return `<div class="table-row"><strong>${item.approval}</strong><span>${item.requester}</span><span>${item.reviewer}</span><span>${item.decision}</span></div>`;
 }
 
+function staffingRow(item) {
+  return `<div class="table-row"><strong>${item.team}</strong><span>${item.coverage}</span><span>${item.gap}</span><span>${item.status}</span></div>`;
+}
+
+function hiringRow(item) {
+  return `<div class="table-row"><strong>${item.role}</strong><span>${item.region}</span><span>${item.priority}</span><span>${item.status}</span></div>`;
+}
+
+function rotationRow(item) {
+  return `<div class="table-row"><strong>${item.rotation}</strong><span>${item.owner}</span><span>${item.load}</span><span>${item.next}</span></div>`;
+}
+
+function enablementRow(item) {
+  return `<div class="table-row"><strong>${item.program}</strong><span>${item.audience}</span><span>${item.completion}</span><span>${item.owner}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -2612,6 +2687,7 @@ function adminView() {
   if (state.adminSection === "reports") loadAdminReports();
   if (state.adminSection === "risk") loadAdminRisk();
   if (state.adminSection === "legal") loadAdminLegal();
+  if (state.adminSection === "people") loadAdminPeople();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -2715,6 +2791,7 @@ function adminSectionView(section, readiness) {
     reports: adminReports,
     risk: adminRisk,
     legal: adminLegal,
+    people: adminPeople,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -3322,6 +3399,49 @@ function adminLegal() {
         <h2>Legal and policy guardrails</h2>
         <div class="admin-checklist">
           ${legal.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminPeople() {
+  const people = adminPeopleData();
+  const summary = people.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Team coverage", summary.teamCoverage || "82%")}
+      ${metric("Open roles", summary.openRoles || "9")}
+      ${metric("Reviewer capacity", summary.reviewerCapacity || "74%")}
+      ${metric("On-call load", summary.onCallLoad || "Medium")}
+      <section class="admin-card full-admin">
+        <h2>Team coverage</h2>
+        <div class="table admin-table-4">
+          ${people.staffing.map(staffingRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Hiring pipeline</h2>
+        <div class="table admin-table-4">
+          ${people.hiring.map(hiringRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>On-call rotations</h2>
+        <div class="table admin-table-4">
+          ${people.rotations.map(rotationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Enablement readiness</h2>
+        <div class="table admin-table-4">
+          ${people.enablement.map(enablementRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>People Ops guardrails</h2>
+        <div class="admin-checklist">
+          ${people.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -4149,6 +4269,7 @@ function bindEvents() {
       loadAdminReports(true);
       loadAdminRisk(true);
       loadAdminLegal(true);
+      loadAdminPeople(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);

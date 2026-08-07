@@ -838,6 +838,40 @@ const legalOperations = {
   ]
 };
 
+const peopleOperations = {
+  summary: { teamCoverage: "82%", openRoles: 9, reviewerCapacity: "74%", onCallLoad: "Medium", enablementDue: 6 },
+  staffing: [
+    { team: "Language QA", coverage: "74%", gap: "Yoruba/Pidgin reviewers", owner: "People Ops", status: "Hiring" },
+    { team: "AI Ops", coverage: "86%", gap: "Eval automation", owner: "Engineering", status: "Backfill planned" },
+    { team: "Support", coverage: "91%", gap: "Francophone queue", owner: "Support", status: "Training" },
+    { team: "Security", coverage: "79%", gap: "Procurement reviews", owner: "Security", status: "Contractor review" }
+  ],
+  hiring: [
+    { role: "Native language reviewer lead", region: "West Africa", priority: "High", pipeline: "6 candidates", status: "Interview" },
+    { role: "Voice ML engineer", region: "Remote Africa", priority: "High", pipeline: "3 candidates", status: "Sourcing" },
+    { role: "Enterprise support specialist", region: "East Africa", priority: "Medium", pipeline: "8 candidates", status: "Screening" },
+    { role: "Privacy operations analyst", region: "Pan-African", priority: "Medium", pipeline: "4 candidates", status: "Interview" }
+  ],
+  rotations: [
+    { rotation: "Model incident on-call", owner: "AI Ops", load: "Medium", next: "Aug 12", backup: "Platform" },
+    { rotation: "Trust and safety review", owner: "Trust", load: "High", next: "Aug 10", backup: "Legal" },
+    { rotation: "Enterprise launch support", owner: "Customer Success", load: "Medium", next: "Aug 14", backup: "Sales" },
+    { rotation: "Language escalation", owner: "Language QA", load: "High", next: "Aug 11", backup: "Reviewer lead" }
+  ],
+  enablement: [
+    { program: "Seed-admin access training", audience: "Leadership", completion: "88%", owner: "Security" },
+    { program: "Safe support data boundaries", audience: "Support", completion: "76%", owner: "Trust" },
+    { program: "Language reviewer calibration", audience: "Reviewers", completion: "69%", owner: "Language QA" },
+    { program: "Enterprise demo readiness", audience: "Sales/CS", completion: "82%", owner: "Product" }
+  ],
+  guardrails: [
+    "People Ops metrics should show capacity and readiness, not private personnel details or sensitive HR records.",
+    "Reviewer capacity must include language, dialect, region, quality, and burnout signals before expansion decisions.",
+    "Seed-admin and support access require training completion, least privilege, and periodic recertification.",
+    "On-call rotations should protect team health while keeping incidents, customer launches, and safety queues covered."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1087,6 +1121,10 @@ function adminLegalOperations() {
   return legalOperations;
 }
 
+function adminPeopleOperations() {
+  return peopleOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1123,7 +1161,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "success:manage",
       "sales:manage",
       "risk:review",
-      "legal:review"
+      "legal:review",
+      "people:read"
     ],
     audit: [
       accessEvent,
@@ -1391,6 +1430,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminLegalOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/people") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("people_ops_viewed", "People", "Info", "People Ops");
+      return sendJson(response, 200, adminPeopleOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1407,4 +1454,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, plans };
