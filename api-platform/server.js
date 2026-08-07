@@ -736,6 +736,40 @@ const customerSuccessOperations = {
   ]
 };
 
+const salesOperations = {
+  summary: { pipelineArr: "$684K", qualifiedDeals: 38, demosBooked: 21, procurementRisk: 5, partnerLeads: 14 },
+  pipeline: [
+    { account: "Pan-African Tutors", stage: "Security review", value: "$96K ARR", owner: "Enterprise Sales", close: "Sep 2026" },
+    { account: "HealthBridge Clinics", stage: "Pilot", value: "$84K ARR", owner: "Solutions", close: "Oct 2026" },
+    { account: "TradeMarket Africa", stage: "Proposal", value: "$72K ARR", owner: "Enterprise Sales", close: "Aug 2026" },
+    { account: "Civic Language Lab", stage: "Discovery", value: "$58K ARR", owner: "Partnerships", close: "Nov 2026" }
+  ],
+  demos: [
+    { demo: "Teams workspace and SSO", audience: "Education buyer", market: "Kenya", date: "Aug 12", status: "Booked" },
+    { demo: "Language quality and reviewer loop", audience: "Government innovation", market: "Nigeria", date: "Aug 15", status: "Prep" },
+    { demo: "API translation workflow", audience: "Marketplace operator", market: "Ghana", date: "Aug 19", status: "Booked" },
+    { demo: "Voice Circle for clinics", audience: "Healthcare network", market: "South Africa", date: "Aug 22", status: "Needs security" }
+  ],
+  procurement: [
+    { account: "Pan-African Tutors", blocker: "DPA review", owner: "Legal", risk: "Medium", action: "Send data map" },
+    { account: "HealthBridge Clinics", blocker: "HIPAA-style questionnaire", owner: "Security", risk: "High", action: "Security packet" },
+    { account: "TradeMarket Africa", blocker: "Invoice terms", owner: "Finance", risk: "Low", action: "Approve terms" },
+    { account: "Civic Language Lab", blocker: "Reviewer policy", owner: "Language Ops", risk: "Medium", action: "Policy appendix" }
+  ],
+  partners: [
+    { partner: "Regional cloud reseller", region: "West Africa", leads: 6, motion: "Co-sell", status: "Active" },
+    { partner: "EdTech association", region: "East Africa", leads: 4, motion: "Webinar", status: "Planning" },
+    { partner: "Language research network", region: "Pan-African", leads: 3, motion: "Dataset partnership", status: "Review" },
+    { partner: "Creator community", region: "Southern Africa", leads: 1, motion: "Ambassador", status: "Pilot" }
+  ],
+  guardrails: [
+    "Enterprise sales should track revenue opportunity without exposing private user prompts or account secrets.",
+    "Deals involving schools, healthcare, governments, or children require privacy, security, and legal review before pilot expansion.",
+    "Sales promises must map to live product capability, model readiness, supported languages, and operational capacity.",
+    "Partner motions require clear ownership, data-sharing boundaries, co-selling terms, and support handoff."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -973,6 +1007,10 @@ function adminCustomerSuccessOperations() {
   return customerSuccessOperations;
 }
 
+function adminSalesOperations() {
+  return salesOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1006,7 +1044,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "integrations:manage",
       "experiments:operate",
       "evals:review",
-      "success:manage"
+      "success:manage",
+      "sales:manage"
     ],
     audit: [
       accessEvent,
@@ -1250,6 +1289,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminCustomerSuccessOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/sales") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("sales_pipeline_viewed", "Sales", "Info", "Enterprise Sales");
+      return sendJson(response, 200, adminSalesOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1266,4 +1313,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, plans };

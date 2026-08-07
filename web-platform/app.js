@@ -75,6 +75,7 @@ const ADMIN_SECTIONS = [
   { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
   { id: "success", label: "Success", desc: "Enterprise account health, onboarding, renewals, expansion, and customer success playbooks." },
+  { id: "sales", label: "Sales", desc: "Enterprise pipeline, demos, procurement, partners, and expansion revenue motions." },
   { id: "support", label: "Support", desc: "Tickets, SLA, escalations, CSAT, macros, user-impact signals, and safe support boundaries." },
   { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
   { id: "evaluations", label: "Evals", desc: "Model eval suites, benchmark runs, regressions, human samples, and release gates." },
@@ -190,6 +191,8 @@ const DEFAULT_STATE = {
   adminEvaluationsLoadedAt: null,
   adminCustomerSuccess: null,
   adminCustomerSuccessLoadedAt: null,
+  adminSales: null,
+  adminSalesLoadedAt: null,
   adminInfrastructure: null,
   adminInfrastructureLoadedAt: null,
   adminAccess: null,
@@ -532,6 +535,26 @@ async function loadAdminCustomerSuccess(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminSales(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminSalesLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/sales`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Sales pipeline unavailable.");
+    state.adminSales = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminSalesLoadedAt = Date.now();
+  } catch {
+    state.adminSalesLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminPayments(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminPaymentsLoadedAt || 0;
@@ -780,7 +803,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1262,6 +1285,42 @@ function adminCustomerSuccessData() {
       "Expansion recommendations must include usage, support, payment, and language-quality context.",
       "Renewal risks should route to owners with next actions, dates, and evidence.",
       "Customer-facing commitments must match platform, language, privacy, and support readiness."
+    ]
+  };
+}
+
+function adminSalesData() {
+  return state.adminSales || {
+    summary: { pipelineArr: "$684K", qualifiedDeals: 38, demosBooked: 21, procurementRisk: 5, partnerLeads: 14 },
+    pipeline: [
+      { account: "Pan-African Tutors", stage: "Security review", value: "$96K ARR", owner: "Enterprise Sales", close: "Sep 2026" },
+      { account: "HealthBridge Clinics", stage: "Pilot", value: "$84K ARR", owner: "Solutions", close: "Oct 2026" },
+      { account: "TradeMarket Africa", stage: "Proposal", value: "$72K ARR", owner: "Enterprise Sales", close: "Aug 2026" },
+      { account: "Civic Language Lab", stage: "Discovery", value: "$58K ARR", owner: "Partnerships", close: "Nov 2026" }
+    ],
+    demos: [
+      { demo: "Teams workspace and SSO", audience: "Education buyer", market: "Kenya", date: "Aug 12", status: "Booked" },
+      { demo: "Language quality and reviewer loop", audience: "Government innovation", market: "Nigeria", date: "Aug 15", status: "Prep" },
+      { demo: "API translation workflow", audience: "Marketplace operator", market: "Ghana", date: "Aug 19", status: "Booked" },
+      { demo: "Voice Circle for clinics", audience: "Healthcare network", market: "South Africa", date: "Aug 22", status: "Needs security" }
+    ],
+    procurement: [
+      { account: "Pan-African Tutors", blocker: "DPA review", owner: "Legal", risk: "Medium", action: "Send data map" },
+      { account: "HealthBridge Clinics", blocker: "HIPAA-style questionnaire", owner: "Security", risk: "High", action: "Security packet" },
+      { account: "TradeMarket Africa", blocker: "Invoice terms", owner: "Finance", risk: "Low", action: "Approve terms" },
+      { account: "Civic Language Lab", blocker: "Reviewer policy", owner: "Language Ops", risk: "Medium", action: "Policy appendix" }
+    ],
+    partners: [
+      { partner: "Regional cloud reseller", region: "West Africa", leads: 6, motion: "Co-sell", status: "Active" },
+      { partner: "EdTech association", region: "East Africa", leads: 4, motion: "Webinar", status: "Planning" },
+      { partner: "Language research network", region: "Pan-African", leads: 3, motion: "Dataset partnership", status: "Review" },
+      { partner: "Creator community", region: "Southern Africa", leads: 1, motion: "Ambassador", status: "Pilot" }
+    ],
+    guardrails: [
+      "Enterprise sales should track revenue opportunity without exposing private user prompts or account secrets.",
+      "Deals involving schools, healthcare, governments, or children require privacy, security, and legal review before pilot expansion.",
+      "Sales promises must map to live product capability, model readiness, supported languages, and operational capacity.",
+      "Partner motions require clear ownership, data-sharing boundaries, co-selling terms, and support handoff."
     ]
   };
 }
@@ -1816,6 +1875,22 @@ function renewalRow(item) {
 
 function successPlaybookRow(item) {
   return `<div class="table-row"><strong>${item.playbook}</strong><span>${item.owner}</span><span>${item.trigger}</span><span>${item.status}</span></div>`;
+}
+
+function salesPipelineRow(item) {
+  return `<div class="table-row"><strong>${item.account}</strong><span>${item.stage}</span><span>${item.value}</span><span>${item.close}</span></div>`;
+}
+
+function salesDemoRow(item) {
+  return `<div class="table-row"><strong>${item.demo}</strong><span>${item.audience}</span><span>${item.market}</span><span>${item.status}</span></div>`;
+}
+
+function procurementRow(item) {
+  return `<div class="table-row"><strong>${item.account}</strong><span>${item.blocker}</span><span>${item.owner}</span><span>${item.risk}</span></div>`;
+}
+
+function partnerLeadRow(item) {
+  return `<div class="table-row"><strong>${item.partner}</strong><span>${item.region}</span><span>${item.leads} leads</span><span>${item.status}</span></div>`;
 }
 
 function paymentPlanRow(item) {
@@ -2387,6 +2462,7 @@ function adminView() {
   if (state.adminSection === "reports") loadAdminReports();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
+  if (state.adminSection === "sales") loadAdminSales();
   if (state.adminSection === "access") loadAdminAccess();
   if (state.adminSection === "operations") loadAdminActions();
   if (state.adminSection === "api") loadAdminApi();
@@ -2490,6 +2566,7 @@ function adminSectionView(section, readiness) {
     finance: adminFinance,
     users: adminUsers,
     success: adminCustomerSuccess,
+    sales: adminSales,
     support: adminSupport,
     models: () => adminModels(readiness),
     evaluations: adminEvaluations,
@@ -3312,6 +3389,49 @@ function adminCustomerSuccess() {
   `;
 }
 
+function adminSales() {
+  const sales = adminSalesData();
+  const summary = sales.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Pipeline ARR", summary.pipelineArr || "$684K")}
+      ${metric("Qualified deals", summary.qualifiedDeals || "38")}
+      ${metric("Demos booked", summary.demosBooked || "21")}
+      ${metric("Procurement risk", summary.procurementRisk || "5")}
+      <section class="admin-card full-admin">
+        <h2>Enterprise pipeline</h2>
+        <div class="table admin-table-4">
+          ${sales.pipeline.map(salesPipelineRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Demo calendar</h2>
+        <div class="table admin-table-4">
+          ${sales.demos.map(salesDemoRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Procurement blockers</h2>
+        <div class="table admin-table-4">
+          ${sales.procurement.map(procurementRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Partner-led pipeline</h2>
+        <div class="table admin-table-4">
+          ${sales.partners.map(partnerLeadRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Sales guardrails</h2>
+        <div class="admin-checklist">
+          ${sales.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminPlatform() {
   const platform = adminPlatformData();
   const releases = adminMetricValue("platform.mobileReleases", ["iOS 1.0.4 beta", "Android 1.0.6 beta"]);
@@ -3789,6 +3909,7 @@ function bindEvents() {
       loadAdminReports(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
+      loadAdminSales(true);
       loadAdminAccess(true);
       loadAdminActions(true);
       loadAdminApi(true);
