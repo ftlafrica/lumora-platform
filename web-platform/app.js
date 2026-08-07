@@ -26,6 +26,7 @@ const PLANS = [
 ];
 
 const PLAN_LIMITS = { Free: 20, Plus: 200, Pro: 1000, Teams: 5000 };
+const API_BASE_URL = "http://localhost:8787";
 
 const MODES = [
   { id: "chat", label: "AI Chat", desc: "Natural multilingual conversation", prompt: "Ask in any African language, or mix naturally..." },
@@ -267,7 +268,24 @@ function generateReply(text) {
   };
 }
 
-function sendMessage() {
+async function callLumoraApi(text) {
+  const response = await fetch(`${API_BASE_URL}/v1/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text,
+      language: state.user.mainLanguage,
+      bridgeLanguage: state.user.bridgeLanguage,
+      tone: state.user.tone,
+      plan: state.user.plan,
+      task: modeById().label
+    })
+  });
+  if (!response.ok) throw new Error("Lumora API did not return a successful response.");
+  return response.json();
+}
+
+async function sendMessage() {
   const input = document.querySelector("#composerInput");
   if (!input || !input.value.trim()) return;
   const text = input.value.trim();
@@ -278,11 +296,22 @@ function sendMessage() {
   }
   chat.mode = state.activeMode;
   chat.messages.push({ role: "user", meta: `${state.user.mainLanguage} + ${state.user.bridgeLanguage} - ${modeById().label}`, text });
-  const reply = generateReply(text);
+  input.value = "";
+  let reply;
+  try {
+    const apiReply = await callLumoraApi(text);
+    reply = {
+      meta: apiReply.meta || `Lumora - ${modeById().label}`,
+      text: apiReply.text,
+      route: apiReply.route ? apiReply.route.chain.map(item => item.name).join(" -> ") : "Lumora API"
+    };
+  } catch {
+    reply = generateReply(text);
+    reply.meta = `${reply.meta} - local fallback`;
+  }
   chat.messages.push({ role: "ai", meta: reply.meta, text: reply.text, route: reply.route });
   chat.title = text.slice(0, 42);
   state.usage.messagesToday += 1;
-  input.value = "";
   saveState();
   if (location.hash.slice(1) !== "chat") history.pushState(null, "", "#chat");
   render();
@@ -503,6 +532,7 @@ function messageTemplate(message) {
       <div class="bubble ${isUser ? "user-bubble" : "ai-bubble"}">
         <p class="meta">${message.meta}</p>
         <p>${message.text}</p>
+        ${!isUser && state.settings.showModelRoute ? `<p class="route-hint">Route: ${message.route || "language detection -> African model registry -> Lumora tone layer"}</p>` : ""}
         ${!isUser && state.settings.showModelRoute ? `<div class="message-tools"><button class="mini-action" data-sheet="models">Model route</button><button class="mini-action" data-sheet="correction">Correct tone</button></div>` : ""}
       </div>
     </article>

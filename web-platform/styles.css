@@ -697,6 +697,14 @@ button {
   font-weight: 850;
 }
 
+.route-hint {
+  margin-top: 10px !important;
+  color: var(--gold);
+  font-size: .8rem;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
 .message-tools {
   display: flex;
   flex-wrap: wrap;

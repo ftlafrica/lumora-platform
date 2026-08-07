@@ -8,7 +8,7 @@ Expo / React Native starter for the Lumora Android and iOS consumer app.
 - Native onboarding steps
 - Login and signup with Language Passport fields
 - Fresh centered chat home
-- Active chat thread with simulated Lumora replies
+- Active chat thread with API-first Lumora replies and local fallback
 - Local chat history and new-chat flow
 - Language and tone controls
 - Voice Circle prototype state
@@ -20,6 +20,7 @@ Expo / React Native starter for the Lumora Android and iOS consumer app.
 - Privacy, memory, font-size, and model-route controls
 - Data controls screen for local summary and prototype reset
 - Language/model readiness screen
+- Local API connection status in chat and dashboard
 - Local AsyncStorage persistence
 - Separate operator access request placeholder
 
@@ -35,6 +36,15 @@ npm install
 npm run start
 ```
 
+For connected chat replies, run the local API in a second terminal before starting or using the app:
+
+```powershell
+cd ../api-platform
+npm run start
+```
+
+The mobile app posts chat prompts to `http://localhost:8787/v1/chat`. If the API is not running, the app falls back to local simulation and shows that status in Chat and Dashboard.
+
 Android:
 
 ```powershell
@@ -49,8 +59,8 @@ npm run ios
 
 ## Notes
 
-- This starter intentionally mirrors the approved web flow before backend integration.
-- Replies are simulated locally until the model router API is built.
+- This starter intentionally mirrors the approved web flow while the backend matures.
+- Replies call the local Lumora API when available, then fall back to built-in simulation if the API cannot be reached.
 - Voice actions are placeholders for future native microphone, ASR, TTS, and playback integration.
 - Operator access is only a role-gated request placeholder; sensitive admin features are not exposed in the consumer app.
 - Private mode and memory-off prevent new chats from being added to local history in this prototype.

@@ -26,7 +26,7 @@ Admin preview entry: open `admin.html` or `index.html#admin-preview`.
 - Seed-admin-gated enterprise Admin Console
 - Enterprise Admin Dashboard sections: Command, Growth, Payments, Users and Orgs, AI Ops, Safety, Platform, Access
 - Hugging Face model registry prototype
-- Local simulated model routing
+- API-first chat calls with local simulated fallback
 - LocalStorage persistence
 
 ## Consumer Web Flow
@@ -38,6 +38,17 @@ Admin preview entry: open `admin.html` or `index.html#admin-preview`.
 5. The sidebar exposes Lumora modes and recent conversations without cluttering the chat surface.
 6. `#plans` updates the user's selected plan and returns them to `#dashboard`.
 7. `#dashboard` shows safe user-facing information only.
+
+## API Integration
+
+For the connected prototype, start the API in a second terminal:
+
+```powershell
+cd api-platform
+npm run start
+```
+
+The web app posts chat prompts to `http://localhost:8787/v1/chat`. If the API is not running, the interface still works using the local Lumora simulation so design and product review can continue.
 
 ## Admin Separation
 

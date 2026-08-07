@@ -26,6 +26,13 @@ npm run start
 
 The API listens on `http://localhost:8787` by default.
 
+## Connected Clients
+
+- Web Platform: `web-platform/index.html`
+- Mobile App: `mobile-app/App.js`
+
+Both clients currently expect `http://localhost:8787` as the local API base URL. They call `POST /v1/chat` for replies and fall back to local simulation if the API is unavailable.
+
 ## Example Requests
 
 Route a task:

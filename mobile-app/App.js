@@ -65,6 +65,7 @@ const plans = [
 ];
 
 const planLimits = { Free: 20, Plus: 200, Pro: 1000, Teams: 5000 };
+const API_BASE_URL = "http://localhost:8787";
 
 const initialMessages = [
   { role: "user", meta: "Yoruba + English", text: "Explain artificial intelligence to my younger cousin, but make it sound natural for home." },
@@ -101,6 +102,7 @@ export default function App() {
   const [activeChatId, setActiveChatId] = useState("demo");
   const [voiceListening, setVoiceListening] = useState(false);
   const [operatorRequested, setOperatorRequested] = useState(false);
+  const [apiStatus, setApiStatus] = useState("fallback");
   const [hydrated, setHydrated] = useState(false);
   const [draft, setDraft] = useState("");
 
@@ -134,6 +136,7 @@ export default function App() {
         setActiveChatId(data.activeChatId || "demo");
         setMessages(data.messages?.length ? data.messages : initialMessages);
         setOperatorRequested(Boolean(data.operatorRequested));
+        setApiStatus(data.apiStatus || "fallback");
         setRoute(data.route && data.route !== "welcome" ? data.route : "welcome");
       })
       .catch(() => {})
@@ -169,10 +172,11 @@ export default function App() {
       messages,
       chatHistory,
       activeChatId,
-      operatorRequested
+      operatorRequested,
+      apiStatus
     };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)).catch(() => {});
-  }, [route, isSignedIn, authMode, activeMode, mainLanguage, bridgeLanguage, tone, plan, name, email, country, city, fontScale, memory, privacyMode, showModelRoute, onboardingIndex, usage, messages, chatHistory, activeChatId, operatorRequested, hydrated]);
+  }, [route, isSignedIn, authMode, activeMode, mainLanguage, bridgeLanguage, tone, plan, name, email, country, city, fontScale, memory, privacyMode, showModelRoute, onboardingIndex, usage, messages, chatHistory, activeChatId, operatorRequested, apiStatus, hydrated]);
 
   function navigate(nextRoute) {
     setRoute(nextRoute);
@@ -188,15 +192,45 @@ export default function App() {
     setRoute("chatHome");
   }
 
-  function sendMessage(text = draft) {
+  async function callLumoraApi(text) {
+    const response = await fetch(`${API_BASE_URL}/v1/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text,
+        language: mainLanguage,
+        bridgeLanguage,
+        tone,
+        plan,
+        task: mode.label
+      })
+    });
+    if (!response.ok) throw new Error("Lumora API did not return a successful response.");
+    return response.json();
+  }
+
+  async function sendMessage(text = draft) {
     const clean = text.trim();
     if (!clean) return;
     const chatId = activeChatId || `chat-${Date.now()}`;
-    const reply = {
-      role: "ai",
-      meta: `Lumora - ${mode.label} - ${tone} tone`,
-      text: `I hear you. I would answer in ${mainLanguage}, bridge with ${bridgeLanguage} only where it helps, and keep the tone ${tone.toLowerCase()}. This mobile build is ready for the future model router integration.`
-    };
+    let reply;
+    try {
+      const apiReply = await callLumoraApi(clean);
+      setApiStatus("connected");
+      reply = {
+        role: "ai",
+        meta: apiReply.meta || `Lumora - ${mode.label} - ${tone} tone`,
+        text: apiReply.text,
+        route: apiReply.route ? apiReply.route.chain.map(item => item.name).join(" -> ") : "Lumora API"
+      };
+    } catch {
+      setApiStatus("fallback");
+      reply = {
+        role: "ai",
+        meta: `Lumora - ${mode.label} - ${tone} tone - local fallback`,
+        text: `I hear you. I would answer in ${mainLanguage}, bridge with ${bridgeLanguage} only where it helps, and keep the tone ${tone.toLowerCase()}. The mobile app could not reach the local API, so it used the built-in simulation.`
+      };
+    }
     const nextMessages = [
       ...messages,
       { role: "user", meta: `${mainLanguage} + ${bridgeLanguage}`, text: clean },
@@ -261,6 +295,7 @@ export default function App() {
     setChatHistory([]);
     setActiveChatId(null);
     setOperatorRequested(false);
+    setApiStatus("fallback");
     setDraft("");
     AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
     setRoute("welcome");
@@ -300,6 +335,7 @@ export default function App() {
         messages={messages}
         mode={mode}
         showModelRoute={showModelRoute}
+        apiStatus={apiStatus}
         draft={draft}
         setDraft={setDraft}
         onSend={sendMessage}
@@ -315,7 +351,7 @@ export default function App() {
     voice: <VoiceScreen listening={voiceListening} setListening={setVoiceListening} onTranscript={sendMessage} />,
     tools: <ToolsScreen activeMode={activeMode} onMode={chooseMode} onVoice={startVoicePrototype} />,
     plans: <PlansScreen plan={plan} setPlan={setPlan} onDone={() => navigate("dashboard")} />,
-    dashboard: <DashboardScreen name={name} plan={plan} mainLanguage={mainLanguage} bridgeLanguage={bridgeLanguage} tone={tone} messages={messages} usage={usage} />,
+    dashboard: <DashboardScreen name={name} plan={plan} mainLanguage={mainLanguage} bridgeLanguage={bridgeLanguage} tone={tone} messages={messages} usage={usage} apiStatus={apiStatus} />,
     profile: (
       <ProfileScreen
         isSignedIn={isSignedIn}
@@ -450,14 +486,18 @@ function ChatHome({ isSignedIn, firstName, mode, activeMode, onMode, onVoice, dr
   );
 }
 
-function ChatThread({ messages, mode, showModelRoute, draft, setDraft, onSend, onLanguage, onNewChat }) {
+function ChatThread({ messages, mode, showModelRoute, apiStatus, draft, setDraft, onSend, onLanguage, onNewChat }) {
+  const statusLabel = apiStatus === "connected" ? "API connected" : "Local fallback";
   return (
     <Screen>
       <Header
         title="Lumora"
-        subtitle={mode.label}
+        subtitle={`${mode.label} / ${statusLabel}`}
         right={<View style={styles.headerActions}><IconButton name="create-outline" onPress={onNewChat} /><IconButton name="language-outline" onPress={onLanguage} /></View>}
       />
+      <View style={[styles.statusPill, apiStatus === "connected" && styles.statusPillConnected]}>
+        <Text style={[styles.statusText, apiStatus === "connected" && styles.statusTextConnected]}>{statusLabel}</Text>
+      </View>
       <ScrollView contentContainerStyle={styles.messages} showsVerticalScrollIndicator={false}>
         {messages.length ? messages.map((message, index) => (
           <View key={`${message.role}-${index}`} style={[styles.messageRow, message.role === "user" && styles.messageRowUser]}>
@@ -468,7 +508,7 @@ function ChatThread({ messages, mode, showModelRoute, draft, setDraft, onSend, o
               <Text style={styles.meta}>{message.meta}</Text>
               <Text style={styles.bodyText}>{message.text}</Text>
               {message.role === "ai" && showModelRoute ? (
-                <Text style={styles.routeHint}>Route: language detection -> African model registry -> Lumora tone layer</Text>
+                <Text style={styles.routeHint}>Route: {message.route || "language detection -> African model registry -> Lumora tone layer"}</Text>
               ) : null}
             </View>
           </View>
@@ -587,9 +627,10 @@ function PlansScreen({ plan, setPlan, onDone }) {
   );
 }
 
-function DashboardScreen({ name, plan, mainLanguage, bridgeLanguage, tone, messages, usage }) {
+function DashboardScreen({ name, plan, mainLanguage, bridgeLanguage, tone, messages, usage, apiStatus }) {
   const limit = planLimits[plan] || planLimits.Free;
   const usagePercent = Math.min(100, Math.round((usage.messagesToday / limit) * 100));
+  const statusLabel = apiStatus === "connected" ? "Connected" : "Fallback";
   return (
     <Screen padded>
       <Header title="Dashboard" subtitle="Safe personal activity" />
@@ -598,12 +639,14 @@ function DashboardScreen({ name, plan, mainLanguage, bridgeLanguage, tone, messa
         <Metric label="Messages today" value={`${usage.messagesToday}/${limit}`} />
         <Metric label="Language" value={mainLanguage} />
         <Metric label="Tone" value={tone} />
+        <Metric label="API" value={statusLabel} />
       </View>
       <View style={styles.usagePanel}>
         <View style={styles.usageTrack}><View style={[styles.usageFill, { width: `${usagePercent}%` }]} /></View>
         <Text style={styles.cardText}>{usagePercent}% of today's {plan} allowance used. Current thread has {messages.length} messages.</Text>
       </View>
       <InfoCard title="Language Passport" lines={[name, `${mainLanguage} + ${bridgeLanguage}`, tone]} />
+      <InfoCard title="Connection" lines={[apiStatus === "connected" ? "Mobile is using the Lumora API router." : "Mobile is using local fallback until the API is running.", API_BASE_URL]} />
       <InfoCard title="Privacy note" lines={["Admin operations are separate.", "Your profile only shows safe personal data."]} />
     </Screen>
   );
@@ -942,6 +985,10 @@ const styles = StyleSheet.create({
   headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerTitle: { color: colors.text, fontSize: 22, fontWeight: "900" },
   headerSub: { color: colors.muted, marginTop: 2, fontWeight: "700" },
+  statusPill: { alignSelf: "flex-start", borderRadius: 999, borderWidth: 1, borderColor: "rgba(255,209,102,0.3)", paddingVertical: 6, paddingHorizontal: 11, marginBottom: 12, backgroundColor: "rgba(255,209,102,0.08)" },
+  statusPillConnected: { borderColor: "rgba(0,245,212,0.34)", backgroundColor: "rgba(0,245,212,0.09)" },
+  statusText: { color: colors.gold, fontSize: 12, fontWeight: "900" },
+  statusTextConnected: { color: colors.cyan },
   centerHero: { flex: 1, justifyContent: "center" },
   composer: { minHeight: 66, borderRadius: 26, borderWidth: 1, borderColor: "rgba(255,209,102,0.24)", backgroundColor: colors.surface, flexDirection: "row", alignItems: "center", paddingLeft: 16, paddingRight: 8, gap: 8 },
   composerInput: { flex: 1, minHeight: 46, maxHeight: 110, color: colors.text, fontSize: 16 },
