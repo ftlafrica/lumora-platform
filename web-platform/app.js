@@ -76,6 +76,7 @@ const ADMIN_SECTIONS = [
   { id: "support", label: "Support", desc: "Tickets, SLA, escalations, CSAT, macros, user-impact signals, and safe support boundaries." },
   { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
   { id: "languages", label: "Languages", desc: "Country coverage, dialect readiness, reviewer queues, benchmarks, and expansion quality." },
+  { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
   { id: "knowledge", label: "Knowledge", desc: "RAG collections, sources, indexing, embeddings, permissions, freshness, and quality queues." },
   { id: "safety", label: "Safety", desc: "Moderation, corrections, privacy, red-team findings, appeals, and policy." },
   { id: "security", label: "Security", desc: "Threats, MFA/SSO, device trust, audit integrity, data requests, and compliance readiness." },
@@ -175,6 +176,8 @@ const DEFAULT_STATE = {
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
   adminLanguagesLoadedAt: null,
+  adminDataGovernance: null,
+  adminDataGovernanceLoadedAt: null,
   adminInfrastructure: null,
   adminInfrastructureLoadedAt: null,
   adminAccess: null,
@@ -412,6 +415,26 @@ async function loadAdminLanguages(force = false) {
     state.adminLanguagesLoadedAt = Date.now();
   } catch {
     state.adminLanguagesLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminDataGovernance(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminDataGovernanceLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/data-governance`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Data governance unavailable.");
+    state.adminDataGovernance = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminDataGovernanceLoadedAt = Date.now();
+  } catch {
+    state.adminDataGovernanceLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -665,7 +688,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "communications:send", "language:review"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "communications:send", "language:review", "data:govern"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -966,6 +989,42 @@ function adminLanguagesData() {
       "Dialect fixes must preserve meaning, tone, safety context, and user-selected bridge language.",
       "Low-confidence outputs should admit uncertainty and offer alternatives instead of guessing.",
       "Country expansion requires readiness, reviewer coverage, safety policy, and model route validation."
+    ]
+  };
+}
+
+function adminDataGovernanceData() {
+  return state.adminDataGovernance || {
+    summary: { retentionPolicies: 9, consentCoverage: "88%", residencyRegions: 4, deletionRequests: 4, piiFindings: 29 },
+    retention: [
+      { policy: "Conversation history", scope: "User opt-in", duration: "Until deleted", owner: "Privacy", status: "Active" },
+      { policy: "Admin audit logs", scope: "Admin actions", duration: "7 years", owner: "Security", status: "Immutable" },
+      { policy: "Model routing logs", scope: "Metadata only", duration: "180 days", owner: "AI Ops", status: "Review" },
+      { policy: "Support case context", scope: "Non-sensitive summary", duration: "2 years", owner: "Support", status: "Active" }
+    ],
+    consent: [
+      { control: "Memory opt-in", coverage: "88%", surface: "Web/Mobile", owner: "Privacy" },
+      { control: "Voice retention consent", coverage: "64%", surface: "Mobile", owner: "Voice Ops" },
+      { control: "Marketing consent", coverage: "71%", surface: "Email/In-app", owner: "Growth" },
+      { control: "Reviewer data access", coverage: "Scoped", surface: "Admin", owner: "Language QA" }
+    ],
+    residency: [
+      { region: "West Africa", data: "Profiles, chats, telemetry", status: "Policy draft", owner: "Platform" },
+      { region: "EU", data: "Fallback processing", status: "DPA reviewed", owner: "Legal" },
+      { region: "US", data: "Vendor integrations", status: "Restricted", owner: "Security" },
+      { region: "Enterprise tenant", data: "Workspace knowledge", status: "Tenant scoped", owner: "Enterprise" }
+    ],
+    requests: [
+      { request: "Data export", count: 9, sla: "7 days", owner: "Privacy", status: "Pending review" },
+      { request: "Deletion request", count: 4, sla: "30 days", owner: "Privacy", status: "Queued" },
+      { request: "Consent withdrawal", count: 11, sla: "Immediate", owner: "Privacy", status: "Automated" },
+      { request: "Legal hold", count: 2, sla: "Active", owner: "Legal", status: "Restricted" }
+    ],
+    guardrails: [
+      "Data export, deletion, and legal hold actions require privacy-reviewed workflow state.",
+      "Memory, voice, and reviewer access must honor user consent, country rules, and tenant boundaries.",
+      "Model training or evaluation datasets must remove PII and track source license, reviewer, and retention.",
+      "Consumer dashboards can show personal privacy status but never expose admin data governance controls."
     ]
   };
 }
@@ -1440,6 +1499,22 @@ function reviewerRegionRow(item) {
 
 function languageBenchmarkRow(item) {
   return `<div class="table-row"><strong>${item.benchmark}</strong><span>${item.score}</span><span>${item.gap}</span><span>${item.owner}</span></div>`;
+}
+
+function retentionPolicyRow(item) {
+  return `<div class="table-row"><strong>${item.policy}</strong><span>${item.scope}</span><span>${item.duration}</span><span>${item.status}</span></div>`;
+}
+
+function consentControlRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.coverage}</span><span>${item.surface}</span><span>${item.owner}</span></div>`;
+}
+
+function residencyRow(item) {
+  return `<div class="table-row"><strong>${item.region}</strong><span>${item.data}</span><span>${item.status}</span><span>${item.owner}</span></div>`;
+}
+
+function privacyRequestRow(item) {
+  return `<div class="table-row"><strong>${item.request}</strong><span>${item.count} open</span><span>${item.sla}</span><span>${item.status}</span></div>`;
 }
 
 function paymentPlanRow(item) {
@@ -2000,6 +2075,7 @@ function adminView() {
   if (state.adminSection === "support") loadAdminSupport();
   if (state.adminSection === "models") loadAdminModels();
   if (state.adminSection === "languages") loadAdminLanguages();
+  if (state.adminSection === "data") loadAdminDataGovernance();
   if (state.adminSection === "safety") loadAdminSafety();
   if (state.adminSection === "security") loadAdminSecurity();
   if (state.adminSection === "infrastructure") loadAdminInfrastructure();
@@ -2110,6 +2186,7 @@ function adminSectionView(section, readiness) {
     support: adminSupport,
     models: () => adminModels(readiness),
     languages: adminLanguages,
+    data: adminDataGovernance,
     knowledge: adminKnowledge,
     safety: adminSafety,
     security: adminSecurity,
@@ -2711,6 +2788,49 @@ function adminLanguages() {
   `;
 }
 
+function adminDataGovernance() {
+  const data = adminDataGovernanceData();
+  const summary = data.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Retention policies", summary.retentionPolicies || "9")}
+      ${metric("Consent coverage", summary.consentCoverage || "88%")}
+      ${metric("Residency regions", summary.residencyRegions || "4")}
+      ${metric("PII findings", summary.piiFindings || "29")}
+      <section class="admin-card full-admin">
+        <h2>Retention policies</h2>
+        <div class="table admin-table-4">
+          ${data.retention.map(retentionPolicyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Consent and memory controls</h2>
+        <div class="table admin-table-4">
+          ${data.consent.map(consentControlRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Data residency</h2>
+        <div class="table admin-table-4">
+          ${data.residency.map(residencyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Privacy requests</h2>
+        <div class="table admin-table-4">
+          ${data.requests.map(privacyRequestRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Governance guardrails</h2>
+        <div class="admin-checklist">
+          ${data.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminPlatform() {
   const platform = adminPlatformData();
   const releases = adminMetricValue("platform.mobileReleases", ["iOS 1.0.4 beta", "Android 1.0.6 beta"]);
@@ -3177,6 +3297,7 @@ function bindEvents() {
       loadAdminSupport(true);
       loadAdminModels(true);
       loadAdminLanguages(true);
+      loadAdminDataGovernance(true);
       loadAdminSafety(true);
       loadAdminSecurity(true);
       loadAdminInfrastructure(true);

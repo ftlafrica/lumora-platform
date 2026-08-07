@@ -565,6 +565,40 @@ const languageOperations = {
   ]
 };
 
+const dataGovernanceOperations = {
+  summary: { retentionPolicies: 9, consentCoverage: "88%", residencyRegions: 4, deletionRequests: 4, piiFindings: 29 },
+  retention: [
+    { policy: "Conversation history", scope: "User opt-in", duration: "Until deleted", owner: "Privacy", status: "Active" },
+    { policy: "Admin audit logs", scope: "Admin actions", duration: "7 years", owner: "Security", status: "Immutable" },
+    { policy: "Model routing logs", scope: "Metadata only", duration: "180 days", owner: "AI Ops", status: "Review" },
+    { policy: "Support case context", scope: "Non-sensitive summary", duration: "2 years", owner: "Support", status: "Active" }
+  ],
+  consent: [
+    { control: "Memory opt-in", coverage: "88%", surface: "Web/Mobile", owner: "Privacy" },
+    { control: "Voice retention consent", coverage: "64%", surface: "Mobile", owner: "Voice Ops" },
+    { control: "Marketing consent", coverage: "71%", surface: "Email/In-app", owner: "Growth" },
+    { control: "Reviewer data access", coverage: "Scoped", surface: "Admin", owner: "Language QA" }
+  ],
+  residency: [
+    { region: "West Africa", data: "Profiles, chats, telemetry", status: "Policy draft", owner: "Platform" },
+    { region: "EU", data: "Fallback processing", status: "DPA reviewed", owner: "Legal" },
+    { region: "US", data: "Vendor integrations", status: "Restricted", owner: "Security" },
+    { region: "Enterprise tenant", data: "Workspace knowledge", status: "Tenant scoped", owner: "Enterprise" }
+  ],
+  requests: [
+    { request: "Data export", count: 9, sla: "7 days", owner: "Privacy", status: "Pending review" },
+    { request: "Deletion request", count: 4, sla: "30 days", owner: "Privacy", status: "Queued" },
+    { request: "Consent withdrawal", count: 11, sla: "Immediate", owner: "Privacy", status: "Automated" },
+    { request: "Legal hold", count: 2, sla: "Active", owner: "Legal", status: "Restricted" }
+  ],
+  guardrails: [
+    "Data export, deletion, and legal hold actions require privacy-reviewed workflow state.",
+    "Memory, voice, and reviewer access must honor user consent, country rules, and tenant boundaries.",
+    "Model training or evaluation datasets must remove PII and track source license, reviewer, and retention.",
+    "Consumer dashboards can show personal privacy status but never expose admin data governance controls."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -782,6 +816,10 @@ function adminLanguageOperations() {
   return languageOperations;
 }
 
+function adminDataGovernanceOperations() {
+  return dataGovernanceOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -810,7 +848,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "security:operate",
       "reporting:export",
       "communications:send",
-      "language:review"
+      "language:review",
+      "data:govern"
     ],
     audit: [
       accessEvent,
@@ -1014,6 +1053,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminLanguageOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/data-governance") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("data_governance_viewed", "Data Governance", "Info", "Privacy");
+      return sendJson(response, 200, adminDataGovernanceOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1030,4 +1077,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, plans };
