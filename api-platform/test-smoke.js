@@ -22,7 +22,8 @@ const {
   adminAnalyticsOperations,
   adminInfrastructureOperations,
   adminSecurityOperations,
-  adminReportingOperations
+  adminReportingOperations,
+  adminCommunicationsOperations
 } = require("./server");
 const { modelRegistry } = require("./model-registry");
 
@@ -61,6 +62,7 @@ assert.ok(accessSession.scopes.includes("analytics:read"));
 assert.ok(accessSession.scopes.includes("infrastructure:operate"));
 assert.ok(accessSession.scopes.includes("security:operate"));
 assert.ok(accessSession.scopes.includes("reporting:export"));
+assert.ok(accessSession.scopes.includes("communications:send"));
 assert.ok(accessSession.audit.length >= 2);
 
 const adminContracts = [
@@ -80,7 +82,8 @@ const adminContracts = [
   ["analytics", adminAnalyticsOperations(), data => data.summary && Array.isArray(data.retention) && Array.isArray(data.featureUsage) && Array.isArray(data.languageAdoption)],
   ["infrastructure", adminInfrastructureOperations(), data => data.summary && Array.isArray(data.services) && Array.isArray(data.clusters) && Array.isArray(data.queues)],
   ["security", adminSecurityOperations(), data => data.summary && Array.isArray(data.threats) && Array.isArray(data.accessPosture) && Array.isArray(data.compliance)],
-  ["reports", adminReportingOperations(), data => data.summary && Array.isArray(data.reportPacks) && Array.isArray(data.exports) && Array.isArray(data.schedules)]
+  ["reports", adminReportingOperations(), data => data.summary && Array.isArray(data.reportPacks) && Array.isArray(data.exports) && Array.isArray(data.schedules)],
+  ["communications", adminCommunicationsOperations(), data => data.summary && Array.isArray(data.campaigns) && Array.isArray(data.broadcasts) && Array.isArray(data.delivery)]
 ];
 
 adminContracts.forEach(([name, data, isValid]) => {

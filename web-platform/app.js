@@ -69,6 +69,7 @@ const ADMIN_SECTIONS = [
   { id: "growth", label: "Growth", desc: "Visitors, activation, countries, devices, campaigns, and funnels." },
   { id: "analytics", label: "Analytics", desc: "Retention, activation, churn, feature usage, language adoption, and experiments." },
   { id: "reports", label: "Reports", desc: "Leadership packs, scheduled exports, report destinations, datasets, and evidence guardrails." },
+  { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
   { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
@@ -169,6 +170,8 @@ const DEFAULT_STATE = {
   adminAnalyticsLoadedAt: null,
   adminReports: null,
   adminReportsLoadedAt: null,
+  adminCommunications: null,
+  adminCommunicationsLoadedAt: null,
   adminInfrastructure: null,
   adminInfrastructureLoadedAt: null,
   adminAccess: null,
@@ -366,6 +369,26 @@ async function loadAdminReports(force = false) {
     state.adminReportsLoadedAt = Date.now();
   } catch {
     state.adminReportsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminCommunications(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminCommunicationsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/communications`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Communications center unavailable.");
+    state.adminCommunications = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminCommunicationsLoadedAt = Date.now();
+  } catch {
+    state.adminCommunicationsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -619,7 +642,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "communications:send"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -847,6 +870,42 @@ function adminReportsData() {
       "Sensitive reports require watermarking, expiry, and restricted download history.",
       "Board and investor packs must separate simulated prototype metrics from production data.",
       "Privacy, payment, and security evidence exports require approval before sharing."
+    ]
+  };
+}
+
+function adminCommunicationsData() {
+  return state.adminCommunications || {
+    summary: { activeCampaigns: 8, alertsQueued: 12, deliveryRate: "98.7%", pushOptIn: "64%", incidentNotices: 3 },
+    campaigns: [
+      { campaign: "Welcome language passport", audience: "New users", channel: "Email + in-app", owner: "Growth", status: "Live" },
+      { campaign: "Pro creator upgrade", audience: "High-usage Free users", channel: "In-app", owner: "Revenue", status: "Testing" },
+      { campaign: "Teams onboarding", audience: "Enterprise admins", channel: "Email", owner: "Customer Success", status: "Ready" },
+      { campaign: "Voice Circle beta", audience: "Mobile beta users", channel: "Push", owner: "Mobile", status: "Queued" }
+    ],
+    broadcasts: [
+      { notice: "Model latency watch", surface: "Web/Mobile", severity: "Medium", audience: "Affected users", status: "Draft" },
+      { notice: "Scheduled maintenance", surface: "API", severity: "Info", audience: "API customers", status: "Approved" },
+      { notice: "Payment retry guidance", surface: "Billing", severity: "Medium", audience: "Failed payment users", status: "Live" },
+      { notice: "Security posture update", surface: "Admin", severity: "High", audience: "Seed admins", status: "Restricted" }
+    ],
+    templates: [
+      { template: "Welcome and language setup", channel: "Email", locale: "EN + localized", owner: "Growth" },
+      { template: "Upgrade confirmation", channel: "Email/In-app", locale: "EN", owner: "Revenue" },
+      { template: "Safety appeal received", channel: "Email", locale: "EN + FR", owner: "Trust" },
+      { template: "Enterprise incident update", channel: "Email + webhook", locale: "EN", owner: "Support" }
+    ],
+    delivery: [
+      { channel: "Email", sentToday: "42K", success: "99.2%", issue: "Normal" },
+      { channel: "Push", sentToday: "18K", success: "97.8%", issue: "Android token cleanup" },
+      { channel: "In-app", sentToday: "64K", success: "99.9%", issue: "Healthy" },
+      { channel: "Webhooks", sentToday: "8.4K", success: "98.1%", issue: "42 retries" }
+    ],
+    guardrails: [
+      "Sensitive notices require audience scoping, approval status, expiry, and audit event.",
+      "Incident communications must distinguish confirmed facts from investigation updates.",
+      "Marketing campaigns must respect opt-in, country rules, language preference, and plan context.",
+      "Admin/security broadcasts must never be visible in the consumer profile or normal dashboard."
     ]
   };
 }
@@ -1289,6 +1348,22 @@ function scheduleRow(item) {
 
 function datasetRow(item) {
   return `<div class="table-row"><strong>${item.dataset}</strong><span>${item.source}</span><span>${item.freshness}</span><span>${item.owner}</span></div>`;
+}
+
+function campaignRow(item) {
+  return `<div class="table-row"><strong>${item.campaign}</strong><span>${item.audience}</span><span>${item.channel}</span><span>${item.status}</span></div>`;
+}
+
+function broadcastRow(item) {
+  return `<div class="table-row"><strong>${item.notice}</strong><span>${item.surface}</span><span>${item.severity} / ${item.audience}</span><span>${item.status}</span></div>`;
+}
+
+function templateRow(item) {
+  return `<div class="table-row"><strong>${item.template}</strong><span>${item.channel}</span><span>${item.locale}</span><span>${item.owner}</span></div>`;
+}
+
+function deliveryRow(item) {
+  return `<div class="table-row"><strong>${item.channel}</strong><span>${item.sentToday} sent</span><span>${item.success}</span><span>${item.issue}</span></div>`;
 }
 
 function paymentPlanRow(item) {
@@ -1854,6 +1929,7 @@ function adminView() {
   if (state.adminSection === "growth") loadAdminGrowth();
   if (state.adminSection === "analytics") loadAdminAnalytics();
   if (state.adminSection === "reports") loadAdminReports();
+  if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "access") loadAdminAccess();
   if (state.adminSection === "operations") loadAdminActions();
   if (state.adminSection === "api") loadAdminApi();
@@ -1950,6 +2026,7 @@ function adminSectionView(section, readiness) {
     growth: adminGrowth,
     analytics: adminAnalytics,
     reports: adminReports,
+    communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
     users: adminUsers,
@@ -2470,6 +2547,49 @@ function adminReports() {
   `;
 }
 
+function adminCommunications() {
+  const communications = adminCommunicationsData();
+  const summary = communications.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active campaigns", summary.activeCampaigns || "8")}
+      ${metric("Alerts queued", summary.alertsQueued || "12")}
+      ${metric("Delivery rate", summary.deliveryRate || "98.7%")}
+      ${metric("Push opt-in", summary.pushOptIn || "64%")}
+      <section class="admin-card full-admin">
+        <h2>Campaigns</h2>
+        <div class="table admin-table-4">
+          ${communications.campaigns.map(campaignRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Broadcasts and incident notices</h2>
+        <div class="table admin-table-4">
+          ${communications.broadcasts.map(broadcastRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Message templates</h2>
+        <div class="table admin-table-4">
+          ${communications.templates.map(templateRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Delivery health</h2>
+        <div class="table admin-table-4">
+          ${communications.delivery.map(deliveryRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Communication guardrails</h2>
+        <div class="admin-checklist">
+          ${communications.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminPlatform() {
   const platform = adminPlatformData();
   const releases = adminMetricValue("platform.mobileReleases", ["iOS 1.0.4 beta", "Android 1.0.6 beta"]);
@@ -2941,6 +3061,7 @@ function bindEvents() {
       loadAdminGrowth(true);
       loadAdminAnalytics(true);
       loadAdminReports(true);
+      loadAdminCommunications(true);
       loadAdminAccess(true);
       loadAdminActions(true);
       loadAdminApi(true);

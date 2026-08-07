@@ -496,6 +496,40 @@ const reportingOperations = {
   ]
 };
 
+const communicationsOperations = {
+  summary: { activeCampaigns: 8, alertsQueued: 12, deliveryRate: "98.7%", pushOptIn: "64%", incidentNotices: 3 },
+  campaigns: [
+    { campaign: "Welcome language passport", audience: "New users", channel: "Email + in-app", owner: "Growth", status: "Live" },
+    { campaign: "Pro creator upgrade", audience: "High-usage Free users", channel: "In-app", owner: "Revenue", status: "Testing" },
+    { campaign: "Teams onboarding", audience: "Enterprise admins", channel: "Email", owner: "Customer Success", status: "Ready" },
+    { campaign: "Voice Circle beta", audience: "Mobile beta users", channel: "Push", owner: "Mobile", status: "Queued" }
+  ],
+  broadcasts: [
+    { notice: "Model latency watch", surface: "Web/Mobile", severity: "Medium", audience: "Affected users", status: "Draft" },
+    { notice: "Scheduled maintenance", surface: "API", severity: "Info", audience: "API customers", status: "Approved" },
+    { notice: "Payment retry guidance", surface: "Billing", severity: "Medium", audience: "Failed payment users", status: "Live" },
+    { notice: "Security posture update", surface: "Admin", severity: "High", audience: "Seed admins", status: "Restricted" }
+  ],
+  templates: [
+    { template: "Welcome and language setup", channel: "Email", locale: "EN + localized", owner: "Growth" },
+    { template: "Upgrade confirmation", channel: "Email/In-app", locale: "EN", owner: "Revenue" },
+    { template: "Safety appeal received", channel: "Email", locale: "EN + FR", owner: "Trust" },
+    { template: "Enterprise incident update", channel: "Email + webhook", locale: "EN", owner: "Support" }
+  ],
+  delivery: [
+    { channel: "Email", sentToday: "42K", success: "99.2%", issue: "Normal" },
+    { channel: "Push", sentToday: "18K", success: "97.8%", issue: "Android token cleanup" },
+    { channel: "In-app", sentToday: "64K", success: "99.9%", issue: "Healthy" },
+    { channel: "Webhooks", sentToday: "8.4K", success: "98.1%", issue: "42 retries" }
+  ],
+  guardrails: [
+    "Sensitive notices require audience scoping, approval status, expiry, and audit event.",
+    "Incident communications must distinguish confirmed facts from investigation updates.",
+    "Marketing campaigns must respect opt-in, country rules, language preference, and plan context.",
+    "Admin/security broadcasts must never be visible in the consumer profile or normal dashboard."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -705,6 +739,10 @@ function adminReportingOperations() {
   return reportingOperations;
 }
 
+function adminCommunicationsOperations() {
+  return communicationsOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -731,7 +769,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "analytics:read",
       "infrastructure:operate",
       "security:operate",
-      "reporting:export"
+      "reporting:export",
+      "communications:send"
     ],
     audit: [
       accessEvent,
@@ -919,6 +958,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminReportingOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/communications") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("communications_center_viewed", "Communications", "Info", "Operations");
+      return sendJson(response, 200, adminCommunicationsOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -935,4 +982,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, plans };
