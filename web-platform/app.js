@@ -142,6 +142,8 @@ const DEFAULT_STATE = {
   adminAuditLoadedAt: null,
   adminPlatform: null,
   adminPlatformLoadedAt: null,
+  adminPayments: null,
+  adminPaymentsLoadedAt: null,
   user: {
     name: "Murewa Oyetoro",
     email: "murewa@example.com",
@@ -267,6 +269,26 @@ async function loadAdminPlatform(force = false) {
     state.adminPlatformLoadedAt = Date.now();
   } catch {
     state.adminPlatformLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminPayments(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminPaymentsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/payments`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Payment operations unavailable.");
+    state.adminPayments = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminPaymentsLoadedAt = Date.now();
+  } catch {
+    state.adminPaymentsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -404,6 +426,24 @@ function adminPlatformData() {
   };
 }
 
+function adminPaymentData() {
+  return state.adminPayments || {
+    plans: ADMIN_PAYMENTS,
+    queues: [
+      { queue: "Failed payment retry", count: 31, owner: "Finance", priority: "Today" },
+      { queue: "Refund review", count: 8, owner: "Finance", priority: "High value" },
+      { queue: "Teams invoice prep", count: 14, owner: "Revenue Ops", priority: "This week" },
+      { queue: "Tax/VAT export", count: 3, owner: "Finance", priority: "Month close" }
+    ],
+    invoices: [
+      { id: "INV-LUM-1048", account: "EduBridge Africa", amount: "$4,800", status: "Due in 4 days" },
+      { id: "INV-LUM-1049", account: "MarketUnion NG", amount: "$2,250", status: "Paid" },
+      { id: "INV-LUM-1050", account: "Creator Desk", amount: "$890", status: "Retrying card" }
+    ],
+    revenueMix: { proTeamsPercent: 73, consumerPercent: 27, churnRisk: "4.2%", dunningRecovery: "$11.4K" }
+  };
+}
+
 function formatAdminTime(timestamp) {
   if (!timestamp) return "Not loaded";
   return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -438,6 +478,18 @@ function releaseRow(release) {
 
 function flagRow(flag) {
   return `<div class="table-row"><strong>${flag.key}</strong><span>${flag.surface} / ${flag.owner}</span><span>${flag.state} - ${flag.rollout}%</span></div>`;
+}
+
+function paymentPlanRow(item) {
+  return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
+}
+
+function paymentQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.owner} / ${item.priority}</span></div>`;
+}
+
+function invoiceRow(item) {
+  return `<div class="table-row"><strong>${item.id}</strong><span>${item.account}</span><span>${item.amount} / ${item.status}</span></div>`;
 }
 
 function generateReply(text) {
@@ -872,6 +924,7 @@ function adminView() {
   loadAdminMetrics();
   loadAdminAudit();
   if (state.adminSection === "platform") loadAdminPlatform();
+  if (state.adminSection === "payments") loadAdminPayments();
   const readiness = MODEL_REGISTRY.reduce((acc, item) => {
     acc[item.readiness] = (acc[item.readiness] || 0) + 1;
     return acc;
@@ -1040,6 +1093,8 @@ function adminGrowth() {
 }
 
 function adminPayments() {
+  const payments = adminPaymentData();
+  const mix = payments.revenueMix || {};
   return `
     <div class="admin-grid">
       ${metric("MRR", adminMetricValue("revenue.mrr", "$184K"))}
@@ -1049,17 +1104,29 @@ function adminPayments() {
       <section class="admin-card full-admin">
         <h2>Plan performance</h2>
         <div class="table admin-table-4">
-          ${ADMIN_PAYMENTS.map(item => `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`).join("")}
+          ${payments.plans.map(paymentPlanRow).join("")}
         </div>
       </section>
       <section class="admin-card wide">
         <h2>Billing queues</h2>
-        <div class="admin-checklist"><span>Retry failed payments with smart dunning.</span><span>Review refund requests over $250.</span><span>Prepare Teams invoices and tax exports.</span></div>
+        <div class="table">
+          ${payments.queues.map(paymentQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card wide">
+        <h2>Invoices</h2>
+        <div class="table">
+          ${payments.invoices.map(invoiceRow).join("")}
+        </div>
       </section>
       <section class="admin-card wide">
         <h2>Revenue mix</h2>
-        <div class="admin-donut"><span>73%</span></div>
-        <p class="hero-lead">Pro and Teams currently carry most simulated recurring revenue.</p>
+        <div class="admin-donut"><span>${mix.proTeamsPercent || 73}%</span></div>
+        <p class="hero-lead">Pro and Teams carry ${mix.proTeamsPercent || 73}% of recurring revenue. Consumer plans carry ${mix.consumerPercent || 27}%. Churn risk is ${mix.churnRisk || "4.2%"}.</p>
+      </section>
+      <section class="admin-card wide">
+        <h2>Finance actions</h2>
+        <div class="admin-checklist"><span>Retry failed payments with smart dunning.</span><span>Review refund requests over $250.</span><span>Prepare Teams invoices and tax exports.</span><span>Projected dunning recovery: ${mix.dunningRecovery || "$11.4K"}</span></div>
       </section>
     </div>
   `;
@@ -1373,6 +1440,7 @@ function bindEvents() {
       loadAdminMetrics(true);
       loadAdminAudit(true);
       loadAdminPlatform(true);
+      loadAdminPayments(true);
       setTimeout(() => showToast("Refreshing admin data."), 40);
     }
     if (action === "sign-out") signOut();

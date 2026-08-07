@@ -41,6 +41,27 @@ const platformControls = {
   }
 };
 
+const paymentOperations = {
+  plans: [
+    { plan: "Free", users: "14.2K", mrr: "$0", status: "Acquisition" },
+    { plan: "Plus", users: "2.9K", mrr: "$23.2K", status: "Healthy" },
+    { plan: "Pro", users: "1.1K", mrr: "$19.8K", status: "Growth" },
+    { plan: "Teams", users: "47 orgs", mrr: "$141K", status: "Enterprise" }
+  ],
+  queues: [
+    { queue: "Failed payment retry", count: 31, owner: "Finance", priority: "Today" },
+    { queue: "Refund review", count: 8, owner: "Finance", priority: "High value" },
+    { queue: "Teams invoice prep", count: 14, owner: "Revenue Ops", priority: "This week" },
+    { queue: "Tax/VAT export", count: 3, owner: "Finance", priority: "Month close" }
+  ],
+  invoices: [
+    { id: "INV-LUM-1048", account: "EduBridge Africa", amount: "$4,800", status: "Due in 4 days" },
+    { id: "INV-LUM-1049", account: "MarketUnion NG", amount: "$2,250", status: "Paid" },
+    { id: "INV-LUM-1050", account: "Creator Desk", amount: "$890", status: "Retrying card" }
+  ],
+  revenueMix: { proTeamsPercent: 73, consumerPercent: 27, churnRisk: "4.2%", dunningRecovery: "$11.4K" }
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -174,6 +195,10 @@ function adminPlatformControls() {
   return platformControls;
 }
 
+function adminPaymentOperations() {
+  return paymentOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -260,6 +285,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminPlatformControls());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/payments") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("payment_operations_viewed", "Payments", "Info", "Finance");
+      return sendJson(response, 200, adminPaymentOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -276,4 +309,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, adminAuditTrail, adminPlatformControls, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, plans };
