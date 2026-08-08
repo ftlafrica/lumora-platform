@@ -35,7 +35,8 @@ const {
   adminLegalOperations,
   adminPeopleOperations,
   adminVendorOperations,
-  adminRegionalLaunchOperations
+  adminRegionalLaunchOperations,
+  adminQaOperations
 } = require("./server");
 const { modelRegistry } = require("./model-registry");
 
@@ -87,6 +88,7 @@ assert.ok(accessSession.scopes.includes("legal:review"));
 assert.ok(accessSession.scopes.includes("people:read"));
 assert.ok(accessSession.scopes.includes("vendors:manage"));
 assert.ok(accessSession.scopes.includes("regional:launch"));
+assert.ok(accessSession.scopes.includes("qa:review"));
 assert.ok(accessSession.audit.length >= 2);
 
 const adminContracts = [
@@ -119,7 +121,8 @@ const adminContracts = [
   ["legal", adminLegalOperations(), data => data.summary && Array.isArray(data.contracts) && Array.isArray(data.policies) && Array.isArray(data.requests)],
   ["people", adminPeopleOperations(), data => data.summary && Array.isArray(data.staffing) && Array.isArray(data.hiring) && Array.isArray(data.rotations)],
   ["vendors", adminVendorOperations(), data => data.summary && Array.isArray(data.vendors) && Array.isArray(data.renewals) && Array.isArray(data.diligence)],
-  ["regional launch", adminRegionalLaunchOperations(), data => data.summary && Array.isArray(data.markets) && Array.isArray(data.localization) && Array.isArray(data.blockers)]
+  ["regional launch", adminRegionalLaunchOperations(), data => data.summary && Array.isArray(data.markets) && Array.isArray(data.localization) && Array.isArray(data.blockers)],
+  ["qa", adminQaOperations(), data => data.summary && Array.isArray(data.suites) && Array.isArray(data.devices) && Array.isArray(data.blockers)]
 ];
 
 adminContracts.forEach(([name, data, isValid]) => {

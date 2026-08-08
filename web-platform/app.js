@@ -76,6 +76,7 @@ const ADMIN_SECTIONS = [
   { id: "people", label: "People", desc: "Team coverage, hiring, reviewer capacity, on-call load, enablement, and workforce guardrails." },
   { id: "vendors", label: "Vendors", desc: "Vendor inventory, renewals, procurement diligence, spend variance, and third-party risk." },
   { id: "regional", label: "Regional", desc: "Country launch readiness, localization, blockers, local partners, and market guardrails." },
+  { id: "qa", label: "QA", desc: "Regression suites, device coverage, release blockers, accessibility checks, and QA guardrails." },
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
   { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
@@ -192,6 +193,8 @@ const DEFAULT_STATE = {
   adminVendorsLoadedAt: null,
   adminRegionalLaunch: null,
   adminRegionalLaunchLoadedAt: null,
+  adminQa: null,
+  adminQaLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -505,6 +508,26 @@ async function loadAdminRegionalLaunch(force = false) {
     state.adminRegionalLaunchLoadedAt = Date.now();
   } catch {
     state.adminRegionalLaunchLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminQa(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminQaLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/qa`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("QA operations unavailable.");
+    state.adminQa = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminQaLoadedAt = Date.now();
+  } catch {
+    state.adminQaLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -918,7 +941,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1620,6 +1643,42 @@ function adminRegionalLaunchData() {
   };
 }
 
+function adminQaData() {
+  return state.adminQa || {
+    summary: { openRegressions: 11, releaseBlockers: 4, deviceCoverage: "86%", accessibilityScore: "91%", qaPassRate: "88%" },
+    suites: [
+      { suite: "Web chat regression", surface: "Web", passRate: "94%", owner: "QA", status: "Passing" },
+      { suite: "Mobile composer responsiveness", surface: "iOS/Android", passRate: "82%", owner: "Mobile QA", status: "Watch" },
+      { suite: "Admin console navigation", surface: "Admin", passRate: "89%", owner: "Enterprise QA", status: "Review" },
+      { suite: "Language Passport flow", surface: "Auth/Profile", passRate: "91%", owner: "Product QA", status: "Passing" }
+    ],
+    devices: [
+      { device: "Android low-memory", viewport: "390px", coverage: "78%", issue: "Composer density", status: "Testing" },
+      { device: "iPhone compact", viewport: "430px", coverage: "84%", issue: "Keyboard overlap", status: "Watch" },
+      { device: "Tablet", viewport: "768px", coverage: "91%", issue: "Drawer transitions", status: "Passing" },
+      { device: "Desktop wide", viewport: "1440px+", coverage: "96%", issue: "Admin tab overflow", status: "Passing" }
+    ],
+    blockers: [
+      { blocker: "Voice button state inconsistent", surface: "Mobile chat", severity: "Medium", owner: "Mobile", status: "Open" },
+      { blocker: "Admin tab scroll affordance", surface: "Admin", severity: "Medium", owner: "Web", status: "Fixing" },
+      { blocker: "Language selector focus state", surface: "Web chat", severity: "Low", owner: "Design", status: "Review" },
+      { blocker: "Plan card CTA contrast", surface: "Plans", severity: "Low", owner: "Frontend", status: "Ready" }
+    ],
+    accessibility: [
+      { check: "Keyboard navigation", surface: "Chat/Admin", score: "88%", status: "Improving" },
+      { check: "Color contrast", surface: "Neon Baobab UI", score: "93%", status: "Passing" },
+      { check: "Screen reader labels", surface: "Buttons/forms", score: "87%", status: "Review" },
+      { check: "Touch target sizing", surface: "Mobile", score: "92%", status: "Passing" }
+    ],
+    guardrails: [
+      "Release candidates should not ship until critical chat, auth, plans, payments, admin, and mobile paths pass QA.",
+      "Mobile QA must include compact screens, keyboard states, touch targets, network fallback, and low-memory devices.",
+      "Admin QA should verify seed-admin access, tab visibility, sensitive-data boundaries, and API fallback labels.",
+      "Accessibility checks should run before visual polish is considered complete."
+    ]
+  };
+}
+
 function adminPaymentData() {
   return state.adminPayments || {
     plans: ADMIN_PAYMENTS,
@@ -2268,6 +2327,22 @@ function regionalPartnerRow(item) {
   return `<div class="table-row"><strong>${item.partner}</strong><span>${item.market}</span><span>${item.leads} leads</span><span>${item.status}</span></div>`;
 }
 
+function qaSuiteRow(item) {
+  return `<div class="table-row"><strong>${item.suite}</strong><span>${item.surface}</span><span>${item.passRate}</span><span>${item.status}</span></div>`;
+}
+
+function qaDeviceRow(item) {
+  return `<div class="table-row"><strong>${item.device}</strong><span>${item.viewport}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
+function qaBlockerRow(item) {
+  return `<div class="table-row"><strong>${item.blocker}</strong><span>${item.surface}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
+function qaAccessibilityRow(item) {
+  return `<div class="table-row"><strong>${item.check}</strong><span>${item.surface}</span><span>${item.score}</span><span>${item.status}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -2840,6 +2915,7 @@ function adminView() {
   if (state.adminSection === "people") loadAdminPeople();
   if (state.adminSection === "vendors") loadAdminVendors();
   if (state.adminSection === "regional") loadAdminRegionalLaunch();
+  if (state.adminSection === "qa") loadAdminQa();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -2946,6 +3022,7 @@ function adminSectionView(section, readiness) {
     people: adminPeople,
     vendors: adminVendors,
     regional: adminRegionalLaunch,
+    qa: adminQa,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -3682,6 +3759,49 @@ function adminRegionalLaunch() {
         <h2>Regional launch guardrails</h2>
         <div class="admin-checklist">
           ${regional.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminQa() {
+  const qa = adminQaData();
+  const summary = qa.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Open regressions", summary.openRegressions || "11")}
+      ${metric("Release blockers", summary.releaseBlockers || "4")}
+      ${metric("Device coverage", summary.deviceCoverage || "86%")}
+      ${metric("Accessibility", summary.accessibilityScore || "91%")}
+      <section class="admin-card full-admin">
+        <h2>Regression suites</h2>
+        <div class="table admin-table-4">
+          ${qa.suites.map(qaSuiteRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Device and viewport coverage</h2>
+        <div class="table admin-table-4">
+          ${qa.devices.map(qaDeviceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Release blockers</h2>
+        <div class="table admin-table-4">
+          ${qa.blockers.map(qaBlockerRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Accessibility checks</h2>
+        <div class="table admin-table-4">
+          ${qa.accessibility.map(qaAccessibilityRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>QA guardrails</h2>
+        <div class="admin-checklist">
+          ${qa.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -4512,6 +4632,7 @@ function bindEvents() {
       loadAdminPeople(true);
       loadAdminVendors(true);
       loadAdminRegionalLaunch(true);
+      loadAdminQa(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);

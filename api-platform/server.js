@@ -940,6 +940,40 @@ const regionalLaunchOperations = {
   ]
 };
 
+const qaOperations = {
+  summary: { openRegressions: 11, releaseBlockers: 4, deviceCoverage: "86%", accessibilityScore: "91%", qaPassRate: "88%" },
+  suites: [
+    { suite: "Web chat regression", surface: "Web", passRate: "94%", owner: "QA", status: "Passing" },
+    { suite: "Mobile composer responsiveness", surface: "iOS/Android", passRate: "82%", owner: "Mobile QA", status: "Watch" },
+    { suite: "Admin console navigation", surface: "Admin", passRate: "89%", owner: "Enterprise QA", status: "Review" },
+    { suite: "Language Passport flow", surface: "Auth/Profile", passRate: "91%", owner: "Product QA", status: "Passing" }
+  ],
+  devices: [
+    { device: "Android low-memory", viewport: "390px", coverage: "78%", issue: "Composer density", status: "Testing" },
+    { device: "iPhone compact", viewport: "430px", coverage: "84%", issue: "Keyboard overlap", status: "Watch" },
+    { device: "Tablet", viewport: "768px", coverage: "91%", issue: "Drawer transitions", status: "Passing" },
+    { device: "Desktop wide", viewport: "1440px+", coverage: "96%", issue: "Admin tab overflow", status: "Passing" }
+  ],
+  blockers: [
+    { blocker: "Voice button state inconsistent", surface: "Mobile chat", severity: "Medium", owner: "Mobile", status: "Open" },
+    { blocker: "Admin tab scroll affordance", surface: "Admin", severity: "Medium", owner: "Web", status: "Fixing" },
+    { blocker: "Language selector focus state", surface: "Web chat", severity: "Low", owner: "Design", status: "Review" },
+    { blocker: "Plan card CTA contrast", surface: "Plans", severity: "Low", owner: "Frontend", status: "Ready" }
+  ],
+  accessibility: [
+    { check: "Keyboard navigation", surface: "Chat/Admin", score: "88%", status: "Improving" },
+    { check: "Color contrast", surface: "Neon Baobab UI", score: "93%", status: "Passing" },
+    { check: "Screen reader labels", surface: "Buttons/forms", score: "87%", status: "Review" },
+    { check: "Touch target sizing", surface: "Mobile", score: "92%", status: "Passing" }
+  ],
+  guardrails: [
+    "Release candidates should not ship until critical chat, auth, plans, payments, admin, and mobile paths pass QA.",
+    "Mobile QA must include compact screens, keyboard states, touch targets, network fallback, and low-memory devices.",
+    "Admin QA should verify seed-admin access, tab visibility, sensitive-data boundaries, and API fallback labels.",
+    "Accessibility checks should run before visual polish is considered complete."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1201,6 +1235,10 @@ function adminRegionalLaunchOperations() {
   return regionalLaunchOperations;
 }
 
+function adminQaOperations() {
+  return qaOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1240,7 +1278,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "legal:review",
       "people:read",
       "vendors:manage",
-      "regional:launch"
+      "regional:launch",
+      "qa:review"
     ],
     audit: [
       accessEvent,
@@ -1532,6 +1571,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminRegionalLaunchOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/qa") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("qa_ops_viewed", "QA", "Info", "QA Ops");
+      return sendJson(response, 200, adminQaOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1548,4 +1595,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, plans };
