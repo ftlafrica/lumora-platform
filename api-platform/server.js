@@ -906,6 +906,40 @@ const vendorOperations = {
   ]
 };
 
+const regionalLaunchOperations = {
+  summary: { launchMarkets: 9, readyMarkets: 4, blockedMarkets: 3, paymentCoverage: "71%", localPartners: 18 },
+  markets: [
+    { market: "Nigeria", stage: "Scale", readiness: "92%", owner: "Growth", status: "Ready" },
+    { market: "Kenya", stage: "Launch", readiness: "84%", owner: "Regional Ops", status: "Ready" },
+    { market: "Ghana", stage: "Beta", readiness: "76%", owner: "Language QA", status: "Watch" },
+    { market: "South Africa", stage: "Beta", readiness: "73%", owner: "Partnerships", status: "Payments review" }
+  ],
+  localization: [
+    { locale: "Yoruba + Pidgin", coverage: "A", reviewers: 18, gap: "Youth tone samples", status: "Improving" },
+    { locale: "Swahili", coverage: "A", reviewers: 12, gap: "Voice noise samples", status: "Ready" },
+    { locale: "Twi/Akan", coverage: "B", reviewers: 7, gap: "Business tone", status: "Review" },
+    { locale: "Zulu/Xhosa", coverage: "B", reviewers: 9, gap: "Speech evals", status: "Sampling" }
+  ],
+  blockers: [
+    { market: "South Africa", blocker: "Payment method coverage", owner: "Finance", severity: "Medium", action: "Processor review" },
+    { market: "Ghana", blocker: "Reviewer capacity", owner: "Language QA", severity: "Medium", action: "Hire reviewers" },
+    { market: "Ethiopia", blocker: "Localization and compliance", owner: "Legal", severity: "High", action: "Market brief" },
+    { market: "Senegal", blocker: "Francophone support", owner: "Support", severity: "Medium", action: "Queue training" }
+  ],
+  partners: [
+    { partner: "Creator community", market: "Nigeria", motion: "Ambassadors", leads: 24, status: "Active" },
+    { partner: "EdTech network", market: "Kenya", motion: "Classroom pilots", leads: 12, status: "Launch" },
+    { partner: "Language reviewers guild", market: "Ghana", motion: "Reviewer bench", leads: 8, status: "Recruiting" },
+    { partner: "Business association", market: "South Africa", motion: "SMB demos", leads: 10, status: "Planning" }
+  ],
+  guardrails: [
+    "Regional launch decisions must include language readiness, payment coverage, support capacity, legal context, and model quality.",
+    "No market should scale on growth signals alone when safety, support, or language quality is below launch threshold.",
+    "Local partnerships need clear data boundaries, brand guidance, escalation paths, and owner accountability.",
+    "Country dashboards should show aggregated operational readiness, not sensitive user content or private partner details."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1163,6 +1197,10 @@ function adminVendorOperations() {
   return vendorOperations;
 }
 
+function adminRegionalLaunchOperations() {
+  return regionalLaunchOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1201,7 +1239,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "risk:review",
       "legal:review",
       "people:read",
-      "vendors:manage"
+      "vendors:manage",
+      "regional:launch"
     ],
     audit: [
       accessEvent,
@@ -1485,6 +1524,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminVendorOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/regional-launch") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("regional_launch_viewed", "Regional", "Info", "Regional Ops");
+      return sendJson(response, 200, adminRegionalLaunchOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1501,4 +1548,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, plans };

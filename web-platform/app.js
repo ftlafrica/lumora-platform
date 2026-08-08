@@ -75,6 +75,7 @@ const ADMIN_SECTIONS = [
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
   { id: "people", label: "People", desc: "Team coverage, hiring, reviewer capacity, on-call load, enablement, and workforce guardrails." },
   { id: "vendors", label: "Vendors", desc: "Vendor inventory, renewals, procurement diligence, spend variance, and third-party risk." },
+  { id: "regional", label: "Regional", desc: "Country launch readiness, localization, blockers, local partners, and market guardrails." },
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
   { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
@@ -189,6 +190,8 @@ const DEFAULT_STATE = {
   adminPeopleLoadedAt: null,
   adminVendors: null,
   adminVendorsLoadedAt: null,
+  adminRegionalLaunch: null,
+  adminRegionalLaunchLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -482,6 +485,26 @@ async function loadAdminVendors(force = false) {
     state.adminVendorsLoadedAt = Date.now();
   } catch {
     state.adminVendorsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminRegionalLaunch(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminRegionalLaunchLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/regional-launch`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Regional launch unavailable.");
+    state.adminRegionalLaunch = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminRegionalLaunchLoadedAt = Date.now();
+  } catch {
+    state.adminRegionalLaunchLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -895,7 +918,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1561,6 +1584,42 @@ function adminVendorData() {
   };
 }
 
+function adminRegionalLaunchData() {
+  return state.adminRegionalLaunch || {
+    summary: { launchMarkets: 9, readyMarkets: 4, blockedMarkets: 3, paymentCoverage: "71%", localPartners: 18 },
+    markets: [
+      { market: "Nigeria", stage: "Scale", readiness: "92%", owner: "Growth", status: "Ready" },
+      { market: "Kenya", stage: "Launch", readiness: "84%", owner: "Regional Ops", status: "Ready" },
+      { market: "Ghana", stage: "Beta", readiness: "76%", owner: "Language QA", status: "Watch" },
+      { market: "South Africa", stage: "Beta", readiness: "73%", owner: "Partnerships", status: "Payments review" }
+    ],
+    localization: [
+      { locale: "Yoruba + Pidgin", coverage: "A", reviewers: 18, gap: "Youth tone samples", status: "Improving" },
+      { locale: "Swahili", coverage: "A", reviewers: 12, gap: "Voice noise samples", status: "Ready" },
+      { locale: "Twi/Akan", coverage: "B", reviewers: 7, gap: "Business tone", status: "Review" },
+      { locale: "Zulu/Xhosa", coverage: "B", reviewers: 9, gap: "Speech evals", status: "Sampling" }
+    ],
+    blockers: [
+      { market: "South Africa", blocker: "Payment method coverage", owner: "Finance", severity: "Medium", action: "Processor review" },
+      { market: "Ghana", blocker: "Reviewer capacity", owner: "Language QA", severity: "Medium", action: "Hire reviewers" },
+      { market: "Ethiopia", blocker: "Localization and compliance", owner: "Legal", severity: "High", action: "Market brief" },
+      { market: "Senegal", blocker: "Francophone support", owner: "Support", severity: "Medium", action: "Queue training" }
+    ],
+    partners: [
+      { partner: "Creator community", market: "Nigeria", motion: "Ambassadors", leads: 24, status: "Active" },
+      { partner: "EdTech network", market: "Kenya", motion: "Classroom pilots", leads: 12, status: "Launch" },
+      { partner: "Language reviewers guild", market: "Ghana", motion: "Reviewer bench", leads: 8, status: "Recruiting" },
+      { partner: "Business association", market: "South Africa", motion: "SMB demos", leads: 10, status: "Planning" }
+    ],
+    guardrails: [
+      "Regional launch decisions must include language readiness, payment coverage, support capacity, legal context, and model quality.",
+      "No market should scale on growth signals alone when safety, support, or language quality is below launch threshold.",
+      "Local partnerships need clear data boundaries, brand guidance, escalation paths, and owner accountability.",
+      "Country dashboards should show aggregated operational readiness, not sensitive user content or private partner details."
+    ]
+  };
+}
+
 function adminPaymentData() {
   return state.adminPayments || {
     plans: ADMIN_PAYMENTS,
@@ -2193,6 +2252,22 @@ function vendorSpendRow(item) {
   return `<div class="table-row"><strong>${item.area}</strong><span>${item.budget}</span><span>${item.actual}</span><span>${item.variance}</span></div>`;
 }
 
+function regionalMarketRow(item) {
+  return `<div class="table-row"><strong>${item.market}</strong><span>${item.stage}</span><span>${item.readiness}</span><span>${item.status}</span></div>`;
+}
+
+function regionalLocalizationRow(item) {
+  return `<div class="table-row"><strong>${item.locale}</strong><span>${item.coverage}</span><span>${item.reviewers} reviewers</span><span>${item.status}</span></div>`;
+}
+
+function regionalBlockerRow(item) {
+  return `<div class="table-row"><strong>${item.market}</strong><span>${item.blocker}</span><span>${item.severity}</span><span>${item.action}</span></div>`;
+}
+
+function regionalPartnerRow(item) {
+  return `<div class="table-row"><strong>${item.partner}</strong><span>${item.market}</span><span>${item.leads} leads</span><span>${item.status}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -2764,6 +2839,7 @@ function adminView() {
   if (state.adminSection === "legal") loadAdminLegal();
   if (state.adminSection === "people") loadAdminPeople();
   if (state.adminSection === "vendors") loadAdminVendors();
+  if (state.adminSection === "regional") loadAdminRegionalLaunch();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -2869,6 +2945,7 @@ function adminSectionView(section, readiness) {
     legal: adminLegal,
     people: adminPeople,
     vendors: adminVendors,
+    regional: adminRegionalLaunch,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -3562,6 +3639,49 @@ function adminVendors() {
         <h2>Vendor guardrails</h2>
         <div class="admin-checklist">
           ${vendors.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminRegionalLaunch() {
+  const regional = adminRegionalLaunchData();
+  const summary = regional.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Launch markets", summary.launchMarkets || "9")}
+      ${metric("Ready markets", summary.readyMarkets || "4")}
+      ${metric("Blocked markets", summary.blockedMarkets || "3")}
+      ${metric("Payment coverage", summary.paymentCoverage || "71%")}
+      <section class="admin-card full-admin">
+        <h2>Country launch readiness</h2>
+        <div class="table admin-table-4">
+          ${regional.markets.map(regionalMarketRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Localization readiness</h2>
+        <div class="table admin-table-4">
+          ${regional.localization.map(regionalLocalizationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Launch blockers</h2>
+        <div class="table admin-table-4">
+          ${regional.blockers.map(regionalBlockerRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Local partner motions</h2>
+        <div class="table admin-table-4">
+          ${regional.partners.map(regionalPartnerRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Regional launch guardrails</h2>
+        <div class="admin-checklist">
+          ${regional.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -4391,6 +4511,7 @@ function bindEvents() {
       loadAdminLegal(true);
       loadAdminPeople(true);
       loadAdminVendors(true);
+      loadAdminRegionalLaunch(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);
