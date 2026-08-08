@@ -974,6 +974,40 @@ const qaOperations = {
   ]
 };
 
+const roadmapOperations = {
+  summary: { activeInitiatives: 18, releaseCandidates: 5, blockedItems: 6, customerRequests: 42, roadmapConfidence: "81%" },
+  initiatives: [
+    { initiative: "Voice Circle v1", pillar: "Voice", phase: "Beta", owner: "Product", status: "QA watch" },
+    { initiative: "Language Passport 2.0", pillar: "Identity", phase: "Build", owner: "Design", status: "On track" },
+    { initiative: "Teams admin workspace", pillar: "Enterprise", phase: "Discovery", owner: "Enterprise", status: "Scoping" },
+    { initiative: "Creator Studio packs", pillar: "Growth", phase: "Build", owner: "Creator", status: "On track" }
+  ],
+  releases: [
+    { release: "Web chat polish", target: "Aug 2026", readiness: "88%", owner: "Web", status: "Candidate" },
+    { release: "Mobile beta refresh", target: "Sep 2026", readiness: "72%", owner: "Mobile", status: "Blocked" },
+    { release: "Admin console phase 2", target: "Aug 2026", readiness: "84%", owner: "Enterprise", status: "Review" },
+    { release: "Regional launch toolkit", target: "Oct 2026", readiness: "64%", owner: "Regional Ops", status: "Planning" }
+  ],
+  dependencies: [
+    { dependency: "Mobile voice QA", initiative: "Voice Circle v1", owner: "QA", risk: "Medium", status: "Testing" },
+    { dependency: "Reviewer capacity", initiative: "Language Passport 2.0", owner: "Language QA", risk: "Medium", status: "Hiring" },
+    { dependency: "SSO and roles", initiative: "Teams admin workspace", owner: "Access", risk: "High", status: "Design" },
+    { dependency: "Payment coverage", initiative: "Regional launch toolkit", owner: "Finance", risk: "Medium", status: "Review" }
+  ],
+  requests: [
+    { request: "WhatsApp export", source: "Creators", votes: 18, owner: "Growth", status: "Discovery" },
+    { request: "Offline phrase mode", source: "Students", votes: 14, owner: "Mobile", status: "Research" },
+    { request: "Team shared prompts", source: "Enterprise", votes: 11, owner: "Enterprise", status: "Scoping" },
+    { request: "More Francophone support", source: "Regional", votes: 9, owner: "Language QA", status: "Review" }
+  ],
+  guardrails: [
+    "Roadmap decisions should tie customer evidence, business value, quality readiness, and operational capacity together.",
+    "No launch date should be marked committed while critical dependencies or QA blockers are unresolved.",
+    "Enterprise roadmap items require access, privacy, support, and audit implications before build approval.",
+    "Customer requests should be prioritized from aggregated signals, not private user content."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1239,6 +1273,10 @@ function adminQaOperations() {
   return qaOperations;
 }
 
+function adminRoadmapOperations() {
+  return roadmapOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1279,7 +1317,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "people:read",
       "vendors:manage",
       "regional:launch",
-      "qa:review"
+      "qa:review",
+      "roadmap:manage"
     ],
     audit: [
       accessEvent,
@@ -1579,6 +1618,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminQaOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/roadmap") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("roadmap_ops_viewed", "Roadmap", "Info", "Product Ops");
+      return sendJson(response, 200, adminRoadmapOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1595,4 +1642,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, plans };

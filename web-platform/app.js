@@ -77,6 +77,7 @@ const ADMIN_SECTIONS = [
   { id: "vendors", label: "Vendors", desc: "Vendor inventory, renewals, procurement diligence, spend variance, and third-party risk." },
   { id: "regional", label: "Regional", desc: "Country launch readiness, localization, blockers, local partners, and market guardrails." },
   { id: "qa", label: "QA", desc: "Regression suites, device coverage, release blockers, accessibility checks, and QA guardrails." },
+  { id: "roadmap", label: "Roadmap", desc: "Initiatives, release candidates, dependencies, customer requests, and product guardrails." },
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
   { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
@@ -195,6 +196,8 @@ const DEFAULT_STATE = {
   adminRegionalLaunchLoadedAt: null,
   adminQa: null,
   adminQaLoadedAt: null,
+  adminRoadmap: null,
+  adminRoadmapLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -528,6 +531,26 @@ async function loadAdminQa(force = false) {
     state.adminQaLoadedAt = Date.now();
   } catch {
     state.adminQaLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminRoadmap(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminRoadmapLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/roadmap`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Roadmap operations unavailable.");
+    state.adminRoadmap = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminRoadmapLoadedAt = Date.now();
+  } catch {
+    state.adminRoadmapLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -941,7 +964,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1679,6 +1702,42 @@ function adminQaData() {
   };
 }
 
+function adminRoadmapData() {
+  return state.adminRoadmap || {
+    summary: { activeInitiatives: 18, releaseCandidates: 5, blockedItems: 6, customerRequests: 42, roadmapConfidence: "81%" },
+    initiatives: [
+      { initiative: "Voice Circle v1", pillar: "Voice", phase: "Beta", owner: "Product", status: "QA watch" },
+      { initiative: "Language Passport 2.0", pillar: "Identity", phase: "Build", owner: "Design", status: "On track" },
+      { initiative: "Teams admin workspace", pillar: "Enterprise", phase: "Discovery", owner: "Enterprise", status: "Scoping" },
+      { initiative: "Creator Studio packs", pillar: "Growth", phase: "Build", owner: "Creator", status: "On track" }
+    ],
+    releases: [
+      { release: "Web chat polish", target: "Aug 2026", readiness: "88%", owner: "Web", status: "Candidate" },
+      { release: "Mobile beta refresh", target: "Sep 2026", readiness: "72%", owner: "Mobile", status: "Blocked" },
+      { release: "Admin console phase 2", target: "Aug 2026", readiness: "84%", owner: "Enterprise", status: "Review" },
+      { release: "Regional launch toolkit", target: "Oct 2026", readiness: "64%", owner: "Regional Ops", status: "Planning" }
+    ],
+    dependencies: [
+      { dependency: "Mobile voice QA", initiative: "Voice Circle v1", owner: "QA", risk: "Medium", status: "Testing" },
+      { dependency: "Reviewer capacity", initiative: "Language Passport 2.0", owner: "Language QA", risk: "Medium", status: "Hiring" },
+      { dependency: "SSO and roles", initiative: "Teams admin workspace", owner: "Access", risk: "High", status: "Design" },
+      { dependency: "Payment coverage", initiative: "Regional launch toolkit", owner: "Finance", risk: "Medium", status: "Review" }
+    ],
+    requests: [
+      { request: "WhatsApp export", source: "Creators", votes: 18, owner: "Growth", status: "Discovery" },
+      { request: "Offline phrase mode", source: "Students", votes: 14, owner: "Mobile", status: "Research" },
+      { request: "Team shared prompts", source: "Enterprise", votes: 11, owner: "Enterprise", status: "Scoping" },
+      { request: "More Francophone support", source: "Regional", votes: 9, owner: "Language QA", status: "Review" }
+    ],
+    guardrails: [
+      "Roadmap decisions should tie customer evidence, business value, quality readiness, and operational capacity together.",
+      "No launch date should be marked committed while critical dependencies or QA blockers are unresolved.",
+      "Enterprise roadmap items require access, privacy, support, and audit implications before build approval.",
+      "Customer requests should be prioritized from aggregated signals, not private user content."
+    ]
+  };
+}
+
 function adminPaymentData() {
   return state.adminPayments || {
     plans: ADMIN_PAYMENTS,
@@ -2343,6 +2402,22 @@ function qaAccessibilityRow(item) {
   return `<div class="table-row"><strong>${item.check}</strong><span>${item.surface}</span><span>${item.score}</span><span>${item.status}</span></div>`;
 }
 
+function roadmapInitiativeRow(item) {
+  return `<div class="table-row"><strong>${item.initiative}</strong><span>${item.pillar}</span><span>${item.phase}</span><span>${item.status}</span></div>`;
+}
+
+function roadmapReleaseRow(item) {
+  return `<div class="table-row"><strong>${item.release}</strong><span>${item.target}</span><span>${item.readiness}</span><span>${item.status}</span></div>`;
+}
+
+function roadmapDependencyRow(item) {
+  return `<div class="table-row"><strong>${item.dependency}</strong><span>${item.initiative}</span><span>${item.risk}</span><span>${item.status}</span></div>`;
+}
+
+function roadmapRequestRow(item) {
+  return `<div class="table-row"><strong>${item.request}</strong><span>${item.source}</span><span>${item.votes} votes</span><span>${item.status}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -2916,6 +2991,7 @@ function adminView() {
   if (state.adminSection === "vendors") loadAdminVendors();
   if (state.adminSection === "regional") loadAdminRegionalLaunch();
   if (state.adminSection === "qa") loadAdminQa();
+  if (state.adminSection === "roadmap") loadAdminRoadmap();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -3023,6 +3099,7 @@ function adminSectionView(section, readiness) {
     vendors: adminVendors,
     regional: adminRegionalLaunch,
     qa: adminQa,
+    roadmap: adminRoadmap,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -3802,6 +3879,49 @@ function adminQa() {
         <h2>QA guardrails</h2>
         <div class="admin-checklist">
           ${qa.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminRoadmap() {
+  const roadmap = adminRoadmapData();
+  const summary = roadmap.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Initiatives", summary.activeInitiatives || "18")}
+      ${metric("Release candidates", summary.releaseCandidates || "5")}
+      ${metric("Blocked items", summary.blockedItems || "6")}
+      ${metric("Confidence", summary.roadmapConfidence || "81%")}
+      <section class="admin-card full-admin">
+        <h2>Strategic initiatives</h2>
+        <div class="table admin-table-4">
+          ${roadmap.initiatives.map(roadmapInitiativeRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Release candidates</h2>
+        <div class="table admin-table-4">
+          ${roadmap.releases.map(roadmapReleaseRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Critical dependencies</h2>
+        <div class="table admin-table-4">
+          ${roadmap.dependencies.map(roadmapDependencyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Customer request signals</h2>
+        <div class="table admin-table-4">
+          ${roadmap.requests.map(roadmapRequestRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Roadmap guardrails</h2>
+        <div class="admin-checklist">
+          ${roadmap.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -4633,6 +4753,7 @@ function bindEvents() {
       loadAdminVendors(true);
       loadAdminRegionalLaunch(true);
       loadAdminQa(true);
+      loadAdminRoadmap(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);
