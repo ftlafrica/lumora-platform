@@ -1008,6 +1008,40 @@ const roadmapOperations = {
   ]
 };
 
+const communityOperations = {
+  summary: { activeContributors: 1284, pendingContributions: 312, ambassadorMarkets: 11, eventsPlanned: 7, trustScore: "93%" },
+  contributors: [
+    { group: "Native language reviewers", region: "West Africa", members: 420, owner: "Language QA", status: "Active" },
+    { group: "Creator ambassadors", region: "Pan-African", members: 260, owner: "Growth", status: "Scaling" },
+    { group: "Educator circle", region: "East Africa", members: 184, owner: "Classroom", status: "Pilot" },
+    { group: "Developer advocates", region: "Remote", members: 96, owner: "API", status: "Forming" }
+  ],
+  contributions: [
+    { queue: "Dialect corrections", count: 184, language: "Yoruba/Pidgin", owner: "Language QA", status: "Review" },
+    { queue: "Voice samples", count: 72, language: "Swahili/Zulu", owner: "Voice Ops", status: "Consent check" },
+    { queue: "Market phrases", count: 38, language: "Twi/Akan", owner: "Regional Ops", status: "Curating" },
+    { queue: "Classroom examples", count: 18, language: "Mixed", owner: "Education", status: "Ready" }
+  ],
+  programs: [
+    { program: "Lumora Creator Circle", market: "Nigeria", participants: 120, motion: "Ambassadors", status: "Active" },
+    { program: "Campus Language Labs", market: "Kenya", participants: 64, motion: "Education", status: "Pilot" },
+    { program: "Reviewer Guild", market: "Ghana", participants: 48, motion: "Quality", status: "Recruiting" },
+    { program: "API Builder Forum", market: "Remote", participants: 36, motion: "Developers", status: "Planning" }
+  ],
+  events: [
+    { event: "African language AI roundtable", market: "Pan-African", date: "Aug 24", owner: "Community", status: "Planned" },
+    { event: "Creator workflow clinic", market: "Nigeria", date: "Aug 28", owner: "Growth", status: "Ready" },
+    { event: "Educator beta workshop", market: "Kenya", date: "Sep 04", owner: "Classroom", status: "Inviting" },
+    { event: "Developer API preview", market: "Remote", date: "Sep 10", owner: "API", status: "Draft" }
+  ],
+  guardrails: [
+    "Community contributions require consent, provenance, reviewer attribution policy, and privacy boundaries.",
+    "Ambassador programs must not promise unsupported languages, launch dates, or model behavior.",
+    "Voice and language samples need explicit consent and clear deletion/export pathways.",
+    "Community dashboards should aggregate contribution health without exposing private contributor records."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1277,6 +1311,10 @@ function adminRoadmapOperations() {
   return roadmapOperations;
 }
 
+function adminCommunityOperations() {
+  return communityOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1318,7 +1356,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "vendors:manage",
       "regional:launch",
       "qa:review",
-      "roadmap:manage"
+      "roadmap:manage",
+      "community:manage"
     ],
     audit: [
       accessEvent,
@@ -1626,6 +1665,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminRoadmapOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/community") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("community_ops_viewed", "Community", "Info", "Community Ops");
+      return sendJson(response, 200, adminCommunityOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1642,4 +1689,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, plans };

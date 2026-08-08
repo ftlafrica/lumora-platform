@@ -78,6 +78,7 @@ const ADMIN_SECTIONS = [
   { id: "regional", label: "Regional", desc: "Country launch readiness, localization, blockers, local partners, and market guardrails." },
   { id: "qa", label: "QA", desc: "Regression suites, device coverage, release blockers, accessibility checks, and QA guardrails." },
   { id: "roadmap", label: "Roadmap", desc: "Initiatives, release candidates, dependencies, customer requests, and product guardrails." },
+  { id: "community", label: "Community", desc: "Contributors, corrections, ambassadors, events, ecosystem programs, and trust guardrails." },
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
   { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
@@ -198,6 +199,8 @@ const DEFAULT_STATE = {
   adminQaLoadedAt: null,
   adminRoadmap: null,
   adminRoadmapLoadedAt: null,
+  adminCommunity: null,
+  adminCommunityLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -551,6 +554,26 @@ async function loadAdminRoadmap(force = false) {
     state.adminRoadmapLoadedAt = Date.now();
   } catch {
     state.adminRoadmapLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminCommunity(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminCommunityLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/community`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Community operations unavailable.");
+    state.adminCommunity = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminCommunityLoadedAt = Date.now();
+  } catch {
+    state.adminCommunityLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -964,7 +987,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1738,6 +1761,42 @@ function adminRoadmapData() {
   };
 }
 
+function adminCommunityData() {
+  return state.adminCommunity || {
+    summary: { activeContributors: 1284, pendingContributions: 312, ambassadorMarkets: 11, eventsPlanned: 7, trustScore: "93%" },
+    contributors: [
+      { group: "Native language reviewers", region: "West Africa", members: 420, owner: "Language QA", status: "Active" },
+      { group: "Creator ambassadors", region: "Pan-African", members: 260, owner: "Growth", status: "Scaling" },
+      { group: "Educator circle", region: "East Africa", members: 184, owner: "Classroom", status: "Pilot" },
+      { group: "Developer advocates", region: "Remote", members: 96, owner: "API", status: "Forming" }
+    ],
+    contributions: [
+      { queue: "Dialect corrections", count: 184, language: "Yoruba/Pidgin", owner: "Language QA", status: "Review" },
+      { queue: "Voice samples", count: 72, language: "Swahili/Zulu", owner: "Voice Ops", status: "Consent check" },
+      { queue: "Market phrases", count: 38, language: "Twi/Akan", owner: "Regional Ops", status: "Curating" },
+      { queue: "Classroom examples", count: 18, language: "Mixed", owner: "Education", status: "Ready" }
+    ],
+    programs: [
+      { program: "Lumora Creator Circle", market: "Nigeria", participants: 120, motion: "Ambassadors", status: "Active" },
+      { program: "Campus Language Labs", market: "Kenya", participants: 64, motion: "Education", status: "Pilot" },
+      { program: "Reviewer Guild", market: "Ghana", participants: 48, motion: "Quality", status: "Recruiting" },
+      { program: "API Builder Forum", market: "Remote", participants: 36, motion: "Developers", status: "Planning" }
+    ],
+    events: [
+      { event: "African language AI roundtable", market: "Pan-African", date: "Aug 24", owner: "Community", status: "Planned" },
+      { event: "Creator workflow clinic", market: "Nigeria", date: "Aug 28", owner: "Growth", status: "Ready" },
+      { event: "Educator beta workshop", market: "Kenya", date: "Sep 04", owner: "Classroom", status: "Inviting" },
+      { event: "Developer API preview", market: "Remote", date: "Sep 10", owner: "API", status: "Draft" }
+    ],
+    guardrails: [
+      "Community contributions require consent, provenance, reviewer attribution policy, and privacy boundaries.",
+      "Ambassador programs must not promise unsupported languages, launch dates, or model behavior.",
+      "Voice and language samples need explicit consent and clear deletion/export pathways.",
+      "Community dashboards should aggregate contribution health without exposing private contributor records."
+    ]
+  };
+}
+
 function adminPaymentData() {
   return state.adminPayments || {
     plans: ADMIN_PAYMENTS,
@@ -2418,6 +2477,22 @@ function roadmapRequestRow(item) {
   return `<div class="table-row"><strong>${item.request}</strong><span>${item.source}</span><span>${item.votes} votes</span><span>${item.status}</span></div>`;
 }
 
+function communityContributorRow(item) {
+  return `<div class="table-row"><strong>${item.group}</strong><span>${item.region}</span><span>${item.members} members</span><span>${item.status}</span></div>`;
+}
+
+function communityContributionRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.language}</span><span>${item.count} items</span><span>${item.status}</span></div>`;
+}
+
+function communityProgramRow(item) {
+  return `<div class="table-row"><strong>${item.program}</strong><span>${item.market}</span><span>${item.participants} people</span><span>${item.status}</span></div>`;
+}
+
+function communityEventRow(item) {
+  return `<div class="table-row"><strong>${item.event}</strong><span>${item.market}</span><span>${item.date}</span><span>${item.status}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -2992,6 +3067,7 @@ function adminView() {
   if (state.adminSection === "regional") loadAdminRegionalLaunch();
   if (state.adminSection === "qa") loadAdminQa();
   if (state.adminSection === "roadmap") loadAdminRoadmap();
+  if (state.adminSection === "community") loadAdminCommunity();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -3100,6 +3176,7 @@ function adminSectionView(section, readiness) {
     regional: adminRegionalLaunch,
     qa: adminQa,
     roadmap: adminRoadmap,
+    community: adminCommunity,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -3922,6 +3999,49 @@ function adminRoadmap() {
         <h2>Roadmap guardrails</h2>
         <div class="admin-checklist">
           ${roadmap.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminCommunity() {
+  const community = adminCommunityData();
+  const summary = community.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Contributors", summary.activeContributors || "1,284")}
+      ${metric("Pending items", summary.pendingContributions || "312")}
+      ${metric("Ambassador markets", summary.ambassadorMarkets || "11")}
+      ${metric("Trust score", summary.trustScore || "93%")}
+      <section class="admin-card full-admin">
+        <h2>Community cohorts</h2>
+        <div class="table admin-table-4">
+          ${community.contributors.map(communityContributorRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Contribution queues</h2>
+        <div class="table admin-table-4">
+          ${community.contributions.map(communityContributionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Ecosystem programs</h2>
+        <div class="table admin-table-4">
+          ${community.programs.map(communityProgramRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Community events</h2>
+        <div class="table admin-table-4">
+          ${community.events.map(communityEventRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Community guardrails</h2>
+        <div class="admin-checklist">
+          ${community.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -4754,6 +4874,7 @@ function bindEvents() {
       loadAdminRegionalLaunch(true);
       loadAdminQa(true);
       loadAdminRoadmap(true);
+      loadAdminCommunity(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);
