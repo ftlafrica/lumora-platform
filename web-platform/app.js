@@ -70,6 +70,7 @@ const ADMIN_SECTIONS = [
   { id: "analytics", label: "Analytics", desc: "Retention, activation, churn, feature usage, language adoption, and experiments." },
   { id: "experiments", label: "Experiments", desc: "A/B tests, feature flags, rollouts, kill switches, results, and product decision guardrails." },
   { id: "reports", label: "Reports", desc: "Leadership packs, scheduled exports, report destinations, datasets, and evidence guardrails." },
+  { id: "evidence", label: "Evidence", desc: "Control evidence, audit readiness, attestations, compliance gaps, and evidence guardrails." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
@@ -201,6 +202,8 @@ const DEFAULT_STATE = {
   adminRoadmapLoadedAt: null,
   adminCommunity: null,
   adminCommunityLoadedAt: null,
+  adminComplianceEvidence: null,
+  adminComplianceEvidenceLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -574,6 +577,26 @@ async function loadAdminCommunity(force = false) {
     state.adminCommunityLoadedAt = Date.now();
   } catch {
     state.adminCommunityLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminComplianceEvidence(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminComplianceEvidenceLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/compliance-evidence`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Compliance evidence unavailable.");
+    state.adminComplianceEvidence = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminComplianceEvidenceLoadedAt = Date.now();
+  } catch {
+    state.adminComplianceEvidenceLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -987,7 +1010,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1797,6 +1820,42 @@ function adminCommunityData() {
   };
 }
 
+function adminComplianceEvidenceData() {
+  return state.adminComplianceEvidence || {
+    summary: { controlsTracked: 64, evidenceItems: 184, auditReadiness: "78%", openGaps: 9, attestationsDue: 6 },
+    controls: [
+      { control: "Seed-admin access review", framework: "SOC 2", owner: "Security", cadence: "Monthly", status: "Collected" },
+      { control: "Data retention enforcement", framework: "Privacy", owner: "Data Gov", cadence: "Quarterly", status: "Evidence needed" },
+      { control: "Model release gate approval", framework: "AI Governance", owner: "AI QA", cadence: "Per release", status: "Collected" },
+      { control: "Vendor subprocessor review", framework: "Compliance", owner: "Legal", cadence: "Quarterly", status: "Review" }
+    ],
+    evidence: [
+      { evidence: "Admin access export", source: "Access", freshness: "2 days", owner: "Security", status: "Ready" },
+      { evidence: "Model eval release packet", source: "Evals", freshness: "1 day", owner: "AI QA", status: "Ready" },
+      { evidence: "DPA and subprocessor register", source: "Legal/Vendors", freshness: "6 days", owner: "Legal", status: "Review" },
+      { evidence: "Deletion request log", source: "Data Gov", freshness: "3 days", owner: "Privacy", status: "Ready" }
+    ],
+    audits: [
+      { audit: "SOC 2 readiness", window: "Q4 2026", owner: "Security", readiness: "72%", status: "Preparing" },
+      { audit: "Privacy impact review", window: "Sep 2026", owner: "Data Gov", readiness: "81%", status: "Review" },
+      { audit: "AI governance pack", window: "Aug 2026", owner: "AI QA", readiness: "84%", status: "Collecting" },
+      { audit: "Enterprise security packet", window: "Rolling", owner: "Sales/Security", readiness: "79%", status: "Updating" }
+    ],
+    gaps: [
+      { gap: "Data residency evidence", area: "Privacy", severity: "High", owner: "Data Gov", status: "Open" },
+      { gap: "Support access recertification", area: "Access", severity: "Medium", owner: "Security", status: "Due" },
+      { gap: "Vendor DPIA attachment", area: "Vendors", severity: "Medium", owner: "Legal", status: "Review" },
+      { gap: "Mobile QA accessibility proof", area: "QA", severity: "Low", owner: "Mobile QA", status: "Collecting" }
+    ],
+    guardrails: [
+      "Evidence views should reference control status and source systems without exposing secrets, raw user content, or privileged advice.",
+      "Audit evidence must include owner, freshness, source, and approval state before being marked ready.",
+      "Compliance gaps should route to accountable owners with severity, due date, and evidence requirement.",
+      "AI governance evidence must tie model releases to eval results, safety checks, language quality, and rollback readiness."
+    ]
+  };
+}
+
 function adminPaymentData() {
   return state.adminPayments || {
     plans: ADMIN_PAYMENTS,
@@ -2493,6 +2552,22 @@ function communityEventRow(item) {
   return `<div class="table-row"><strong>${item.event}</strong><span>${item.market}</span><span>${item.date}</span><span>${item.status}</span></div>`;
 }
 
+function complianceControlRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.framework}</span><span>${item.cadence}</span><span>${item.status}</span></div>`;
+}
+
+function complianceEvidenceRow(item) {
+  return `<div class="table-row"><strong>${item.evidence}</strong><span>${item.source}</span><span>${item.freshness}</span><span>${item.status}</span></div>`;
+}
+
+function complianceAuditRow(item) {
+  return `<div class="table-row"><strong>${item.audit}</strong><span>${item.window}</span><span>${item.readiness}</span><span>${item.status}</span></div>`;
+}
+
+function complianceGapRow(item) {
+  return `<div class="table-row"><strong>${item.gap}</strong><span>${item.area}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -3068,6 +3143,7 @@ function adminView() {
   if (state.adminSection === "qa") loadAdminQa();
   if (state.adminSection === "roadmap") loadAdminRoadmap();
   if (state.adminSection === "community") loadAdminCommunity();
+  if (state.adminSection === "evidence") loadAdminComplianceEvidence();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -3177,6 +3253,7 @@ function adminSectionView(section, readiness) {
     qa: adminQa,
     roadmap: adminRoadmap,
     community: adminCommunity,
+    evidence: adminComplianceEvidence,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -4048,6 +4125,49 @@ function adminCommunity() {
   `;
 }
 
+function adminComplianceEvidence() {
+  const compliance = adminComplianceEvidenceData();
+  const summary = compliance.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Controls", summary.controlsTracked || "64")}
+      ${metric("Evidence items", summary.evidenceItems || "184")}
+      ${metric("Audit readiness", summary.auditReadiness || "78%")}
+      ${metric("Open gaps", summary.openGaps || "9")}
+      <section class="admin-card full-admin">
+        <h2>Control evidence map</h2>
+        <div class="table admin-table-4">
+          ${compliance.controls.map(complianceControlRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Evidence vault</h2>
+        <div class="table admin-table-4">
+          ${compliance.evidence.map(complianceEvidenceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Audit readiness</h2>
+        <div class="table admin-table-4">
+          ${compliance.audits.map(complianceAuditRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Compliance gaps</h2>
+        <div class="table admin-table-4">
+          ${compliance.gaps.map(complianceGapRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Evidence guardrails</h2>
+        <div class="admin-checklist">
+          ${compliance.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminCommunications() {
   const communications = adminCommunicationsData();
   const summary = communications.summary || {};
@@ -4875,6 +4995,7 @@ function bindEvents() {
       loadAdminQa(true);
       loadAdminRoadmap(true);
       loadAdminCommunity(true);
+      loadAdminComplianceEvidence(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);

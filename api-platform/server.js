@@ -1042,6 +1042,40 @@ const communityOperations = {
   ]
 };
 
+const complianceEvidenceOperations = {
+  summary: { controlsTracked: 64, evidenceItems: 184, auditReadiness: "78%", openGaps: 9, attestationsDue: 6 },
+  controls: [
+    { control: "Seed-admin access review", framework: "SOC 2", owner: "Security", cadence: "Monthly", status: "Collected" },
+    { control: "Data retention enforcement", framework: "Privacy", owner: "Data Gov", cadence: "Quarterly", status: "Evidence needed" },
+    { control: "Model release gate approval", framework: "AI Governance", owner: "AI QA", cadence: "Per release", status: "Collected" },
+    { control: "Vendor subprocessor review", framework: "Compliance", owner: "Legal", cadence: "Quarterly", status: "Review" }
+  ],
+  evidence: [
+    { evidence: "Admin access export", source: "Access", freshness: "2 days", owner: "Security", status: "Ready" },
+    { evidence: "Model eval release packet", source: "Evals", freshness: "1 day", owner: "AI QA", status: "Ready" },
+    { evidence: "DPA and subprocessor register", source: "Legal/Vendors", freshness: "6 days", owner: "Legal", status: "Review" },
+    { evidence: "Deletion request log", source: "Data Gov", freshness: "3 days", owner: "Privacy", status: "Ready" }
+  ],
+  audits: [
+    { audit: "SOC 2 readiness", window: "Q4 2026", owner: "Security", readiness: "72%", status: "Preparing" },
+    { audit: "Privacy impact review", window: "Sep 2026", owner: "Data Gov", readiness: "81%", status: "Review" },
+    { audit: "AI governance pack", window: "Aug 2026", owner: "AI QA", readiness: "84%", status: "Collecting" },
+    { audit: "Enterprise security packet", window: "Rolling", owner: "Sales/Security", readiness: "79%", status: "Updating" }
+  ],
+  gaps: [
+    { gap: "Data residency evidence", area: "Privacy", severity: "High", owner: "Data Gov", status: "Open" },
+    { gap: "Support access recertification", area: "Access", severity: "Medium", owner: "Security", status: "Due" },
+    { gap: "Vendor DPIA attachment", area: "Vendors", severity: "Medium", owner: "Legal", status: "Review" },
+    { gap: "Mobile QA accessibility proof", area: "QA", severity: "Low", owner: "Mobile QA", status: "Collecting" }
+  ],
+  guardrails: [
+    "Evidence views should reference control status and source systems without exposing secrets, raw user content, or privileged advice.",
+    "Audit evidence must include owner, freshness, source, and approval state before being marked ready.",
+    "Compliance gaps should route to accountable owners with severity, due date, and evidence requirement.",
+    "AI governance evidence must tie model releases to eval results, safety checks, language quality, and rollback readiness."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1315,6 +1349,10 @@ function adminCommunityOperations() {
   return communityOperations;
 }
 
+function adminComplianceEvidenceOperations() {
+  return complianceEvidenceOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1357,7 +1395,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "regional:launch",
       "qa:review",
       "roadmap:manage",
-      "community:manage"
+      "community:manage",
+      "compliance:evidence"
     ],
     audit: [
       accessEvent,
@@ -1673,6 +1712,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminCommunityOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/compliance-evidence") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("compliance_evidence_viewed", "Evidence", "Info", "Compliance Evidence");
+      return sendJson(response, 200, adminComplianceEvidenceOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1689,4 +1736,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, plans };

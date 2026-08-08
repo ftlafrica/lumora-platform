@@ -38,7 +38,8 @@ const {
   adminRegionalLaunchOperations,
   adminQaOperations,
   adminRoadmapOperations,
-  adminCommunityOperations
+  adminCommunityOperations,
+  adminComplianceEvidenceOperations
 } = require("./server");
 const { modelRegistry } = require("./model-registry");
 
@@ -93,6 +94,7 @@ assert.ok(accessSession.scopes.includes("regional:launch"));
 assert.ok(accessSession.scopes.includes("qa:review"));
 assert.ok(accessSession.scopes.includes("roadmap:manage"));
 assert.ok(accessSession.scopes.includes("community:manage"));
+assert.ok(accessSession.scopes.includes("compliance:evidence"));
 assert.ok(accessSession.audit.length >= 2);
 
 const adminContracts = [
@@ -128,7 +130,8 @@ const adminContracts = [
   ["regional launch", adminRegionalLaunchOperations(), data => data.summary && Array.isArray(data.markets) && Array.isArray(data.localization) && Array.isArray(data.blockers)],
   ["qa", adminQaOperations(), data => data.summary && Array.isArray(data.suites) && Array.isArray(data.devices) && Array.isArray(data.blockers)],
   ["roadmap", adminRoadmapOperations(), data => data.summary && Array.isArray(data.initiatives) && Array.isArray(data.releases) && Array.isArray(data.dependencies)],
-  ["community", adminCommunityOperations(), data => data.summary && Array.isArray(data.contributors) && Array.isArray(data.contributions) && Array.isArray(data.programs)]
+  ["community", adminCommunityOperations(), data => data.summary && Array.isArray(data.contributors) && Array.isArray(data.contributions) && Array.isArray(data.programs)],
+  ["compliance evidence", adminComplianceEvidenceOperations(), data => data.summary && Array.isArray(data.controls) && Array.isArray(data.evidence) && Array.isArray(data.audits)]
 ];
 
 adminContracts.forEach(([name, data, isValid]) => {
