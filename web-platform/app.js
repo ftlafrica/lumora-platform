@@ -74,6 +74,7 @@ const ADMIN_SECTIONS = [
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
   { id: "people", label: "People", desc: "Team coverage, hiring, reviewer capacity, on-call load, enablement, and workforce guardrails." },
+  { id: "vendors", label: "Vendors", desc: "Vendor inventory, renewals, procurement diligence, spend variance, and third-party risk." },
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
   { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
@@ -186,6 +187,8 @@ const DEFAULT_STATE = {
   adminLegalLoadedAt: null,
   adminPeople: null,
   adminPeopleLoadedAt: null,
+  adminVendors: null,
+  adminVendorsLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -459,6 +462,26 @@ async function loadAdminPeople(force = false) {
     state.adminPeopleLoadedAt = Date.now();
   } catch {
     state.adminPeopleLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminVendors(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminVendorsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/vendors`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Vendor operations unavailable.");
+    state.adminVendors = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminVendorsLoadedAt = Date.now();
+  } catch {
+    state.adminVendorsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -872,7 +895,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1502,6 +1525,42 @@ function adminPeopleData() {
   };
 }
 
+function adminVendorData() {
+  return state.adminVendors || {
+    summary: { activeVendors: 26, renewalsDue: 7, monthlySpend: "$42.6K", highRisk: 3, dueDiligenceOpen: 8 },
+    vendors: [
+      { vendor: "Hugging Face", category: "Model hosting", owner: "AI Ops", spend: "$12.4K/mo", status: "Strategic" },
+      { vendor: "Cloud GPU Pool", category: "Compute", owner: "Infrastructure", spend: "$18.1K/mo", status: "Cost watch" },
+      { vendor: "Payment processor", category: "Billing", owner: "Finance", spend: "$4.8K/mo", status: "Healthy" },
+      { vendor: "Support desk", category: "Customer support", owner: "Support", spend: "$2.2K/mo", status: "Renewal due" }
+    ],
+    renewals: [
+      { contract: "Model endpoint capacity", vendor: "Hugging Face", renewal: "Sep 2026", owner: "AI Ops", action: "Negotiate capacity" },
+      { contract: "GPU reserved instances", vendor: "Cloud GPU Pool", renewal: "Oct 2026", owner: "Infrastructure", action: "Cost benchmark" },
+      { contract: "Support desk seats", vendor: "Support desk", renewal: "Aug 2026", owner: "Support", action: "Seat audit" },
+      { contract: "Payment routing", vendor: "Payment processor", renewal: "Nov 2026", owner: "Finance", action: "Market coverage review" }
+    ],
+    diligence: [
+      { review: "Subprocessor and DPA review", vendor: "Support desk", owner: "Legal", risk: "Medium", status: "Open" },
+      { review: "Security questionnaire", vendor: "Cloud GPU Pool", owner: "Security", risk: "High", status: "Evidence needed" },
+      { review: "Data residency posture", vendor: "Hugging Face", owner: "Data Gov", risk: "Medium", status: "Review" },
+      { review: "PCI evidence package", vendor: "Payment processor", owner: "Finance", risk: "Low", status: "Ready" }
+    ],
+    spend: [
+      { area: "AI/model hosting", budget: "$14K", actual: "$12.4K", variance: "-11%", trend: "Stable" },
+      { area: "Compute", budget: "$15K", actual: "$18.1K", variance: "+21%", trend: "Up" },
+      { area: "Support tooling", budget: "$2.5K", actual: "$2.2K", variance: "-12%", trend: "Stable" },
+      { area: "Billing tooling", budget: "$5K", actual: "$4.8K", variance: "-4%", trend: "Stable" }
+    ],
+    guardrails: [
+      "Vendors touching user, enterprise, or model data require legal, security, privacy, and owner approval.",
+      "Renewals should include usage, spend, risk, alternatives, and negotiation owner before approval.",
+      "High-risk vendors need documented mitigations, subprocessor review, and exit plan before production dependency grows.",
+      "Procurement data should show business status and risk without exposing secrets, keys, credentials, or privileged contracts."
+    ]
+  };
+}
+
 function adminPaymentData() {
   return state.adminPayments || {
     plans: ADMIN_PAYMENTS,
@@ -2118,6 +2177,22 @@ function enablementRow(item) {
   return `<div class="table-row"><strong>${item.program}</strong><span>${item.audience}</span><span>${item.completion}</span><span>${item.owner}</span></div>`;
 }
 
+function vendorRow(item) {
+  return `<div class="table-row"><strong>${item.vendor}</strong><span>${item.category}</span><span>${item.spend}</span><span>${item.status}</span></div>`;
+}
+
+function vendorRenewalRow(item) {
+  return `<div class="table-row"><strong>${item.contract}</strong><span>${item.vendor}</span><span>${item.renewal}</span><span>${item.action}</span></div>`;
+}
+
+function vendorDiligenceRow(item) {
+  return `<div class="table-row"><strong>${item.review}</strong><span>${item.vendor}</span><span>${item.risk}</span><span>${item.status}</span></div>`;
+}
+
+function vendorSpendRow(item) {
+  return `<div class="table-row"><strong>${item.area}</strong><span>${item.budget}</span><span>${item.actual}</span><span>${item.variance}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -2688,6 +2763,7 @@ function adminView() {
   if (state.adminSection === "risk") loadAdminRisk();
   if (state.adminSection === "legal") loadAdminLegal();
   if (state.adminSection === "people") loadAdminPeople();
+  if (state.adminSection === "vendors") loadAdminVendors();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -2792,6 +2868,7 @@ function adminSectionView(section, readiness) {
     risk: adminRisk,
     legal: adminLegal,
     people: adminPeople,
+    vendors: adminVendors,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -3442,6 +3519,49 @@ function adminPeople() {
         <h2>People Ops guardrails</h2>
         <div class="admin-checklist">
           ${people.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminVendors() {
+  const vendors = adminVendorData();
+  const summary = vendors.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active vendors", summary.activeVendors || "26")}
+      ${metric("Renewals due", summary.renewalsDue || "7")}
+      ${metric("Monthly spend", summary.monthlySpend || "$42.6K")}
+      ${metric("High risk", summary.highRisk || "3")}
+      <section class="admin-card full-admin">
+        <h2>Vendor inventory</h2>
+        <div class="table admin-table-4">
+          ${vendors.vendors.map(vendorRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Renewals and negotiations</h2>
+        <div class="table admin-table-4">
+          ${vendors.renewals.map(vendorRenewalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Due diligence</h2>
+        <div class="table admin-table-4">
+          ${vendors.diligence.map(vendorDiligenceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Spend variance</h2>
+        <div class="table admin-table-4">
+          ${vendors.spend.map(vendorSpendRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Vendor guardrails</h2>
+        <div class="admin-checklist">
+          ${vendors.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -4270,6 +4390,7 @@ function bindEvents() {
       loadAdminRisk(true);
       loadAdminLegal(true);
       loadAdminPeople(true);
+      loadAdminVendors(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);

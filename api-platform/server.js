@@ -872,6 +872,40 @@ const peopleOperations = {
   ]
 };
 
+const vendorOperations = {
+  summary: { activeVendors: 26, renewalsDue: 7, monthlySpend: "$42.6K", highRisk: 3, dueDiligenceOpen: 8 },
+  vendors: [
+    { vendor: "Hugging Face", category: "Model hosting", owner: "AI Ops", spend: "$12.4K/mo", status: "Strategic" },
+    { vendor: "Cloud GPU Pool", category: "Compute", owner: "Infrastructure", spend: "$18.1K/mo", status: "Cost watch" },
+    { vendor: "Payment processor", category: "Billing", owner: "Finance", spend: "$4.8K/mo", status: "Healthy" },
+    { vendor: "Support desk", category: "Customer support", owner: "Support", spend: "$2.2K/mo", status: "Renewal due" }
+  ],
+  renewals: [
+    { contract: "Model endpoint capacity", vendor: "Hugging Face", renewal: "Sep 2026", owner: "AI Ops", action: "Negotiate capacity" },
+    { contract: "GPU reserved instances", vendor: "Cloud GPU Pool", renewal: "Oct 2026", owner: "Infrastructure", action: "Cost benchmark" },
+    { contract: "Support desk seats", vendor: "Support desk", renewal: "Aug 2026", owner: "Support", action: "Seat audit" },
+    { contract: "Payment routing", vendor: "Payment processor", renewal: "Nov 2026", owner: "Finance", action: "Market coverage review" }
+  ],
+  diligence: [
+    { review: "Subprocessor and DPA review", vendor: "Support desk", owner: "Legal", risk: "Medium", status: "Open" },
+    { review: "Security questionnaire", vendor: "Cloud GPU Pool", owner: "Security", risk: "High", status: "Evidence needed" },
+    { review: "Data residency posture", vendor: "Hugging Face", owner: "Data Gov", risk: "Medium", status: "Review" },
+    { review: "PCI evidence package", vendor: "Payment processor", owner: "Finance", risk: "Low", status: "Ready" }
+  ],
+  spend: [
+    { area: "AI/model hosting", budget: "$14K", actual: "$12.4K", variance: "-11%", trend: "Stable" },
+    { area: "Compute", budget: "$15K", actual: "$18.1K", variance: "+21%", trend: "Up" },
+    { area: "Support tooling", budget: "$2.5K", actual: "$2.2K", variance: "-12%", trend: "Stable" },
+    { area: "Billing tooling", budget: "$5K", actual: "$4.8K", variance: "-4%", trend: "Stable" }
+  ],
+  guardrails: [
+    "Vendors touching user, enterprise, or model data require legal, security, privacy, and owner approval.",
+    "Renewals should include usage, spend, risk, alternatives, and negotiation owner before approval.",
+    "High-risk vendors need documented mitigations, subprocessor review, and exit plan before production dependency grows.",
+    "Procurement data should show business status and risk without exposing secrets, keys, credentials, or privileged contracts."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1125,6 +1159,10 @@ function adminPeopleOperations() {
   return peopleOperations;
 }
 
+function adminVendorOperations() {
+  return vendorOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1162,7 +1200,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "sales:manage",
       "risk:review",
       "legal:review",
-      "people:read"
+      "people:read",
+      "vendors:manage"
     ],
     audit: [
       accessEvent,
@@ -1438,6 +1477,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminPeopleOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/vendors") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("vendor_ops_viewed", "Vendors", "Info", "Procurement Ops");
+      return sendJson(response, 200, adminVendorOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1454,4 +1501,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, plans };
