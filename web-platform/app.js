@@ -76,6 +76,7 @@ const ADMIN_SECTIONS = [
   { id: "investors", label: "Investors", desc: "Investor updates, fundraising pipeline, data room readiness, diligence requests, and disclosure guardrails." },
   { id: "procurement", label: "Procurement", desc: "Enterprise procurement cycles, revenue blockers, purchase orders, renewals, and close guardrails." },
   { id: "partnerships", label: "Partners", desc: "Strategic partners, channel pipeline, integrations, ecosystem risks, and partnership guardrails." },
+  { id: "launch", label: "Launch", desc: "Launch checklists, go/no-go gates, readiness, post-launch monitors, and launch guardrails." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
@@ -219,6 +220,8 @@ const DEFAULT_STATE = {
   adminProcurementRevenueLoadedAt: null,
   adminStrategicPartnerships: null,
   adminStrategicPartnershipsLoadedAt: null,
+  adminLaunchReadiness: null,
+  adminLaunchReadinessLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -717,6 +720,26 @@ async function loadAdminStrategicPartnerships(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminLaunchReadiness(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminLaunchReadinessLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/launch-readiness`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Launch readiness unavailable.");
+    state.adminLaunchReadiness = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminLaunchReadinessLoadedAt = Date.now();
+  } catch {
+    state.adminLaunchReadinessLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminCommunications(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminCommunicationsLoadedAt || 0;
@@ -1125,7 +1148,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2151,6 +2174,42 @@ function adminStrategicPartnershipsData() {
   };
 }
 
+function adminLaunchReadinessData() {
+  return state.adminLaunchReadiness || {
+    summary: { activeLaunches: 6, readyLaunches: 3, blockedLaunches: 2, goNoGoScore: "79%", postLaunchWatch: 4 },
+    launches: [
+      { launch: "Mobile beta Nigeria", surface: "Mobile", owner: "Mobile/Product", target: "Sep 05", status: "Go watch" },
+      { launch: "Creator Studio packs", surface: "Web", owner: "Growth", target: "Aug 22", status: "Ready" },
+      { launch: "Teams admin workspace", surface: "Enterprise", owner: "Enterprise", target: "Sep 12", status: "Blocked" },
+      { launch: "Swahili voice pilot", surface: "Voice", owner: "Voice Ops", target: "Sep 18", status: "Testing" }
+    ],
+    gates: [
+      { gate: "Security and privacy approval", launch: "Teams admin workspace", owner: "Security/Data Gov", readiness: "62%", status: "Blocked" },
+      { gate: "Mobile QA signoff", launch: "Mobile beta Nigeria", owner: "QA", readiness: "84%", status: "Watch" },
+      { gate: "Support macros and escalation path", launch: "Creator Studio packs", owner: "Support", readiness: "91%", status: "Ready" },
+      { gate: "Language quality review", launch: "Swahili voice pilot", owner: "Language QA", readiness: "76%", status: "Testing" }
+    ],
+    readiness: [
+      { team: "Product", area: "Release notes and scope", confidence: "88%", owner: "Product", status: "Ready" },
+      { team: "Engineering", area: "Rollback and observability", confidence: "82%", owner: "Platform", status: "Watch" },
+      { team: "Support", area: "Macros and training", confidence: "91%", owner: "Support", status: "Ready" },
+      { team: "Growth", area: "Launch campaigns", confidence: "73%", owner: "Growth", status: "Preparing" }
+    ],
+    monitors: [
+      { monitor: "Activation drop", launch: "Mobile beta Nigeria", threshold: "-8%", owner: "Analytics", status: "Armed" },
+      { monitor: "Voice error rate", launch: "Swahili voice pilot", threshold: ">2.5%", owner: "Voice Ops", status: "Armed" },
+      { monitor: "Support ticket spike", launch: "Creator Studio packs", threshold: "+20%", owner: "Support", status: "Armed" },
+      { monitor: "Admin workspace permission errors", launch: "Teams admin workspace", threshold: ">1%", owner: "Enterprise", status: "Draft" }
+    ],
+    guardrails: [
+      "Launches should not move to go without security, privacy, QA, support, observability, and rollback owners.",
+      "Go/no-go scores must reflect current blockers and accountable owners, not aspirational launch dates.",
+      "Post-launch monitors should be defined before launch and reviewed during the watch window.",
+      "Customer-facing launch claims should match shipped functionality and supported language/model readiness."
+    ]
+  };
+}
+
 function adminPaymentData() {
   return state.adminPayments || {
     plans: ADMIN_PAYMENTS,
@@ -2943,6 +3002,22 @@ function partnershipRiskRow(item) {
   return `<div class="table-row"><strong>${item.risk}</strong><span>${item.partner}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
 }
 
+function launchRow(item) {
+  return `<div class="table-row"><strong>${item.launch}</strong><span>${item.surface}</span><span>${item.target}</span><span>${item.status}</span></div>`;
+}
+
+function launchGateRow(item) {
+  return `<div class="table-row"><strong>${item.gate}</strong><span>${item.launch}</span><span>${item.readiness}</span><span>${item.status}</span></div>`;
+}
+
+function launchReadinessRow(item) {
+  return `<div class="table-row"><strong>${item.team}</strong><span>${item.area}</span><span>${item.confidence}</span><span>${item.status}</span></div>`;
+}
+
+function launchMonitorRow(item) {
+  return `<div class="table-row"><strong>${item.monitor}</strong><span>${item.launch}</span><span>${item.threshold}</span><span>${item.status}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -3524,6 +3599,7 @@ function adminView() {
   if (state.adminSection === "investors") loadAdminInvestorRelations();
   if (state.adminSection === "procurement") loadAdminProcurementRevenue();
   if (state.adminSection === "partnerships") loadAdminStrategicPartnerships();
+  if (state.adminSection === "launch") loadAdminLaunchReadiness();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -3639,6 +3715,7 @@ function adminSectionView(section, readiness) {
     investors: adminInvestorRelations,
     procurement: adminProcurementRevenue,
     partnerships: adminStrategicPartnerships,
+    launch: adminLaunchReadiness,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -4768,6 +4845,49 @@ function adminStrategicPartnerships() {
   `;
 }
 
+function adminLaunchReadiness() {
+  const launch = adminLaunchReadinessData();
+  const summary = launch.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active launches", summary.activeLaunches || "6")}
+      ${metric("Ready", summary.readyLaunches || "3")}
+      ${metric("Blocked", summary.blockedLaunches || "2")}
+      ${metric("Go/no-go", summary.goNoGoScore || "79%")}
+      <section class="admin-card full-admin">
+        <h2>Launch portfolio</h2>
+        <div class="table admin-table-4">
+          ${launch.launches.map(launchRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Go/no-go gates</h2>
+        <div class="table admin-table-4">
+          ${launch.gates.map(launchGateRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Cross-functional readiness</h2>
+        <div class="table admin-table-4">
+          ${launch.readiness.map(launchReadinessRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Post-launch monitors</h2>
+        <div class="table admin-table-4">
+          ${launch.monitors.map(launchMonitorRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Launch guardrails</h2>
+        <div class="admin-checklist">
+          ${launch.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminCommunications() {
   const communications = adminCommunicationsData();
   const summary = communications.summary || {};
@@ -5601,6 +5721,7 @@ function bindEvents() {
       loadAdminInvestorRelations(true);
       loadAdminProcurementRevenue(true);
       loadAdminStrategicPartnerships(true);
+      loadAdminLaunchReadiness(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);

@@ -1246,6 +1246,40 @@ const strategicPartnershipOperations = {
   ]
 };
 
+const launchReadinessOperations = {
+  summary: { activeLaunches: 6, readyLaunches: 3, blockedLaunches: 2, goNoGoScore: "79%", postLaunchWatch: 4 },
+  launches: [
+    { launch: "Mobile beta Nigeria", surface: "Mobile", owner: "Mobile/Product", target: "Sep 05", status: "Go watch" },
+    { launch: "Creator Studio packs", surface: "Web", owner: "Growth", target: "Aug 22", status: "Ready" },
+    { launch: "Teams admin workspace", surface: "Enterprise", owner: "Enterprise", target: "Sep 12", status: "Blocked" },
+    { launch: "Swahili voice pilot", surface: "Voice", owner: "Voice Ops", target: "Sep 18", status: "Testing" }
+  ],
+  gates: [
+    { gate: "Security and privacy approval", launch: "Teams admin workspace", owner: "Security/Data Gov", readiness: "62%", status: "Blocked" },
+    { gate: "Mobile QA signoff", launch: "Mobile beta Nigeria", owner: "QA", readiness: "84%", status: "Watch" },
+    { gate: "Support macros and escalation path", launch: "Creator Studio packs", owner: "Support", readiness: "91%", status: "Ready" },
+    { gate: "Language quality review", launch: "Swahili voice pilot", owner: "Language QA", readiness: "76%", status: "Testing" }
+  ],
+  readiness: [
+    { team: "Product", area: "Release notes and scope", confidence: "88%", owner: "Product", status: "Ready" },
+    { team: "Engineering", area: "Rollback and observability", confidence: "82%", owner: "Platform", status: "Watch" },
+    { team: "Support", area: "Macros and training", confidence: "91%", owner: "Support", status: "Ready" },
+    { team: "Growth", area: "Launch campaigns", confidence: "73%", owner: "Growth", status: "Preparing" }
+  ],
+  monitors: [
+    { monitor: "Activation drop", launch: "Mobile beta Nigeria", threshold: "-8%", owner: "Analytics", status: "Armed" },
+    { monitor: "Voice error rate", launch: "Swahili voice pilot", threshold: ">2.5%", owner: "Voice Ops", status: "Armed" },
+    { monitor: "Support ticket spike", launch: "Creator Studio packs", threshold: "+20%", owner: "Support", status: "Armed" },
+    { monitor: "Admin workspace permission errors", launch: "Teams admin workspace", threshold: ">1%", owner: "Enterprise", status: "Draft" }
+  ],
+  guardrails: [
+    "Launches should not move to go without security, privacy, QA, support, observability, and rollback owners.",
+    "Go/no-go scores must reflect current blockers and accountable owners, not aspirational launch dates.",
+    "Post-launch monitors should be defined before launch and reviewed during the watch window.",
+    "Customer-facing launch claims should match shipped functionality and supported language/model readiness."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1543,6 +1577,10 @@ function adminStrategicPartnershipOperations() {
   return strategicPartnershipOperations;
 }
 
+function adminLaunchReadinessOperations() {
+  return launchReadinessOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1591,7 +1629,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "board:governance",
       "investor:relations",
       "procurement:revenue",
-      "partnerships:manage"
+      "partnerships:manage",
+      "launch:readiness"
     ],
     audit: [
       accessEvent,
@@ -1955,6 +1994,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminStrategicPartnershipOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/launch-readiness") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("launch_readiness_viewed", "Launch", "Info", "Launch Readiness");
+      return sendJson(response, 200, adminLaunchReadinessOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1971,4 +2018,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, plans };
