@@ -1212,6 +1212,40 @@ const procurementRevenueOperations = {
   ]
 };
 
+const strategicPartnershipOperations = {
+  summary: { activePartners: 16, pipelineValue: "$1.4M", signedMoUs: 5, channelReadiness: "76%", partnerRisks: 4 },
+  partners: [
+    { partner: "Campus Language Labs", type: "Education", market: "Kenya", owner: "Partnerships", status: "Pilot signed" },
+    { partner: "Pan-African Creator Network", type: "Creator channel", market: "Pan-African", owner: "Growth", status: "Negotiating" },
+    { partner: "Regional Telecom Bundle", type: "Distribution", market: "West Africa", owner: "Revenue Ops", status: "Scoping" },
+    { partner: "Public Sector Language Hub", type: "Government/NGO", market: "East Africa", owner: "Partnerships", status: "Diligence" }
+  ],
+  pipeline: [
+    { opportunity: "Student language access bundle", partner: "Campus Language Labs", value: "$220K", stage: "Pilot", status: "Active" },
+    { opportunity: "Creator workflow distribution", partner: "Creator Network", value: "$180K", stage: "Terms", status: "Review" },
+    { opportunity: "Telecom prepaid AI bundle", partner: "Telecom Bundle", value: "$750K", stage: "Discovery", status: "Scoping" },
+    { opportunity: "Public language support desk", partner: "Language Hub", value: "$260K", stage: "Diligence", status: "Legal review" }
+  ],
+  integrations: [
+    { integration: "Campus SSO pilot", partner: "Campus Language Labs", owner: "Platform", readiness: "72%", status: "Testing" },
+    { integration: "Creator referral tracking", partner: "Creator Network", owner: "Growth", readiness: "68%", status: "Building" },
+    { integration: "Carrier billing feasibility", partner: "Telecom Bundle", owner: "Payments", readiness: "44%", status: "Research" },
+    { integration: "Public sector reporting pack", partner: "Language Hub", owner: "Reports", readiness: "58%", status: "Draft" }
+  ],
+  risks: [
+    { risk: "Unsupported language commitment", partner: "Public Sector Language Hub", severity: "High", owner: "Language QA", status: "Review" },
+    { risk: "Revenue share complexity", partner: "Creator Network", severity: "Medium", owner: "Finance", status: "Modeling" },
+    { risk: "Data sharing boundary", partner: "Telecom Bundle", severity: "High", owner: "Legal/Data Gov", status: "Open" },
+    { risk: "Support capacity", partner: "Campus Language Labs", severity: "Medium", owner: "Support", status: "Planning" }
+  ],
+  guardrails: [
+    "Partnership commitments must not promise unsupported languages, launch dates, model behavior, or data sharing terms.",
+    "Channel revenue should separate signed partner commitments from exploratory pipeline.",
+    "Partner integrations require privacy, security, support, and operational owners before launch approval.",
+    "Co-marketing claims should use approved product language and current capability status."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1505,6 +1539,10 @@ function adminProcurementRevenueOperations() {
   return procurementRevenueOperations;
 }
 
+function adminStrategicPartnershipOperations() {
+  return strategicPartnershipOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1552,7 +1590,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "trust:center",
       "board:governance",
       "investor:relations",
-      "procurement:revenue"
+      "procurement:revenue",
+      "partnerships:manage"
     ],
     audit: [
       accessEvent,
@@ -1908,6 +1947,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminProcurementRevenueOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/strategic-partnerships") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("strategic_partnerships_viewed", "Partnerships", "Info", "Strategic Partnerships");
+      return sendJson(response, 200, adminStrategicPartnershipOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1924,4 +1971,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, plans };

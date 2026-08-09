@@ -75,6 +75,7 @@ const ADMIN_SECTIONS = [
   { id: "board", label: "Board", desc: "Board packets, strategic decisions, investor metrics, escalations, and governance guardrails." },
   { id: "investors", label: "Investors", desc: "Investor updates, fundraising pipeline, data room readiness, diligence requests, and disclosure guardrails." },
   { id: "procurement", label: "Procurement", desc: "Enterprise procurement cycles, revenue blockers, purchase orders, renewals, and close guardrails." },
+  { id: "partnerships", label: "Partners", desc: "Strategic partners, channel pipeline, integrations, ecosystem risks, and partnership guardrails." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
@@ -216,6 +217,8 @@ const DEFAULT_STATE = {
   adminInvestorRelationsLoadedAt: null,
   adminProcurementRevenue: null,
   adminProcurementRevenueLoadedAt: null,
+  adminStrategicPartnerships: null,
+  adminStrategicPartnershipsLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -694,6 +697,26 @@ async function loadAdminProcurementRevenue(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminStrategicPartnerships(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminStrategicPartnershipsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/strategic-partnerships`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Strategic partnerships unavailable.");
+    state.adminStrategicPartnerships = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminStrategicPartnershipsLoadedAt = Date.now();
+  } catch {
+    state.adminStrategicPartnershipsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminCommunications(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminCommunicationsLoadedAt || 0;
@@ -1102,7 +1125,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2092,6 +2115,42 @@ function adminProcurementRevenueData() {
   };
 }
 
+function adminStrategicPartnershipsData() {
+  return state.adminStrategicPartnerships || {
+    summary: { activePartners: 16, pipelineValue: "$1.4M", signedMoUs: 5, channelReadiness: "76%", partnerRisks: 4 },
+    partners: [
+      { partner: "Campus Language Labs", type: "Education", market: "Kenya", owner: "Partnerships", status: "Pilot signed" },
+      { partner: "Pan-African Creator Network", type: "Creator channel", market: "Pan-African", owner: "Growth", status: "Negotiating" },
+      { partner: "Regional Telecom Bundle", type: "Distribution", market: "West Africa", owner: "Revenue Ops", status: "Scoping" },
+      { partner: "Public Sector Language Hub", type: "Government/NGO", market: "East Africa", owner: "Partnerships", status: "Diligence" }
+    ],
+    pipeline: [
+      { opportunity: "Student language access bundle", partner: "Campus Language Labs", value: "$220K", stage: "Pilot", status: "Active" },
+      { opportunity: "Creator workflow distribution", partner: "Creator Network", value: "$180K", stage: "Terms", status: "Review" },
+      { opportunity: "Telecom prepaid AI bundle", partner: "Telecom Bundle", value: "$750K", stage: "Discovery", status: "Scoping" },
+      { opportunity: "Public language support desk", partner: "Language Hub", value: "$260K", stage: "Diligence", status: "Legal review" }
+    ],
+    integrations: [
+      { integration: "Campus SSO pilot", partner: "Campus Language Labs", owner: "Platform", readiness: "72%", status: "Testing" },
+      { integration: "Creator referral tracking", partner: "Creator Network", owner: "Growth", readiness: "68%", status: "Building" },
+      { integration: "Carrier billing feasibility", partner: "Telecom Bundle", owner: "Payments", readiness: "44%", status: "Research" },
+      { integration: "Public sector reporting pack", partner: "Language Hub", owner: "Reports", readiness: "58%", status: "Draft" }
+    ],
+    risks: [
+      { risk: "Unsupported language commitment", partner: "Public Sector Language Hub", severity: "High", owner: "Language QA", status: "Review" },
+      { risk: "Revenue share complexity", partner: "Creator Network", severity: "Medium", owner: "Finance", status: "Modeling" },
+      { risk: "Data sharing boundary", partner: "Telecom Bundle", severity: "High", owner: "Legal/Data Gov", status: "Open" },
+      { risk: "Support capacity", partner: "Campus Language Labs", severity: "Medium", owner: "Support", status: "Planning" }
+    ],
+    guardrails: [
+      "Partnership commitments must not promise unsupported languages, launch dates, model behavior, or data sharing terms.",
+      "Channel revenue should separate signed partner commitments from exploratory pipeline.",
+      "Partner integrations require privacy, security, support, and operational owners before launch approval.",
+      "Co-marketing claims should use approved product language and current capability status."
+    ]
+  };
+}
+
 function adminPaymentData() {
   return state.adminPayments || {
     plans: ADMIN_PAYMENTS,
@@ -2868,6 +2927,22 @@ function renewalRow(item) {
   return `<div class="table-row"><strong>${item.renewal}</strong><span>${item.date}</span><span>${item.amount}</span><span>${item.status}</span></div>`;
 }
 
+function partnershipRow(item) {
+  return `<div class="table-row"><strong>${item.partner}</strong><span>${item.type}</span><span>${item.market}</span><span>${item.status}</span></div>`;
+}
+
+function partnershipPipelineRow(item) {
+  return `<div class="table-row"><strong>${item.opportunity}</strong><span>${item.partner}</span><span>${item.value}</span><span>${item.status}</span></div>`;
+}
+
+function partnershipIntegrationRow(item) {
+  return `<div class="table-row"><strong>${item.integration}</strong><span>${item.partner}</span><span>${item.readiness}</span><span>${item.status}</span></div>`;
+}
+
+function partnershipRiskRow(item) {
+  return `<div class="table-row"><strong>${item.risk}</strong><span>${item.partner}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -3448,6 +3523,7 @@ function adminView() {
   if (state.adminSection === "board") loadAdminBoardGovernance();
   if (state.adminSection === "investors") loadAdminInvestorRelations();
   if (state.adminSection === "procurement") loadAdminProcurementRevenue();
+  if (state.adminSection === "partnerships") loadAdminStrategicPartnerships();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -3562,6 +3638,7 @@ function adminSectionView(section, readiness) {
     board: adminBoardGovernance,
     investors: adminInvestorRelations,
     procurement: adminProcurementRevenue,
+    partnerships: adminStrategicPartnerships,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -4648,6 +4725,49 @@ function adminProcurementRevenue() {
   `;
 }
 
+function adminStrategicPartnerships() {
+  const partnerships = adminStrategicPartnershipsData();
+  const summary = partnerships.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active partners", summary.activePartners || "16")}
+      ${metric("Pipeline value", summary.pipelineValue || "$1.4M")}
+      ${metric("Signed MoUs", summary.signedMoUs || "5")}
+      ${metric("Readiness", summary.channelReadiness || "76%")}
+      <section class="admin-card full-admin">
+        <h2>Strategic partner portfolio</h2>
+        <div class="table admin-table-4">
+          ${partnerships.partners.map(partnershipRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Channel pipeline</h2>
+        <div class="table admin-table-4">
+          ${partnerships.pipeline.map(partnershipPipelineRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Partner integrations</h2>
+        <div class="table admin-table-4">
+          ${partnerships.integrations.map(partnershipIntegrationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Partnership risks</h2>
+        <div class="table admin-table-4">
+          ${partnerships.risks.map(partnershipRiskRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Partnership guardrails</h2>
+        <div class="admin-checklist">
+          ${partnerships.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminCommunications() {
   const communications = adminCommunicationsData();
   const summary = communications.summary || {};
@@ -5480,6 +5600,7 @@ function bindEvents() {
       loadAdminBoardGovernance(true);
       loadAdminInvestorRelations(true);
       loadAdminProcurementRevenue(true);
+      loadAdminStrategicPartnerships(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);
