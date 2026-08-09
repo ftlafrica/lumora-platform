@@ -73,6 +73,7 @@ const ADMIN_SECTIONS = [
   { id: "evidence", label: "Evidence", desc: "Control evidence, audit readiness, attestations, compliance gaps, and evidence guardrails." },
   { id: "trust", label: "Trust", desc: "Customer-safe trust center posture, security reviews, certifications, subprocessors, and public-status guardrails." },
   { id: "board", label: "Board", desc: "Board packets, strategic decisions, investor metrics, escalations, and governance guardrails." },
+  { id: "investors", label: "Investors", desc: "Investor updates, fundraising pipeline, data room readiness, diligence requests, and disclosure guardrails." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
@@ -210,6 +211,8 @@ const DEFAULT_STATE = {
   adminTrustCenterLoadedAt: null,
   adminBoardGovernance: null,
   adminBoardGovernanceLoadedAt: null,
+  adminInvestorRelations: null,
+  adminInvestorRelationsLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -648,6 +651,26 @@ async function loadAdminBoardGovernance(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminInvestorRelations(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminInvestorRelationsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/investor-relations`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Investor relations unavailable.");
+    state.adminInvestorRelations = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminInvestorRelationsLoadedAt = Date.now();
+  } catch {
+    state.adminInvestorRelationsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminCommunications(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminCommunicationsLoadedAt || 0;
@@ -1056,7 +1079,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1974,6 +1997,42 @@ function adminBoardGovernanceData() {
   };
 }
 
+function adminInvestorRelationsData() {
+  return state.adminInvestorRelations || {
+    summary: { activeInvestors: 18, dataRoomReadiness: "82%", diligenceRequests: 14, nextUpdate: "Aug 15", fundingPipeline: "$3.8M" },
+    updates: [
+      { update: "Monthly investor memo", audience: "Current investors", owner: "CEO Office", due: "Aug 15", status: "Draft" },
+      { update: "Revenue and retention snapshot", audience: "Finance committee", owner: "CFO", due: "Aug 14", status: "Ready" },
+      { update: "AI quality progress note", audience: "Strategic advisors", owner: "AI QA", due: "Aug 16", status: "Review" },
+      { update: "Mobile launch preview", audience: "Prospective investors", owner: "Product", due: "Aug 19", status: "Building" }
+    ],
+    pipeline: [
+      { investor: "Pan-African Growth Fund", stage: "Partner meeting", interest: "$1.2M", owner: "CEO", status: "Warm" },
+      { investor: "Language Tech Angels", stage: "Diligence", interest: "$650K", owner: "CFO", status: "Active" },
+      { investor: "Frontier SaaS Capital", stage: "Intro", interest: "$1.5M", owner: "CEO", status: "New" },
+      { investor: "Education Innovation Fund", stage: "Follow-up", interest: "$450K", owner: "Partnerships", status: "Review" }
+    ],
+    dataRoom: [
+      { folder: "Financial model", freshness: "2 days", owner: "Finance", completeness: "90%", status: "Ready" },
+      { folder: "Product roadmap", freshness: "1 day", owner: "Product", completeness: "86%", status: "Ready" },
+      { folder: "Security and compliance", freshness: "4 days", owner: "Security", completeness: "74%", status: "Collecting" },
+      { folder: "Market and language research", freshness: "6 days", owner: "Strategy", completeness: "81%", status: "Review" }
+    ],
+    diligence: [
+      { request: "Gross margin by model route", source: "Investor diligence", owner: "Finance/AI Ops", due: "Aug 13", status: "Answering" },
+      { request: "Reviewer network scalability", source: "Strategic advisor", owner: "Language QA", due: "Aug 17", status: "Collecting" },
+      { request: "Enterprise pipeline conversion", source: "Growth Fund", owner: "Sales", due: "Aug 18", status: "Review" },
+      { request: "Data residency roadmap", source: "Public-sector investor", owner: "Infrastructure", due: "Aug 20", status: "Draft" }
+    ],
+    guardrails: [
+      "Investor materials must use approved metrics, finance-reviewed definitions, and current board-ready source data.",
+      "Diligence responses should not expose raw user content, private customer data, secrets, or unapproved legal positions.",
+      "Fundraising pipeline should separate active investor interest from committed capital until signed documentation exists.",
+      "Forward-looking statements should include assumptions and owner review before distribution."
+    ]
+  };
+}
+
 function adminPaymentData() {
   return state.adminPayments || {
     plans: ADMIN_PAYMENTS,
@@ -2718,6 +2777,22 @@ function boardEscalationRow(item) {
   return `<div class="table-row"><strong>${item.escalation}</strong><span>${item.source}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
 }
 
+function investorUpdateRow(item) {
+  return `<div class="table-row"><strong>${item.update}</strong><span>${item.audience}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
+function investorPipelineRow(item) {
+  return `<div class="table-row"><strong>${item.investor}</strong><span>${item.stage}</span><span>${item.interest}</span><span>${item.status}</span></div>`;
+}
+
+function investorDataRoomRow(item) {
+  return `<div class="table-row"><strong>${item.folder}</strong><span>${item.freshness}</span><span>${item.completeness}</span><span>${item.status}</span></div>`;
+}
+
+function investorDiligenceRow(item) {
+  return `<div class="table-row"><strong>${item.request}</strong><span>${item.source}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -3296,6 +3371,7 @@ function adminView() {
   if (state.adminSection === "evidence") loadAdminComplianceEvidence();
   if (state.adminSection === "trust") loadAdminTrustCenter();
   if (state.adminSection === "board") loadAdminBoardGovernance();
+  if (state.adminSection === "investors") loadAdminInvestorRelations();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -3408,6 +3484,7 @@ function adminSectionView(section, readiness) {
     evidence: adminComplianceEvidence,
     trust: adminTrustCenter,
     board: adminBoardGovernance,
+    investors: adminInvestorRelations,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -4408,6 +4485,49 @@ function adminBoardGovernance() {
   `;
 }
 
+function adminInvestorRelations() {
+  const investors = adminInvestorRelationsData();
+  const summary = investors.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active investors", summary.activeInvestors || "18")}
+      ${metric("Data room", summary.dataRoomReadiness || "82%")}
+      ${metric("Diligence", summary.diligenceRequests || "14")}
+      ${metric("Pipeline", summary.fundingPipeline || "$3.8M")}
+      <section class="admin-card full-admin">
+        <h2>Investor updates</h2>
+        <div class="table admin-table-4">
+          ${investors.updates.map(investorUpdateRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Fundraising pipeline</h2>
+        <div class="table admin-table-4">
+          ${investors.pipeline.map(investorPipelineRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Data room readiness</h2>
+        <div class="table admin-table-4">
+          ${investors.dataRoom.map(investorDataRoomRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Diligence requests</h2>
+        <div class="table admin-table-4">
+          ${investors.diligence.map(investorDiligenceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Investor disclosure guardrails</h2>
+        <div class="admin-checklist">
+          ${investors.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminCommunications() {
   const communications = adminCommunicationsData();
   const summary = communications.summary || {};
@@ -5238,6 +5358,7 @@ function bindEvents() {
       loadAdminComplianceEvidence(true);
       loadAdminTrustCenter(true);
       loadAdminBoardGovernance(true);
+      loadAdminInvestorRelations(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);

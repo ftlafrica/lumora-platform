@@ -1144,6 +1144,40 @@ const boardGovernanceOperations = {
   ]
 };
 
+const investorRelationsOperations = {
+  summary: { activeInvestors: 18, dataRoomReadiness: "82%", diligenceRequests: 14, nextUpdate: "Aug 15", fundingPipeline: "$3.8M" },
+  updates: [
+    { update: "Monthly investor memo", audience: "Current investors", owner: "CEO Office", due: "Aug 15", status: "Draft" },
+    { update: "Revenue and retention snapshot", audience: "Finance committee", owner: "CFO", due: "Aug 14", status: "Ready" },
+    { update: "AI quality progress note", audience: "Strategic advisors", owner: "AI QA", due: "Aug 16", status: "Review" },
+    { update: "Mobile launch preview", audience: "Prospective investors", owner: "Product", due: "Aug 19", status: "Building" }
+  ],
+  pipeline: [
+    { investor: "Pan-African Growth Fund", stage: "Partner meeting", interest: "$1.2M", owner: "CEO", status: "Warm" },
+    { investor: "Language Tech Angels", stage: "Diligence", interest: "$650K", owner: "CFO", status: "Active" },
+    { investor: "Frontier SaaS Capital", stage: "Intro", interest: "$1.5M", owner: "CEO", status: "New" },
+    { investor: "Education Innovation Fund", stage: "Follow-up", interest: "$450K", owner: "Partnerships", status: "Review" }
+  ],
+  dataRoom: [
+    { folder: "Financial model", freshness: "2 days", owner: "Finance", completeness: "90%", status: "Ready" },
+    { folder: "Product roadmap", freshness: "1 day", owner: "Product", completeness: "86%", status: "Ready" },
+    { folder: "Security and compliance", freshness: "4 days", owner: "Security", completeness: "74%", status: "Collecting" },
+    { folder: "Market and language research", freshness: "6 days", owner: "Strategy", completeness: "81%", status: "Review" }
+  ],
+  diligence: [
+    { request: "Gross margin by model route", source: "Investor diligence", owner: "Finance/AI Ops", due: "Aug 13", status: "Answering" },
+    { request: "Reviewer network scalability", source: "Strategic advisor", owner: "Language QA", due: "Aug 17", status: "Collecting" },
+    { request: "Enterprise pipeline conversion", source: "Growth Fund", owner: "Sales", due: "Aug 18", status: "Review" },
+    { request: "Data residency roadmap", source: "Public-sector investor", owner: "Infrastructure", due: "Aug 20", status: "Draft" }
+  ],
+  guardrails: [
+    "Investor materials must use approved metrics, finance-reviewed definitions, and current board-ready source data.",
+    "Diligence responses should not expose raw user content, private customer data, secrets, or unapproved legal positions.",
+    "Fundraising pipeline should separate active investor interest from committed capital until signed documentation exists.",
+    "Forward-looking statements should include assumptions and owner review before distribution."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1429,6 +1463,10 @@ function adminBoardGovernanceOperations() {
   return boardGovernanceOperations;
 }
 
+function adminInvestorRelationsOperations() {
+  return investorRelationsOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1474,7 +1512,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "community:manage",
       "compliance:evidence",
       "trust:center",
-      "board:governance"
+      "board:governance",
+      "investor:relations"
     ],
     audit: [
       accessEvent,
@@ -1814,6 +1853,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminBoardGovernanceOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/investor-relations") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("investor_relations_viewed", "Investors", "Info", "Investor Relations");
+      return sendJson(response, 200, adminInvestorRelationsOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1830,4 +1877,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, plans };
