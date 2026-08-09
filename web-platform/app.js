@@ -72,6 +72,7 @@ const ADMIN_SECTIONS = [
   { id: "reports", label: "Reports", desc: "Leadership packs, scheduled exports, report destinations, datasets, and evidence guardrails." },
   { id: "evidence", label: "Evidence", desc: "Control evidence, audit readiness, attestations, compliance gaps, and evidence guardrails." },
   { id: "trust", label: "Trust", desc: "Customer-safe trust center posture, security reviews, certifications, subprocessors, and public-status guardrails." },
+  { id: "board", label: "Board", desc: "Board packets, strategic decisions, investor metrics, escalations, and governance guardrails." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
@@ -207,6 +208,8 @@ const DEFAULT_STATE = {
   adminComplianceEvidenceLoadedAt: null,
   adminTrustCenter: null,
   adminTrustCenterLoadedAt: null,
+  adminBoardGovernance: null,
+  adminBoardGovernanceLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -625,6 +628,26 @@ async function loadAdminTrustCenter(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminBoardGovernance(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminBoardGovernanceLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/board-governance`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Board governance unavailable.");
+    state.adminBoardGovernance = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminBoardGovernanceLoadedAt = Date.now();
+  } catch {
+    state.adminBoardGovernanceLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminCommunications(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminCommunicationsLoadedAt || 0;
@@ -1033,7 +1056,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1915,6 +1938,42 @@ function adminTrustCenterData() {
   };
 }
 
+function adminBoardGovernanceData() {
+  return state.adminBoardGovernance || {
+    summary: { nextBoardPack: "Aug 30", openBoardItems: 8, strategicDecisions: 5, governanceHealth: "86%", investorUpdates: 3 },
+    packets: [
+      { packet: "Monthly leadership pack", window: "Aug 2026", owner: "CEO Office", readiness: "78%", status: "Collecting" },
+      { packet: "AI safety and quality review", window: "Aug 2026", owner: "AI QA", readiness: "84%", status: "Review" },
+      { packet: "Growth and revenue update", window: "Aug 2026", owner: "Revenue Ops", readiness: "91%", status: "Ready" },
+      { packet: "Compliance and risk appendix", window: "Q3 2026", owner: "Legal/Security", readiness: "72%", status: "Preparing" }
+    ],
+    decisions: [
+      { decision: "Mobile beta launch sequence", area: "Product", owner: "Product Lead", due: "Aug 18", status: "Needs board note" },
+      { decision: "Enterprise pricing guardrails", area: "Revenue", owner: "CFO", due: "Aug 20", status: "Draft" },
+      { decision: "Data residency expansion", area: "Infrastructure", owner: "CTO", due: "Aug 22", status: "Analysis" },
+      { decision: "Reviewer network investment", area: "Language Quality", owner: "COO", due: "Aug 25", status: "Ready" }
+    ],
+    metrics: [
+      { metric: "MRR", value: "$184K", trend: "+9.1%", owner: "Finance", status: "Board ready" },
+      { metric: "D30 retention", value: "68%", trend: "+4.2%", owner: "Growth", status: "Board ready" },
+      { metric: "Model success rate", value: "99.1%", trend: "+0.3%", owner: "AI Ops", status: "Board ready" },
+      { metric: "Open high risks", value: "4", trend: "-1", owner: "Risk", status: "Review" }
+    ],
+    escalations: [
+      { escalation: "Data residency evidence gap", source: "Compliance", severity: "High", owner: "Data Gov", status: "Open" },
+      { escalation: "Mobile release blocker trend", source: "QA", severity: "Medium", owner: "Mobile QA", status: "Watching" },
+      { escalation: "Enterprise procurement delays", source: "Sales", severity: "Medium", owner: "Revenue Ops", status: "Mitigating" },
+      { escalation: "Reviewer capacity constraint", source: "Language QA", severity: "Medium", owner: "People Ops", status: "Hiring" }
+    ],
+    guardrails: [
+      "Board materials should aggregate operating truth without exposing secrets, private user content, or unapproved customer details.",
+      "Strategic decisions need owner, due date, risk linkage, and current evidence before being marked board-ready.",
+      "Investor and board metrics must trace back to reporting datasets and finance-approved definitions.",
+      "Escalations should reference accountable owners and mitigation posture, not private incident artifacts."
+    ]
+  };
+}
+
 function adminPaymentData() {
   return state.adminPayments || {
     plans: ADMIN_PAYMENTS,
@@ -2643,6 +2702,22 @@ function trustSubprocessorRow(item) {
   return `<div class="table-row"><strong>${item.provider}</strong><span>${item.category}</span><span>${item.risk}</span><span>${item.status}</span></div>`;
 }
 
+function boardPacketRow(item) {
+  return `<div class="table-row"><strong>${item.packet}</strong><span>${item.window}</span><span>${item.readiness}</span><span>${item.status}</span></div>`;
+}
+
+function boardDecisionRow(item) {
+  return `<div class="table-row"><strong>${item.decision}</strong><span>${item.area}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
+function boardMetricRow(item) {
+  return `<div class="table-row"><strong>${item.metric}</strong><span>${item.value}</span><span>${item.trend}</span><span>${item.status}</span></div>`;
+}
+
+function boardEscalationRow(item) {
+  return `<div class="table-row"><strong>${item.escalation}</strong><span>${item.source}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -3220,6 +3295,7 @@ function adminView() {
   if (state.adminSection === "community") loadAdminCommunity();
   if (state.adminSection === "evidence") loadAdminComplianceEvidence();
   if (state.adminSection === "trust") loadAdminTrustCenter();
+  if (state.adminSection === "board") loadAdminBoardGovernance();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -3331,6 +3407,7 @@ function adminSectionView(section, readiness) {
     community: adminCommunity,
     evidence: adminComplianceEvidence,
     trust: adminTrustCenter,
+    board: adminBoardGovernance,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -4288,6 +4365,49 @@ function adminTrustCenter() {
   `;
 }
 
+function adminBoardGovernance() {
+  const board = adminBoardGovernanceData();
+  const summary = board.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Next board pack", summary.nextBoardPack || "Aug 30")}
+      ${metric("Open items", summary.openBoardItems || "8")}
+      ${metric("Decisions", summary.strategicDecisions || "5")}
+      ${metric("Gov health", summary.governanceHealth || "86%")}
+      <section class="admin-card full-admin">
+        <h2>Board packets</h2>
+        <div class="table admin-table-4">
+          ${board.packets.map(boardPacketRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Strategic decisions</h2>
+        <div class="table admin-table-4">
+          ${board.decisions.map(boardDecisionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Board metrics</h2>
+        <div class="table admin-table-4">
+          ${board.metrics.map(boardMetricRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Executive escalations</h2>
+        <div class="table admin-table-4">
+          ${board.escalations.map(boardEscalationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Governance guardrails</h2>
+        <div class="admin-checklist">
+          ${board.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminCommunications() {
   const communications = adminCommunicationsData();
   const summary = communications.summary || {};
@@ -5117,6 +5237,7 @@ function bindEvents() {
       loadAdminCommunity(true);
       loadAdminComplianceEvidence(true);
       loadAdminTrustCenter(true);
+      loadAdminBoardGovernance(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);

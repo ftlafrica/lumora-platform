@@ -1110,6 +1110,40 @@ const trustCenterOperations = {
   ]
 };
 
+const boardGovernanceOperations = {
+  summary: { nextBoardPack: "Aug 30", openBoardItems: 8, strategicDecisions: 5, governanceHealth: "86%", investorUpdates: 3 },
+  packets: [
+    { packet: "Monthly leadership pack", window: "Aug 2026", owner: "CEO Office", readiness: "78%", status: "Collecting" },
+    { packet: "AI safety and quality review", window: "Aug 2026", owner: "AI QA", readiness: "84%", status: "Review" },
+    { packet: "Growth and revenue update", window: "Aug 2026", owner: "Revenue Ops", readiness: "91%", status: "Ready" },
+    { packet: "Compliance and risk appendix", window: "Q3 2026", owner: "Legal/Security", readiness: "72%", status: "Preparing" }
+  ],
+  decisions: [
+    { decision: "Mobile beta launch sequence", area: "Product", owner: "Product Lead", due: "Aug 18", status: "Needs board note" },
+    { decision: "Enterprise pricing guardrails", area: "Revenue", owner: "CFO", due: "Aug 20", status: "Draft" },
+    { decision: "Data residency expansion", area: "Infrastructure", owner: "CTO", due: "Aug 22", status: "Analysis" },
+    { decision: "Reviewer network investment", area: "Language Quality", owner: "COO", due: "Aug 25", status: "Ready" }
+  ],
+  metrics: [
+    { metric: "MRR", value: "$184K", trend: "+9.1%", owner: "Finance", status: "Board ready" },
+    { metric: "D30 retention", value: "68%", trend: "+4.2%", owner: "Growth", status: "Board ready" },
+    { metric: "Model success rate", value: "99.1%", trend: "+0.3%", owner: "AI Ops", status: "Board ready" },
+    { metric: "Open high risks", value: "4", trend: "-1", owner: "Risk", status: "Review" }
+  ],
+  escalations: [
+    { escalation: "Data residency evidence gap", source: "Compliance", severity: "High", owner: "Data Gov", status: "Open" },
+    { escalation: "Mobile release blocker trend", source: "QA", severity: "Medium", owner: "Mobile QA", status: "Watching" },
+    { escalation: "Enterprise procurement delays", source: "Sales", severity: "Medium", owner: "Revenue Ops", status: "Mitigating" },
+    { escalation: "Reviewer capacity constraint", source: "Language QA", severity: "Medium", owner: "People Ops", status: "Hiring" }
+  ],
+  guardrails: [
+    "Board materials should aggregate operating truth without exposing secrets, private user content, or unapproved customer details.",
+    "Strategic decisions need owner, due date, risk linkage, and current evidence before being marked board-ready.",
+    "Investor and board metrics must trace back to reporting datasets and finance-approved definitions.",
+    "Escalations should reference accountable owners and mitigation posture, not private incident artifacts."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1391,6 +1425,10 @@ function adminTrustCenterOperations() {
   return trustCenterOperations;
 }
 
+function adminBoardGovernanceOperations() {
+  return boardGovernanceOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1435,7 +1473,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "roadmap:manage",
       "community:manage",
       "compliance:evidence",
-      "trust:center"
+      "trust:center",
+      "board:governance"
     ],
     audit: [
       accessEvent,
@@ -1767,6 +1806,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminTrustCenterOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/board-governance") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("board_governance_viewed", "Board", "Info", "Board Governance");
+      return sendJson(response, 200, adminBoardGovernanceOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1783,4 +1830,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, plans };
