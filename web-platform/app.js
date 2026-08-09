@@ -71,6 +71,7 @@ const ADMIN_SECTIONS = [
   { id: "experiments", label: "Experiments", desc: "A/B tests, feature flags, rollouts, kill switches, results, and product decision guardrails." },
   { id: "reports", label: "Reports", desc: "Leadership packs, scheduled exports, report destinations, datasets, and evidence guardrails." },
   { id: "evidence", label: "Evidence", desc: "Control evidence, audit readiness, attestations, compliance gaps, and evidence guardrails." },
+  { id: "trust", label: "Trust", desc: "Customer-safe trust center posture, security reviews, certifications, subprocessors, and public-status guardrails." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
@@ -204,6 +205,8 @@ const DEFAULT_STATE = {
   adminCommunityLoadedAt: null,
   adminComplianceEvidence: null,
   adminComplianceEvidenceLoadedAt: null,
+  adminTrustCenter: null,
+  adminTrustCenterLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -597,6 +600,26 @@ async function loadAdminComplianceEvidence(force = false) {
     state.adminComplianceEvidenceLoadedAt = Date.now();
   } catch {
     state.adminComplianceEvidenceLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminTrustCenter(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminTrustCenterLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/trust-center`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Trust Center unavailable.");
+    state.adminTrustCenter = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminTrustCenterLoadedAt = Date.now();
+  } catch {
+    state.adminTrustCenterLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -1010,7 +1033,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1856,6 +1879,42 @@ function adminComplianceEvidenceData() {
   };
 }
 
+function adminTrustCenterData() {
+  return state.adminTrustCenter || {
+    summary: { publicTrustScore: "91%", securityReviews: 26, certificationReadiness: "74%", subprocessorChanges: 3, statusIncidents: 0 },
+    assurances: [
+      { assurance: "Encryption in transit and at rest", audience: "Enterprise buyers", owner: "Security", freshness: "7 days", status: "Published" },
+      { assurance: "Data deletion and export pathways", audience: "Privacy teams", owner: "Data Gov", freshness: "3 days", status: "Published" },
+      { assurance: "AI model governance overview", audience: "Procurement", owner: "AI QA", freshness: "1 day", status: "Review" },
+      { assurance: "Regional data handling posture", audience: "Public sector", owner: "Legal/Data Gov", freshness: "6 days", status: "Draft" }
+    ],
+    reviews: [
+      { customer: "EduBridge Africa", request: "Security questionnaire", due: "Aug 14", owner: "Security", status: "Answering" },
+      { customer: "MarketUnion NG", request: "DPA and subprocessor pack", due: "Aug 16", owner: "Legal", status: "Ready" },
+      { customer: "Creator Desk", request: "AI governance statement", due: "Aug 18", owner: "AI QA", status: "Review" },
+      { customer: "Public Language Lab", request: "Data residency notes", due: "Aug 21", owner: "Data Gov", status: "Collecting" }
+    ],
+    certifications: [
+      { certification: "SOC 2 readiness", stage: "Gap remediation", target: "Q4 2026", owner: "Security", status: "Preparing" },
+      { certification: "Privacy impact pack", stage: "Evidence review", target: "Sep 2026", owner: "Privacy", status: "Review" },
+      { certification: "AI governance register", stage: "Control mapping", target: "Aug 2026", owner: "AI QA", status: "Collecting" },
+      { certification: "PCI boundary note", stage: "Payment scope review", target: "Sep 2026", owner: "Finance/Security", status: "Scoping" }
+    ],
+    subprocessors: [
+      { provider: "Hugging Face", category: "Model hosting/source registry", region: "Global", risk: "Medium", status: "Listed" },
+      { provider: "Cloud inference provider", category: "GPU inference", region: "Regional", risk: "Medium", status: "Review" },
+      { provider: "Payment processor", category: "Billing", region: "Global", risk: "Low", status: "Listed" },
+      { provider: "Messaging provider", category: "Email/push", region: "Global", risk: "Low", status: "Listed" }
+    ],
+    guardrails: [
+      "Trust Center content must be customer-safe, reviewed, and free of secrets, raw audit artifacts, private incidents, or user content.",
+      "Security questionnaire answers should reference approved assurances and route unknowns to accountable owners.",
+      "Subprocessor changes require legal/privacy review before public disclosure or customer notice.",
+      "Certification readiness should show stage and target without implying completed certifications before they are earned."
+    ]
+  };
+}
+
 function adminPaymentData() {
   return state.adminPayments || {
     plans: ADMIN_PAYMENTS,
@@ -2568,6 +2627,22 @@ function complianceGapRow(item) {
   return `<div class="table-row"><strong>${item.gap}</strong><span>${item.area}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
 }
 
+function trustAssuranceRow(item) {
+  return `<div class="table-row"><strong>${item.assurance}</strong><span>${item.audience}</span><span>${item.freshness}</span><span>${item.status}</span></div>`;
+}
+
+function trustReviewRow(item) {
+  return `<div class="table-row"><strong>${item.customer}</strong><span>${item.request}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
+function trustCertificationRow(item) {
+  return `<div class="table-row"><strong>${item.certification}</strong><span>${item.stage}</span><span>${item.target}</span><span>${item.status}</span></div>`;
+}
+
+function trustSubprocessorRow(item) {
+  return `<div class="table-row"><strong>${item.provider}</strong><span>${item.category}</span><span>${item.risk}</span><span>${item.status}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -3144,6 +3219,7 @@ function adminView() {
   if (state.adminSection === "roadmap") loadAdminRoadmap();
   if (state.adminSection === "community") loadAdminCommunity();
   if (state.adminSection === "evidence") loadAdminComplianceEvidence();
+  if (state.adminSection === "trust") loadAdminTrustCenter();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -3254,6 +3330,7 @@ function adminSectionView(section, readiness) {
     roadmap: adminRoadmap,
     community: adminCommunity,
     evidence: adminComplianceEvidence,
+    trust: adminTrustCenter,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -4168,6 +4245,49 @@ function adminComplianceEvidence() {
   `;
 }
 
+function adminTrustCenter() {
+  const trust = adminTrustCenterData();
+  const summary = trust.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Trust score", summary.publicTrustScore || "91%")}
+      ${metric("Security reviews", summary.securityReviews || "26")}
+      ${metric("Cert readiness", summary.certificationReadiness || "74%")}
+      ${metric("Status incidents", summary.statusIncidents || "0")}
+      <section class="admin-card full-admin">
+        <h2>Published assurances</h2>
+        <div class="table admin-table-4">
+          ${trust.assurances.map(trustAssuranceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Customer security reviews</h2>
+        <div class="table admin-table-4">
+          ${trust.reviews.map(trustReviewRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Certification posture</h2>
+        <div class="table admin-table-4">
+          ${trust.certifications.map(trustCertificationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Subprocessor visibility</h2>
+        <div class="table admin-table-4">
+          ${trust.subprocessors.map(trustSubprocessorRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Trust Center guardrails</h2>
+        <div class="admin-checklist">
+          ${trust.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminCommunications() {
   const communications = adminCommunicationsData();
   const summary = communications.summary || {};
@@ -4996,6 +5116,7 @@ function bindEvents() {
       loadAdminRoadmap(true);
       loadAdminCommunity(true);
       loadAdminComplianceEvidence(true);
+      loadAdminTrustCenter(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);

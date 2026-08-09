@@ -1076,6 +1076,40 @@ const complianceEvidenceOperations = {
   ]
 };
 
+const trustCenterOperations = {
+  summary: { publicTrustScore: "91%", securityReviews: 26, certificationReadiness: "74%", subprocessorChanges: 3, statusIncidents: 0 },
+  assurances: [
+    { assurance: "Encryption in transit and at rest", audience: "Enterprise buyers", owner: "Security", freshness: "7 days", status: "Published" },
+    { assurance: "Data deletion and export pathways", audience: "Privacy teams", owner: "Data Gov", freshness: "3 days", status: "Published" },
+    { assurance: "AI model governance overview", audience: "Procurement", owner: "AI QA", freshness: "1 day", status: "Review" },
+    { assurance: "Regional data handling posture", audience: "Public sector", owner: "Legal/Data Gov", freshness: "6 days", status: "Draft" }
+  ],
+  reviews: [
+    { customer: "EduBridge Africa", request: "Security questionnaire", due: "Aug 14", owner: "Security", status: "Answering" },
+    { customer: "MarketUnion NG", request: "DPA and subprocessor pack", due: "Aug 16", owner: "Legal", status: "Ready" },
+    { customer: "Creator Desk", request: "AI governance statement", due: "Aug 18", owner: "AI QA", status: "Review" },
+    { customer: "Public Language Lab", request: "Data residency notes", due: "Aug 21", owner: "Data Gov", status: "Collecting" }
+  ],
+  certifications: [
+    { certification: "SOC 2 readiness", stage: "Gap remediation", target: "Q4 2026", owner: "Security", status: "Preparing" },
+    { certification: "Privacy impact pack", stage: "Evidence review", target: "Sep 2026", owner: "Privacy", status: "Review" },
+    { certification: "AI governance register", stage: "Control mapping", target: "Aug 2026", owner: "AI QA", status: "Collecting" },
+    { certification: "PCI boundary note", stage: "Payment scope review", target: "Sep 2026", owner: "Finance/Security", status: "Scoping" }
+  ],
+  subprocessors: [
+    { provider: "Hugging Face", category: "Model hosting/source registry", region: "Global", risk: "Medium", status: "Listed" },
+    { provider: "Cloud inference provider", category: "GPU inference", region: "Regional", risk: "Medium", status: "Review" },
+    { provider: "Payment processor", category: "Billing", region: "Global", risk: "Low", status: "Listed" },
+    { provider: "Messaging provider", category: "Email/push", region: "Global", risk: "Low", status: "Listed" }
+  ],
+  guardrails: [
+    "Trust Center content must be customer-safe, reviewed, and free of secrets, raw audit artifacts, private incidents, or user content.",
+    "Security questionnaire answers should reference approved assurances and route unknowns to accountable owners.",
+    "Subprocessor changes require legal/privacy review before public disclosure or customer notice.",
+    "Certification readiness should show stage and target without implying completed certifications before they are earned."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1353,6 +1387,10 @@ function adminComplianceEvidenceOperations() {
   return complianceEvidenceOperations;
 }
 
+function adminTrustCenterOperations() {
+  return trustCenterOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1396,7 +1434,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "qa:review",
       "roadmap:manage",
       "community:manage",
-      "compliance:evidence"
+      "compliance:evidence",
+      "trust:center"
     ],
     audit: [
       accessEvent,
@@ -1720,6 +1759,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminComplianceEvidenceOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/trust-center") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("trust_center_viewed", "Trust", "Info", "Trust Center");
+      return sendJson(response, 200, adminTrustCenterOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1736,4 +1783,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, plans };
