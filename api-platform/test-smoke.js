@@ -42,7 +42,8 @@ const {
   adminComplianceEvidenceOperations,
   adminTrustCenterOperations,
   adminBoardGovernanceOperations,
-  adminInvestorRelationsOperations
+  adminInvestorRelationsOperations,
+  adminProcurementRevenueOperations
 } = require("./server");
 const { modelRegistry } = require("./model-registry");
 
@@ -101,6 +102,7 @@ assert.ok(accessSession.scopes.includes("compliance:evidence"));
 assert.ok(accessSession.scopes.includes("trust:center"));
 assert.ok(accessSession.scopes.includes("board:governance"));
 assert.ok(accessSession.scopes.includes("investor:relations"));
+assert.ok(accessSession.scopes.includes("procurement:revenue"));
 assert.ok(accessSession.audit.length >= 2);
 
 const adminContracts = [
@@ -140,7 +142,8 @@ const adminContracts = [
   ["compliance evidence", adminComplianceEvidenceOperations(), data => data.summary && Array.isArray(data.controls) && Array.isArray(data.evidence) && Array.isArray(data.audits)],
   ["trust center", adminTrustCenterOperations(), data => data.summary && Array.isArray(data.assurances) && Array.isArray(data.reviews) && Array.isArray(data.certifications)],
   ["board governance", adminBoardGovernanceOperations(), data => data.summary && Array.isArray(data.packets) && Array.isArray(data.decisions) && Array.isArray(data.escalations)],
-  ["investor relations", adminInvestorRelationsOperations(), data => data.summary && Array.isArray(data.updates) && Array.isArray(data.pipeline) && Array.isArray(data.diligence)]
+  ["investor relations", adminInvestorRelationsOperations(), data => data.summary && Array.isArray(data.updates) && Array.isArray(data.pipeline) && Array.isArray(data.diligence)],
+  ["procurement revenue", adminProcurementRevenueOperations(), data => data.summary && Array.isArray(data.procurements) && Array.isArray(data.blockers) && Array.isArray(data.purchaseOrders)]
 ];
 
 adminContracts.forEach(([name, data, isValid]) => {

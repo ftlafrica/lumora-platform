@@ -1178,6 +1178,40 @@ const investorRelationsOperations = {
   ]
 };
 
+const procurementRevenueOperations = {
+  summary: { activeProcurements: 22, contractValue: "$684K", blockedRevenue: "$96K", purchaseOrders: 9, avgCycle: "18 days" },
+  procurements: [
+    { account: "EduBridge Africa", motion: "Teams renewal", value: "$48K", owner: "Revenue Ops", status: "PO pending" },
+    { account: "MarketUnion NG", motion: "Pro expansion", value: "$32K", owner: "Sales", status: "Security review" },
+    { account: "Public Language Lab", motion: "Enterprise pilot", value: "$120K", owner: "Partnerships", status: "Legal review" },
+    { account: "Creator Desk", motion: "Creator seats", value: "$18K", owner: "Revenue Ops", status: "Ready to invoice" }
+  ],
+  blockers: [
+    { blocker: "Security questionnaire", account: "MarketUnion NG", severity: "High", owner: "Security", status: "Answering" },
+    { blocker: "DPA clause review", account: "Public Language Lab", severity: "High", owner: "Legal", status: "Review" },
+    { blocker: "Tax certificate request", account: "EduBridge Africa", severity: "Medium", owner: "Finance", status: "Collecting" },
+    { blocker: "Seat count confirmation", account: "Creator Desk", severity: "Low", owner: "Success", status: "Waiting" }
+  ],
+  purchaseOrders: [
+    { po: "PO-LUM-2041", account: "EduBridge Africa", amount: "$48K", due: "Aug 16", status: "Pending" },
+    { po: "PO-LUM-2042", account: "Creator Desk", amount: "$18K", due: "Aug 13", status: "Ready" },
+    { po: "PO-LUM-2043", account: "MarketUnion NG", amount: "$32K", due: "Aug 20", status: "Blocked" },
+    { po: "PO-LUM-2044", account: "Campus Language Labs", amount: "$24K", due: "Aug 22", status: "Draft" }
+  ],
+  renewals: [
+    { renewal: "EduBridge Africa", date: "Sep 01", amount: "$48K", health: "Green", status: "PO pending" },
+    { renewal: "Creator Desk", date: "Sep 08", amount: "$18K", health: "Green", status: "Ready" },
+    { renewal: "MarketUnion NG", date: "Sep 15", amount: "$32K", health: "Amber", status: "Security review" },
+    { renewal: "Regional NGO cohort", date: "Oct 01", amount: "$76K", health: "Amber", status: "Scoping" }
+  ],
+  guardrails: [
+    "Procurement views should show deal stage, owner, value, and blocker status without exposing sensitive contract language.",
+    "Blocked revenue must trace to accountable teams and current next actions before leadership escalation.",
+    "Purchase orders should not be treated as closed revenue until paperwork and billing acceptance are complete.",
+    "Customer procurement data should remain aggregated and role-gated outside approved revenue operations workflows."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1467,6 +1501,10 @@ function adminInvestorRelationsOperations() {
   return investorRelationsOperations;
 }
 
+function adminProcurementRevenueOperations() {
+  return procurementRevenueOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1513,7 +1551,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "compliance:evidence",
       "trust:center",
       "board:governance",
-      "investor:relations"
+      "investor:relations",
+      "procurement:revenue"
     ],
     audit: [
       accessEvent,
@@ -1861,6 +1900,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminInvestorRelationsOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/procurement-revenue") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("procurement_revenue_viewed", "Procurement", "Info", "Procurement Revenue");
+      return sendJson(response, 200, adminProcurementRevenueOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -1877,4 +1924,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, plans };

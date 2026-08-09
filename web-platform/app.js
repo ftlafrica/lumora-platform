@@ -74,6 +74,7 @@ const ADMIN_SECTIONS = [
   { id: "trust", label: "Trust", desc: "Customer-safe trust center posture, security reviews, certifications, subprocessors, and public-status guardrails." },
   { id: "board", label: "Board", desc: "Board packets, strategic decisions, investor metrics, escalations, and governance guardrails." },
   { id: "investors", label: "Investors", desc: "Investor updates, fundraising pipeline, data room readiness, diligence requests, and disclosure guardrails." },
+  { id: "procurement", label: "Procurement", desc: "Enterprise procurement cycles, revenue blockers, purchase orders, renewals, and close guardrails." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
@@ -213,6 +214,8 @@ const DEFAULT_STATE = {
   adminBoardGovernanceLoadedAt: null,
   adminInvestorRelations: null,
   adminInvestorRelationsLoadedAt: null,
+  adminProcurementRevenue: null,
+  adminProcurementRevenueLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -671,6 +674,26 @@ async function loadAdminInvestorRelations(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminProcurementRevenue(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminProcurementRevenueLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/procurement-revenue`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Procurement revenue unavailable.");
+    state.adminProcurementRevenue = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminProcurementRevenueLoadedAt = Date.now();
+  } catch {
+    state.adminProcurementRevenueLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminCommunications(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminCommunicationsLoadedAt || 0;
@@ -1079,7 +1102,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2033,6 +2056,42 @@ function adminInvestorRelationsData() {
   };
 }
 
+function adminProcurementRevenueData() {
+  return state.adminProcurementRevenue || {
+    summary: { activeProcurements: 22, contractValue: "$684K", blockedRevenue: "$96K", purchaseOrders: 9, avgCycle: "18 days" },
+    procurements: [
+      { account: "EduBridge Africa", motion: "Teams renewal", value: "$48K", owner: "Revenue Ops", status: "PO pending" },
+      { account: "MarketUnion NG", motion: "Pro expansion", value: "$32K", owner: "Sales", status: "Security review" },
+      { account: "Public Language Lab", motion: "Enterprise pilot", value: "$120K", owner: "Partnerships", status: "Legal review" },
+      { account: "Creator Desk", motion: "Creator seats", value: "$18K", owner: "Revenue Ops", status: "Ready to invoice" }
+    ],
+    blockers: [
+      { blocker: "Security questionnaire", account: "MarketUnion NG", severity: "High", owner: "Security", status: "Answering" },
+      { blocker: "DPA clause review", account: "Public Language Lab", severity: "High", owner: "Legal", status: "Review" },
+      { blocker: "Tax certificate request", account: "EduBridge Africa", severity: "Medium", owner: "Finance", status: "Collecting" },
+      { blocker: "Seat count confirmation", account: "Creator Desk", severity: "Low", owner: "Success", status: "Waiting" }
+    ],
+    purchaseOrders: [
+      { po: "PO-LUM-2041", account: "EduBridge Africa", amount: "$48K", due: "Aug 16", status: "Pending" },
+      { po: "PO-LUM-2042", account: "Creator Desk", amount: "$18K", due: "Aug 13", status: "Ready" },
+      { po: "PO-LUM-2043", account: "MarketUnion NG", amount: "$32K", due: "Aug 20", status: "Blocked" },
+      { po: "PO-LUM-2044", account: "Campus Language Labs", amount: "$24K", due: "Aug 22", status: "Draft" }
+    ],
+    renewals: [
+      { renewal: "EduBridge Africa", date: "Sep 01", amount: "$48K", health: "Green", status: "PO pending" },
+      { renewal: "Creator Desk", date: "Sep 08", amount: "$18K", health: "Green", status: "Ready" },
+      { renewal: "MarketUnion NG", date: "Sep 15", amount: "$32K", health: "Amber", status: "Security review" },
+      { renewal: "Regional NGO cohort", date: "Oct 01", amount: "$76K", health: "Amber", status: "Scoping" }
+    ],
+    guardrails: [
+      "Procurement views should show deal stage, owner, value, and blocker status without exposing sensitive contract language.",
+      "Blocked revenue must trace to accountable teams and current next actions before leadership escalation.",
+      "Purchase orders should not be treated as closed revenue until paperwork and billing acceptance are complete.",
+      "Customer procurement data should remain aggregated and role-gated outside approved revenue operations workflows."
+    ]
+  };
+}
+
 function adminPaymentData() {
   return state.adminPayments || {
     plans: ADMIN_PAYMENTS,
@@ -2793,6 +2852,22 @@ function investorDiligenceRow(item) {
   return `<div class="table-row"><strong>${item.request}</strong><span>${item.source}</span><span>${item.due}</span><span>${item.status}</span></div>`;
 }
 
+function procurementRow(item) {
+  return `<div class="table-row"><strong>${item.account}</strong><span>${item.motion}</span><span>${item.value}</span><span>${item.status}</span></div>`;
+}
+
+function procurementBlockerRow(item) {
+  return `<div class="table-row"><strong>${item.blocker}</strong><span>${item.account}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
+function purchaseOrderRow(item) {
+  return `<div class="table-row"><strong>${item.po}</strong><span>${item.account}</span><span>${item.amount}</span><span>${item.status}</span></div>`;
+}
+
+function renewalRow(item) {
+  return `<div class="table-row"><strong>${item.renewal}</strong><span>${item.date}</span><span>${item.amount}</span><span>${item.status}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -3372,6 +3447,7 @@ function adminView() {
   if (state.adminSection === "trust") loadAdminTrustCenter();
   if (state.adminSection === "board") loadAdminBoardGovernance();
   if (state.adminSection === "investors") loadAdminInvestorRelations();
+  if (state.adminSection === "procurement") loadAdminProcurementRevenue();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -3485,6 +3561,7 @@ function adminSectionView(section, readiness) {
     trust: adminTrustCenter,
     board: adminBoardGovernance,
     investors: adminInvestorRelations,
+    procurement: adminProcurementRevenue,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -4528,6 +4605,49 @@ function adminInvestorRelations() {
   `;
 }
 
+function adminProcurementRevenue() {
+  const procurement = adminProcurementRevenueData();
+  const summary = procurement.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Procurements", summary.activeProcurements || "22")}
+      ${metric("Contract value", summary.contractValue || "$684K")}
+      ${metric("Blocked revenue", summary.blockedRevenue || "$96K")}
+      ${metric("Avg cycle", summary.avgCycle || "18 days")}
+      <section class="admin-card full-admin">
+        <h2>Active procurement cycles</h2>
+        <div class="table admin-table-4">
+          ${procurement.procurements.map(procurementRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Revenue blockers</h2>
+        <div class="table admin-table-4">
+          ${procurement.blockers.map(procurementBlockerRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Purchase orders</h2>
+        <div class="table admin-table-4">
+          ${procurement.purchaseOrders.map(purchaseOrderRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Renewal paperwork</h2>
+        <div class="table admin-table-4">
+          ${procurement.renewals.map(renewalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Procurement guardrails</h2>
+        <div class="admin-checklist">
+          ${procurement.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminCommunications() {
   const communications = adminCommunicationsData();
   const summary = communications.summary || {};
@@ -5359,6 +5479,7 @@ function bindEvents() {
       loadAdminTrustCenter(true);
       loadAdminBoardGovernance(true);
       loadAdminInvestorRelations(true);
+      loadAdminProcurementRevenue(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);
