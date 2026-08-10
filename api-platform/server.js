@@ -1382,6 +1382,40 @@ const dataRoomOperations = {
   ]
 };
 
+const aiGovernanceOperations = {
+  summary: { governedModels: 14, pendingApprovals: 5, policyExceptions: 3, deploymentGates: "91%", highRiskRoutes: 4 },
+  modelApprovals: [
+    { model: "AfriNLLB translation route", useCase: "Translation", owner: "Model Ops", risk: "Medium", status: "Approved" },
+    { model: "Yoruba tone adapter", useCase: "Tone alignment", owner: "Language QA", risk: "Medium", status: "Review" },
+    { model: "Swahili voice transcription", useCase: "Speech", owner: "Voice Ops", risk: "High", status: "Gate pending" },
+    { model: "Pidgin market assistant", useCase: "Business replies", owner: "Product AI", risk: "Medium", status: "Approved" }
+  ],
+  deploymentGates: [
+    { gate: "Language benchmark pass", route: "Yoruba + English chat", threshold: "88%", current: "91%", status: "Pass" },
+    { gate: "Safety regression pass", route: "Creator mode", threshold: "97%", current: "96.4%", status: "Watch" },
+    { gate: "Latency under target", route: "Mobile speech", threshold: "<900ms", current: "1.1s", status: "Blocked" },
+    { gate: "Human reviewer sign-off", route: "Swahili voice", threshold: "2 reviewers", current: "1", status: "Pending" }
+  ],
+  exceptions: [
+    { exception: "Temporary fallback for Hausa education prompts", owner: "AI QA", expiry: "Aug 18", risk: "Low", status: "Active" },
+    { exception: "Manual review for enterprise legal responses", owner: "Legal", expiry: "Aug 20", risk: "Medium", status: "Active" },
+    { exception: "Disable auto-translation for sensitive support tickets", owner: "Support", expiry: "Aug 15", risk: "Medium", status: "Review" },
+    { exception: "Restrict voice beta in low-confidence markets", owner: "Voice Ops", expiry: "Aug 21", risk: "High", status: "Active" }
+  ],
+  reviews: [
+    { review: "Bias and dialect parity", model: "Yoruba tone adapter", reviewer: "Language QA", due: "Aug 13", status: "In progress" },
+    { review: "Privacy prompt leakage", model: "Memory bridge", reviewer: "Data Gov", due: "Aug 14", status: "Scheduled" },
+    { review: "Enterprise claims audit", model: "Market assistant", reviewer: "Legal", due: "Aug 16", status: "Queued" },
+    { review: "Speech consent flow", model: "Swahili voice", reviewer: "Trust", due: "Aug 12", status: "Urgent" }
+  ],
+  guardrails: [
+    "Every model route needs an owner, use case, risk tier, evaluation evidence, and rollback path.",
+    "High-risk language, voice, legal, medical, finance, or enterprise routes require human sign-off before rollout.",
+    "Policy exceptions must expire automatically and include owner, risk, affected markets, and mitigation notes.",
+    "AI governance should link model approvals to evidence without exposing raw user prompts or private datasets."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1695,6 +1729,10 @@ function adminDataRoomOperations() {
   return dataRoomOperations;
 }
 
+function adminAiGovernanceOperations() {
+  return aiGovernanceOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1747,7 +1785,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "launch:readiness",
       "okr:manage",
       "operating:rhythm",
-      "data:room"
+      "data:room",
+      "ai:governance"
     ],
     audit: [
       accessEvent,
@@ -2143,6 +2182,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminDataRoomOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/ai-governance") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("ai_governance_viewed", "AI Governance", "Info", "Model Governance");
+      return sendJson(response, 200, adminAiGovernanceOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -2159,4 +2206,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, plans };

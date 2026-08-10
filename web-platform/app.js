@@ -80,6 +80,7 @@ const ADMIN_SECTIONS = [
   { id: "okrs", label: "OKRs", desc: "Executive objectives, key results, blockers, operating cadence, and OKR guardrails." },
   { id: "rhythm", label: "Rhythm", desc: "Leadership rituals, decisions, action ownership, follow-up health, and operating guardrails." },
   { id: "dataRoom", label: "Data Room", desc: "Controlled rooms, evidence packs, access requests, exports, and audit-safe sharing." },
+  { id: "aiGovernance", label: "AI Gov", desc: "Model approvals, risk tiers, deployment gates, policy exceptions, and review sign-offs." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
@@ -231,6 +232,8 @@ const DEFAULT_STATE = {
   adminOperatingRhythmLoadedAt: null,
   adminDataRoom: null,
   adminDataRoomLoadedAt: null,
+  adminAiGovernance: null,
+  adminAiGovernanceLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -809,6 +812,26 @@ async function loadAdminDataRoom(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminAiGovernance(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminAiGovernanceLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/ai-governance`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("AI governance unavailable.");
+    state.adminAiGovernance = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminAiGovernanceLoadedAt = Date.now();
+  } catch {
+    state.adminAiGovernanceLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminCommunications(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminCommunicationsLoadedAt || 0;
@@ -1217,7 +1240,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2387,6 +2410,42 @@ function adminDataRoomData() {
   };
 }
 
+function adminAiGovernanceData() {
+  return state.adminAiGovernance || {
+    summary: { governedModels: 14, pendingApprovals: 5, policyExceptions: 3, deploymentGates: "91%", highRiskRoutes: 4 },
+    modelApprovals: [
+      { model: "AfriNLLB translation route", useCase: "Translation", owner: "Model Ops", risk: "Medium", status: "Approved" },
+      { model: "Yoruba tone adapter", useCase: "Tone alignment", owner: "Language QA", risk: "Medium", status: "Review" },
+      { model: "Swahili voice transcription", useCase: "Speech", owner: "Voice Ops", risk: "High", status: "Gate pending" },
+      { model: "Pidgin market assistant", useCase: "Business replies", owner: "Product AI", risk: "Medium", status: "Approved" }
+    ],
+    deploymentGates: [
+      { gate: "Language benchmark pass", route: "Yoruba + English chat", threshold: "88%", current: "91%", status: "Pass" },
+      { gate: "Safety regression pass", route: "Creator mode", threshold: "97%", current: "96.4%", status: "Watch" },
+      { gate: "Latency under target", route: "Mobile speech", threshold: "<900ms", current: "1.1s", status: "Blocked" },
+      { gate: "Human reviewer sign-off", route: "Swahili voice", threshold: "2 reviewers", current: "1", status: "Pending" }
+    ],
+    exceptions: [
+      { exception: "Temporary fallback for Hausa education prompts", owner: "AI QA", expiry: "Aug 18", risk: "Low", status: "Active" },
+      { exception: "Manual review for enterprise legal responses", owner: "Legal", expiry: "Aug 20", risk: "Medium", status: "Active" },
+      { exception: "Disable auto-translation for sensitive support tickets", owner: "Support", expiry: "Aug 15", risk: "Medium", status: "Review" },
+      { exception: "Restrict voice beta in low-confidence markets", owner: "Voice Ops", expiry: "Aug 21", risk: "High", status: "Active" }
+    ],
+    reviews: [
+      { review: "Bias and dialect parity", model: "Yoruba tone adapter", reviewer: "Language QA", due: "Aug 13", status: "In progress" },
+      { review: "Privacy prompt leakage", model: "Memory bridge", reviewer: "Data Gov", due: "Aug 14", status: "Scheduled" },
+      { review: "Enterprise claims audit", model: "Market assistant", reviewer: "Legal", due: "Aug 16", status: "Queued" },
+      { review: "Speech consent flow", model: "Swahili voice", reviewer: "Trust", due: "Aug 12", status: "Urgent" }
+    ],
+    guardrails: [
+      "Every model route needs an owner, use case, risk tier, evaluation evidence, and rollback path.",
+      "High-risk language, voice, legal, medical, finance, or enterprise routes require human sign-off before rollout.",
+      "Policy exceptions must expire automatically and include owner, risk, affected markets, and mitigation notes.",
+      "AI governance should link model approvals to evidence without exposing raw user prompts or private datasets."
+    ]
+  };
+}
+
 function adminPaymentData() {
   return state.adminPayments || {
     plans: ADMIN_PAYMENTS,
@@ -3243,6 +3302,22 @@ function exportPacketRow(item) {
   return `<div class="table-row"><strong>${item.export}</strong><span>${item.destination}</span><span>${item.lastRun}</span><span>${item.status}</span></div>`;
 }
 
+function modelApprovalRow(item) {
+  return `<div class="table-row"><strong>${item.model}</strong><span>${item.useCase}</span><span>${item.risk}</span><span>${item.status}</span></div>`;
+}
+
+function deploymentGateRow(item) {
+  return `<div class="table-row"><strong>${item.gate}</strong><span>${item.route}</span><span>${item.current} / ${item.threshold}</span><span>${item.status}</span></div>`;
+}
+
+function policyExceptionRow(item) {
+  return `<div class="table-row"><strong>${item.exception}</strong><span>${item.owner}</span><span>${item.expiry}</span><span>${item.status}</span></div>`;
+}
+
+function governanceReviewRow(item) {
+  return `<div class="table-row"><strong>${item.review}</strong><span>${item.model}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -3828,6 +3903,7 @@ function adminView() {
   if (state.adminSection === "okrs") loadAdminExecutiveOkrs();
   if (state.adminSection === "rhythm") loadAdminOperatingRhythm();
   if (state.adminSection === "dataRoom") loadAdminDataRoom();
+  if (state.adminSection === "aiGovernance") loadAdminAiGovernance();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -3947,6 +4023,7 @@ function adminSectionView(section, readiness) {
     okrs: adminExecutiveOkrs,
     rhythm: adminOperatingRhythm,
     dataRoom: adminDataRoom,
+    aiGovernance: adminAiGovernance,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -5248,6 +5325,49 @@ function adminDataRoom() {
   `;
 }
 
+function adminAiGovernance() {
+  const governance = adminAiGovernanceData();
+  const summary = governance.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Governed models", summary.governedModels || "14")}
+      ${metric("Pending approvals", summary.pendingApprovals || "5")}
+      ${metric("Exceptions", summary.policyExceptions || "3")}
+      ${metric("Gate health", summary.deploymentGates || "91%")}
+      <section class="admin-card full-admin">
+        <h2>Model approvals</h2>
+        <div class="table admin-table-4">
+          ${governance.modelApprovals.map(modelApprovalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Deployment gates</h2>
+        <div class="table admin-table-4">
+          ${governance.deploymentGates.map(deploymentGateRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Policy exceptions</h2>
+        <div class="table admin-table-4">
+          ${governance.exceptions.map(policyExceptionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Required reviews</h2>
+        <div class="table admin-table-4">
+          ${governance.reviews.map(governanceReviewRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>AI governance guardrails</h2>
+        <div class="admin-checklist">
+          ${governance.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminCommunications() {
   const communications = adminCommunicationsData();
   const summary = communications.summary || {};
@@ -6085,6 +6205,7 @@ function bindEvents() {
       loadAdminExecutiveOkrs(true);
       loadAdminOperatingRhythm(true);
       loadAdminDataRoom(true);
+      loadAdminAiGovernance(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);
