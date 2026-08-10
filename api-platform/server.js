@@ -1314,6 +1314,40 @@ const executiveOkrOperations = {
   ]
 };
 
+const operatingRhythmOperations = {
+  summary: { activeRituals: 9, openActions: 31, overdueActions: 6, decisionVelocity: "82%", weeklyHealth: "Green" },
+  rituals: [
+    { ritual: "Monday exec review", cadence: "Weekly", owner: "CEO Office", focus: "OKRs, blockers, decisions", status: "Scheduled" },
+    { ritual: "Product quality room", cadence: "Twice weekly", owner: "Product/AI QA", focus: "Language quality, model evals", status: "Active" },
+    { ritual: "Revenue operating review", cadence: "Weekly", owner: "Revenue Ops", focus: "Pipeline, procurement, renewals", status: "Scheduled" },
+    { ritual: "Launch command room", cadence: "Weekly", owner: "Platform", focus: "Launch gates, incidents, QA", status: "Active" }
+  ],
+  decisions: [
+    { decision: "Prioritize mobile beta fixes before new chat polish", area: "Mobile", owner: "Product", date: "Aug 10", status: "Accepted" },
+    { decision: "Hold Teams admin workspace until privacy evidence clears", area: "Enterprise", owner: "COO", date: "Aug 09", status: "Accepted" },
+    { decision: "Move creator packs into launch watch", area: "Growth", owner: "Growth", date: "Aug 08", status: "Accepted" },
+    { decision: "Expand reviewer hiring for Swahili and Hausa", area: "Language QA", owner: "People", date: "Aug 07", status: "Actioned" }
+  ],
+  actions: [
+    { action: "Close mobile release defects", owner: "Mobile QA", due: "Aug 13", priority: "High", status: "In progress" },
+    { action: "Attach data residency evidence", owner: "Data Gov", due: "Aug 14", priority: "High", status: "Open" },
+    { action: "Publish creator launch support macros", owner: "Support", due: "Aug 12", priority: "Medium", status: "Ready" },
+    { action: "Update procurement blocker board", owner: "Revenue Ops", due: "Aug 11", priority: "Medium", status: "Due" }
+  ],
+  health: [
+    { signal: "Decision latency", value: "1.8 days", trend: "-0.4d", owner: "CEO Office", status: "Improving" },
+    { signal: "Action completion", value: "81%", trend: "+6%", owner: "Ops", status: "Healthy" },
+    { signal: "Overdue high-priority actions", value: "3", trend: "+1", owner: "COO", status: "Watch" },
+    { signal: "Cross-functional attendance", value: "94%", trend: "stable", owner: "People", status: "Healthy" }
+  ],
+  guardrails: [
+    "Operating rhythm should turn dashboard signals into decisions, owners, and dated actions.",
+    "Executive decisions should include source context and avoid exposing private customer or user data.",
+    "Overdue high-priority actions need escalation owner and next checkpoint.",
+    "Meeting cadence should be reviewed monthly so rituals do not become stale reporting theater."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1619,6 +1653,10 @@ function adminExecutiveOkrOperations() {
   return executiveOkrOperations;
 }
 
+function adminOperatingRhythmOperations() {
+  return operatingRhythmOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1669,7 +1707,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "procurement:revenue",
       "partnerships:manage",
       "launch:readiness",
-      "okr:manage"
+      "okr:manage",
+      "operating:rhythm"
     ],
     audit: [
       accessEvent,
@@ -2049,6 +2088,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminExecutiveOkrOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/operating-rhythm") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("operating_rhythm_viewed", "Ops Rhythm", "Info", "Operating Rhythm");
+      return sendJson(response, 200, adminOperatingRhythmOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -2065,4 +2112,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, plans };

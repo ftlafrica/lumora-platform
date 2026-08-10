@@ -78,6 +78,7 @@ const ADMIN_SECTIONS = [
   { id: "partnerships", label: "Partners", desc: "Strategic partners, channel pipeline, integrations, ecosystem risks, and partnership guardrails." },
   { id: "launch", label: "Launch", desc: "Launch checklists, go/no-go gates, readiness, post-launch monitors, and launch guardrails." },
   { id: "okrs", label: "OKRs", desc: "Executive objectives, key results, blockers, operating cadence, and OKR guardrails." },
+  { id: "rhythm", label: "Rhythm", desc: "Leadership rituals, decisions, action ownership, follow-up health, and operating guardrails." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
@@ -225,6 +226,8 @@ const DEFAULT_STATE = {
   adminLaunchReadinessLoadedAt: null,
   adminExecutiveOkrs: null,
   adminExecutiveOkrsLoadedAt: null,
+  adminOperatingRhythm: null,
+  adminOperatingRhythmLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -763,6 +766,26 @@ async function loadAdminExecutiveOkrs(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminOperatingRhythm(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminOperatingRhythmLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/operating-rhythm`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Operating rhythm unavailable.");
+    state.adminOperatingRhythm = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminOperatingRhythmLoadedAt = Date.now();
+  } catch {
+    state.adminOperatingRhythmLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminCommunications(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminCommunicationsLoadedAt || 0;
@@ -1171,7 +1194,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2269,6 +2292,42 @@ function adminExecutiveOkrsData() {
   };
 }
 
+function adminOperatingRhythmData() {
+  return state.adminOperatingRhythm || {
+    summary: { activeRituals: 9, openActions: 31, overdueActions: 6, decisionVelocity: "82%", weeklyHealth: "Green" },
+    rituals: [
+      { ritual: "Monday exec review", cadence: "Weekly", owner: "CEO Office", focus: "OKRs, blockers, decisions", status: "Scheduled" },
+      { ritual: "Product quality room", cadence: "Twice weekly", owner: "Product/AI QA", focus: "Language quality, model evals", status: "Active" },
+      { ritual: "Revenue operating review", cadence: "Weekly", owner: "Revenue Ops", focus: "Pipeline, procurement, renewals", status: "Scheduled" },
+      { ritual: "Launch command room", cadence: "Weekly", owner: "Platform", focus: "Launch gates, incidents, QA", status: "Active" }
+    ],
+    decisions: [
+      { decision: "Prioritize mobile beta fixes before new chat polish", area: "Mobile", owner: "Product", date: "Aug 10", status: "Accepted" },
+      { decision: "Hold Teams admin workspace until privacy evidence clears", area: "Enterprise", owner: "COO", date: "Aug 09", status: "Accepted" },
+      { decision: "Move creator packs into launch watch", area: "Growth", owner: "Growth", date: "Aug 08", status: "Accepted" },
+      { decision: "Expand reviewer hiring for Swahili and Hausa", area: "Language QA", owner: "People", date: "Aug 07", status: "Actioned" }
+    ],
+    actions: [
+      { action: "Close mobile release defects", owner: "Mobile QA", due: "Aug 13", priority: "High", status: "In progress" },
+      { action: "Attach data residency evidence", owner: "Data Gov", due: "Aug 14", priority: "High", status: "Open" },
+      { action: "Publish creator launch support macros", owner: "Support", due: "Aug 12", priority: "Medium", status: "Ready" },
+      { action: "Update procurement blocker board", owner: "Revenue Ops", due: "Aug 11", priority: "Medium", status: "Due" }
+    ],
+    health: [
+      { signal: "Decision latency", value: "1.8 days", trend: "-0.4d", owner: "CEO Office", status: "Improving" },
+      { signal: "Action completion", value: "81%", trend: "+6%", owner: "Ops", status: "Healthy" },
+      { signal: "Overdue high-priority actions", value: "3", trend: "+1", owner: "COO", status: "Watch" },
+      { signal: "Cross-functional attendance", value: "94%", trend: "stable", owner: "People", status: "Healthy" }
+    ],
+    guardrails: [
+      "Operating rhythm should turn dashboard signals into decisions, owners, and dated actions.",
+      "Executive decisions should include source context and avoid exposing private customer or user data.",
+      "Overdue high-priority actions need escalation owner and next checkpoint.",
+      "Meeting cadence should be reviewed monthly so rituals do not become stale reporting theater."
+    ]
+  };
+}
+
 function adminPaymentData() {
   return state.adminPayments || {
     plans: ADMIN_PAYMENTS,
@@ -3093,6 +3152,22 @@ function okrCadenceRow(item) {
   return `<div class="table-row"><strong>${item.meeting}</strong><span>${item.focus}</span><span>${item.next}</span><span>${item.status}</span></div>`;
 }
 
+function rhythmRitualRow(item) {
+  return `<div class="table-row"><strong>${item.ritual}</strong><span>${item.cadence}</span><span>${item.focus}</span><span>${item.status}</span></div>`;
+}
+
+function rhythmDecisionRow(item) {
+  return `<div class="table-row"><strong>${item.decision}</strong><span>${item.area}</span><span>${item.date}</span><span>${item.status}</span></div>`;
+}
+
+function rhythmActionRow(item) {
+  return `<div class="table-row"><strong>${item.action}</strong><span>${item.owner}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
+function rhythmHealthRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.value}</span><span>${item.trend}</span><span>${item.status}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -3676,6 +3751,7 @@ function adminView() {
   if (state.adminSection === "partnerships") loadAdminStrategicPartnerships();
   if (state.adminSection === "launch") loadAdminLaunchReadiness();
   if (state.adminSection === "okrs") loadAdminExecutiveOkrs();
+  if (state.adminSection === "rhythm") loadAdminOperatingRhythm();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -3793,6 +3869,7 @@ function adminSectionView(section, readiness) {
     partnerships: adminStrategicPartnerships,
     launch: adminLaunchReadiness,
     okrs: adminExecutiveOkrs,
+    rhythm: adminOperatingRhythm,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -5008,6 +5085,49 @@ function adminExecutiveOkrs() {
   `;
 }
 
+function adminOperatingRhythm() {
+  const rhythm = adminOperatingRhythmData();
+  const summary = rhythm.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Rituals", summary.activeRituals || "9")}
+      ${metric("Open actions", summary.openActions || "31")}
+      ${metric("Overdue", summary.overdueActions || "6")}
+      ${metric("Weekly health", summary.weeklyHealth || "Green")}
+      <section class="admin-card full-admin">
+        <h2>Leadership rituals</h2>
+        <div class="table admin-table-4">
+          ${rhythm.rituals.map(rhythmRitualRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Decision log</h2>
+        <div class="table admin-table-4">
+          ${rhythm.decisions.map(rhythmDecisionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Action ownership</h2>
+        <div class="table admin-table-4">
+          ${rhythm.actions.map(rhythmActionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Operating health</h2>
+        <div class="table admin-table-4">
+          ${rhythm.health.map(rhythmHealthRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Operating rhythm guardrails</h2>
+        <div class="admin-checklist">
+          ${rhythm.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminCommunications() {
   const communications = adminCommunicationsData();
   const summary = communications.summary || {};
@@ -5843,6 +5963,7 @@ function bindEvents() {
       loadAdminStrategicPartnerships(true);
       loadAdminLaunchReadiness(true);
       loadAdminExecutiveOkrs(true);
+      loadAdminOperatingRhythm(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);
