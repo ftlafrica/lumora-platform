@@ -1280,6 +1280,40 @@ const launchReadinessOperations = {
   ]
 };
 
+const executiveOkrOperations = {
+  summary: { activeObjectives: 7, keyResults: 24, onTrack: 16, atRisk: 5, confidence: "78%" },
+  objectives: [
+    { objective: "Ship premium African AI chat experience", pillar: "Product", owner: "Product", confidence: "82%", status: "On track" },
+    { objective: "Prove multilingual quality moat", pillar: "AI Quality", owner: "AI QA", confidence: "74%", status: "Watch" },
+    { objective: "Build enterprise operating muscle", pillar: "Enterprise", owner: "COO", confidence: "79%", status: "On track" },
+    { objective: "Prepare mobile launch foundation", pillar: "Mobile", owner: "Mobile Lead", confidence: "68%", status: "At risk" }
+  ],
+  keyResults: [
+    { result: "Web user flow and admin console complete", objective: "Product experience", target: "100%", current: "88%", status: "On track" },
+    { result: "Priority language benchmark readiness", objective: "Quality moat", target: "12 markets", current: "8", status: "Watch" },
+    { result: "Enterprise dashboard modules operational", objective: "Enterprise muscle", target: "40 modules", current: "34", status: "On track" },
+    { result: "Mobile beta QA confidence", objective: "Mobile launch", target: "90%", current: "76%", status: "At risk" }
+  ],
+  blockers: [
+    { blocker: "Reviewer capacity", objective: "Quality moat", severity: "Medium", owner: "People/Language QA", status: "Hiring" },
+    { blocker: "Mobile release defects", objective: "Mobile launch", severity: "High", owner: "Mobile QA", status: "Testing" },
+    { blocker: "Enterprise privacy evidence", objective: "Enterprise muscle", severity: "Medium", owner: "Data Gov", status: "Collecting" },
+    { blocker: "Launch campaign readiness", objective: "Product experience", severity: "Low", owner: "Growth", status: "Preparing" }
+  ],
+  cadence: [
+    { meeting: "Monday exec review", focus: "KR confidence and blockers", owner: "CEO Office", next: "Aug 17", status: "Scheduled" },
+    { meeting: "Product/AI quality sync", focus: "Language readiness", owner: "AI QA", next: "Aug 12", status: "Scheduled" },
+    { meeting: "Enterprise ops review", focus: "Admin modules and compliance", owner: "COO", next: "Aug 14", status: "Ready" },
+    { meeting: "Mobile launch room", focus: "QA, support, release gates", owner: "Mobile Lead", next: "Aug 13", status: "Active" }
+  ],
+  guardrails: [
+    "OKR status should reflect evidence from source modules, not optimistic narrative.",
+    "At-risk key results require blockers, owners, and next decision dates before executive review.",
+    "Company objectives should connect product, language quality, enterprise readiness, and mobile launch work.",
+    "Leadership views should aggregate progress without exposing private user data, secrets, or raw incident artifacts."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1581,6 +1615,10 @@ function adminLaunchReadinessOperations() {
   return launchReadinessOperations;
 }
 
+function adminExecutiveOkrOperations() {
+  return executiveOkrOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1630,7 +1668,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "investor:relations",
       "procurement:revenue",
       "partnerships:manage",
-      "launch:readiness"
+      "launch:readiness",
+      "okr:manage"
     ],
     audit: [
       accessEvent,
@@ -2002,6 +2041,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminLaunchReadinessOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/executive-okrs") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("executive_okrs_viewed", "OKRs", "Info", "Executive OKRs");
+      return sendJson(response, 200, adminExecutiveOkrOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -2018,4 +2065,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, plans };

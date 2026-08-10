@@ -45,7 +45,8 @@ const {
   adminInvestorRelationsOperations,
   adminProcurementRevenueOperations,
   adminStrategicPartnershipOperations,
-  adminLaunchReadinessOperations
+  adminLaunchReadinessOperations,
+  adminExecutiveOkrOperations
 } = require("./server");
 const { modelRegistry } = require("./model-registry");
 
@@ -107,6 +108,7 @@ assert.ok(accessSession.scopes.includes("investor:relations"));
 assert.ok(accessSession.scopes.includes("procurement:revenue"));
 assert.ok(accessSession.scopes.includes("partnerships:manage"));
 assert.ok(accessSession.scopes.includes("launch:readiness"));
+assert.ok(accessSession.scopes.includes("okr:manage"));
 assert.ok(accessSession.audit.length >= 2);
 
 const adminContracts = [
@@ -149,7 +151,8 @@ const adminContracts = [
   ["investor relations", adminInvestorRelationsOperations(), data => data.summary && Array.isArray(data.updates) && Array.isArray(data.pipeline) && Array.isArray(data.diligence)],
   ["procurement revenue", adminProcurementRevenueOperations(), data => data.summary && Array.isArray(data.procurements) && Array.isArray(data.blockers) && Array.isArray(data.purchaseOrders)],
   ["strategic partnerships", adminStrategicPartnershipOperations(), data => data.summary && Array.isArray(data.partners) && Array.isArray(data.pipeline) && Array.isArray(data.risks)],
-  ["launch readiness", adminLaunchReadinessOperations(), data => data.summary && Array.isArray(data.launches) && Array.isArray(data.gates) && Array.isArray(data.monitors)]
+  ["launch readiness", adminLaunchReadinessOperations(), data => data.summary && Array.isArray(data.launches) && Array.isArray(data.gates) && Array.isArray(data.monitors)],
+  ["executive okrs", adminExecutiveOkrOperations(), data => data.summary && Array.isArray(data.objectives) && Array.isArray(data.keyResults) && Array.isArray(data.blockers)]
 ];
 
 adminContracts.forEach(([name, data, isValid]) => {

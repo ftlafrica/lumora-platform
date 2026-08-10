@@ -77,6 +77,7 @@ const ADMIN_SECTIONS = [
   { id: "procurement", label: "Procurement", desc: "Enterprise procurement cycles, revenue blockers, purchase orders, renewals, and close guardrails." },
   { id: "partnerships", label: "Partners", desc: "Strategic partners, channel pipeline, integrations, ecosystem risks, and partnership guardrails." },
   { id: "launch", label: "Launch", desc: "Launch checklists, go/no-go gates, readiness, post-launch monitors, and launch guardrails." },
+  { id: "okrs", label: "OKRs", desc: "Executive objectives, key results, blockers, operating cadence, and OKR guardrails." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
@@ -222,6 +223,8 @@ const DEFAULT_STATE = {
   adminStrategicPartnershipsLoadedAt: null,
   adminLaunchReadiness: null,
   adminLaunchReadinessLoadedAt: null,
+  adminExecutiveOkrs: null,
+  adminExecutiveOkrsLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -740,6 +743,26 @@ async function loadAdminLaunchReadiness(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminExecutiveOkrs(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminExecutiveOkrsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/executive-okrs`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Executive OKRs unavailable.");
+    state.adminExecutiveOkrs = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminExecutiveOkrsLoadedAt = Date.now();
+  } catch {
+    state.adminExecutiveOkrsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminCommunications(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminCommunicationsLoadedAt || 0;
@@ -1148,7 +1171,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2210,6 +2233,42 @@ function adminLaunchReadinessData() {
   };
 }
 
+function adminExecutiveOkrsData() {
+  return state.adminExecutiveOkrs || {
+    summary: { activeObjectives: 7, keyResults: 24, onTrack: 16, atRisk: 5, confidence: "78%" },
+    objectives: [
+      { objective: "Ship premium African AI chat experience", pillar: "Product", owner: "Product", confidence: "82%", status: "On track" },
+      { objective: "Prove multilingual quality moat", pillar: "AI Quality", owner: "AI QA", confidence: "74%", status: "Watch" },
+      { objective: "Build enterprise operating muscle", pillar: "Enterprise", owner: "COO", confidence: "79%", status: "On track" },
+      { objective: "Prepare mobile launch foundation", pillar: "Mobile", owner: "Mobile Lead", confidence: "68%", status: "At risk" }
+    ],
+    keyResults: [
+      { result: "Web user flow and admin console complete", objective: "Product experience", target: "100%", current: "88%", status: "On track" },
+      { result: "Priority language benchmark readiness", objective: "Quality moat", target: "12 markets", current: "8", status: "Watch" },
+      { result: "Enterprise dashboard modules operational", objective: "Enterprise muscle", target: "40 modules", current: "34", status: "On track" },
+      { result: "Mobile beta QA confidence", objective: "Mobile launch", target: "90%", current: "76%", status: "At risk" }
+    ],
+    blockers: [
+      { blocker: "Reviewer capacity", objective: "Quality moat", severity: "Medium", owner: "People/Language QA", status: "Hiring" },
+      { blocker: "Mobile release defects", objective: "Mobile launch", severity: "High", owner: "Mobile QA", status: "Testing" },
+      { blocker: "Enterprise privacy evidence", objective: "Enterprise muscle", severity: "Medium", owner: "Data Gov", status: "Collecting" },
+      { blocker: "Launch campaign readiness", objective: "Product experience", severity: "Low", owner: "Growth", status: "Preparing" }
+    ],
+    cadence: [
+      { meeting: "Monday exec review", focus: "KR confidence and blockers", owner: "CEO Office", next: "Aug 17", status: "Scheduled" },
+      { meeting: "Product/AI quality sync", focus: "Language readiness", owner: "AI QA", next: "Aug 12", status: "Scheduled" },
+      { meeting: "Enterprise ops review", focus: "Admin modules and compliance", owner: "COO", next: "Aug 14", status: "Ready" },
+      { meeting: "Mobile launch room", focus: "QA, support, release gates", owner: "Mobile Lead", next: "Aug 13", status: "Active" }
+    ],
+    guardrails: [
+      "OKR status should reflect evidence from source modules, not optimistic narrative.",
+      "At-risk key results require blockers, owners, and next decision dates before executive review.",
+      "Company objectives should connect product, language quality, enterprise readiness, and mobile launch work.",
+      "Leadership views should aggregate progress without exposing private user data, secrets, or raw incident artifacts."
+    ]
+  };
+}
+
 function adminPaymentData() {
   return state.adminPayments || {
     plans: ADMIN_PAYMENTS,
@@ -3018,6 +3077,22 @@ function launchMonitorRow(item) {
   return `<div class="table-row"><strong>${item.monitor}</strong><span>${item.launch}</span><span>${item.threshold}</span><span>${item.status}</span></div>`;
 }
 
+function okrObjectiveRow(item) {
+  return `<div class="table-row"><strong>${item.objective}</strong><span>${item.pillar}</span><span>${item.confidence}</span><span>${item.status}</span></div>`;
+}
+
+function okrKeyResultRow(item) {
+  return `<div class="table-row"><strong>${item.result}</strong><span>${item.objective}</span><span>${item.current} / ${item.target}</span><span>${item.status}</span></div>`;
+}
+
+function okrBlockerRow(item) {
+  return `<div class="table-row"><strong>${item.blocker}</strong><span>${item.objective}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
+function okrCadenceRow(item) {
+  return `<div class="table-row"><strong>${item.meeting}</strong><span>${item.focus}</span><span>${item.next}</span><span>${item.status}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -3600,6 +3675,7 @@ function adminView() {
   if (state.adminSection === "procurement") loadAdminProcurementRevenue();
   if (state.adminSection === "partnerships") loadAdminStrategicPartnerships();
   if (state.adminSection === "launch") loadAdminLaunchReadiness();
+  if (state.adminSection === "okrs") loadAdminExecutiveOkrs();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -3716,6 +3792,7 @@ function adminSectionView(section, readiness) {
     procurement: adminProcurementRevenue,
     partnerships: adminStrategicPartnerships,
     launch: adminLaunchReadiness,
+    okrs: adminExecutiveOkrs,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -4888,6 +4965,49 @@ function adminLaunchReadiness() {
   `;
 }
 
+function adminExecutiveOkrs() {
+  const okrs = adminExecutiveOkrsData();
+  const summary = okrs.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Objectives", summary.activeObjectives || "7")}
+      ${metric("Key results", summary.keyResults || "24")}
+      ${metric("On track", summary.onTrack || "16")}
+      ${metric("Confidence", summary.confidence || "78%")}
+      <section class="admin-card full-admin">
+        <h2>Executive objectives</h2>
+        <div class="table admin-table-4">
+          ${okrs.objectives.map(okrObjectiveRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Key results</h2>
+        <div class="table admin-table-4">
+          ${okrs.keyResults.map(okrKeyResultRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>OKR blockers</h2>
+        <div class="table admin-table-4">
+          ${okrs.blockers.map(okrBlockerRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Operating cadence</h2>
+        <div class="table admin-table-4">
+          ${okrs.cadence.map(okrCadenceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>OKR guardrails</h2>
+        <div class="admin-checklist">
+          ${okrs.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminCommunications() {
   const communications = adminCommunicationsData();
   const summary = communications.summary || {};
@@ -5722,6 +5842,7 @@ function bindEvents() {
       loadAdminProcurementRevenue(true);
       loadAdminStrategicPartnerships(true);
       loadAdminLaunchReadiness(true);
+      loadAdminExecutiveOkrs(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);
