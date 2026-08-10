@@ -86,6 +86,7 @@ const ADMIN_SECTIONS = [
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
+  { id: "notifications", label: "Notify Ops", desc: "Push, email, SMS, in-app delivery, consent, quiet hours, failover, and notification guardrails." },
   { id: "people", label: "People", desc: "Team coverage, hiring, reviewer capacity, on-call load, enablement, and workforce guardrails." },
   { id: "vendors", label: "Vendors", desc: "Vendor inventory, renewals, procurement diligence, spend variance, and third-party risk." },
   { id: "regional", label: "Regional", desc: "Country launch readiness, localization, blockers, local partners, and market guardrails." },
@@ -248,6 +249,8 @@ const DEFAULT_STATE = {
   adminMobileOpsLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
+  adminNotificationDelivery: null,
+  adminNotificationDeliveryLoadedAt: null,
   adminLanguages: null,
   adminLanguagesLoadedAt: null,
   adminDataGovernance: null,
@@ -930,6 +933,26 @@ async function loadAdminCommunications(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminNotificationDelivery(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminNotificationDeliveryLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/notification-delivery`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Notification delivery unavailable.");
+    state.adminNotificationDelivery = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminNotificationDeliveryLoadedAt = Date.now();
+  } catch {
+    state.adminNotificationDeliveryLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminLanguages(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminLanguagesLoadedAt || 0;
@@ -1378,7 +1401,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "slo:manage", "capacity:plan", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "slo:manage", "capacity:plan", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1714,6 +1737,48 @@ function adminCommunicationsData() {
       "Incident communications must distinguish confirmed facts from investigation updates.",
       "Marketing campaigns must respect opt-in, country rules, language preference, and plan context.",
       "Admin/security broadcasts must never be visible in the consumer profile or normal dashboard."
+    ]
+  };
+}
+
+function adminNotificationDeliveryData() {
+  return state.adminNotificationDelivery || {
+    summary: { channelsHealthy: 5, consentCoverage: "93%", quietHourBlocks: "7.2K", failoversToday: 18, deliveryIncidents: 1 },
+    channelHealth: [
+      { channel: "Mobile push Android", provider: "FCM", success: "98.6%", latency: "420ms p95", status: "Token cleanup" },
+      { channel: "Mobile push iOS", provider: "APNs", success: "99.1%", latency: "390ms p95", status: "Healthy" },
+      { channel: "Email", provider: "Primary ESP", success: "99.2%", latency: "2m p95", status: "Healthy" },
+      { channel: "SMS/WhatsApp bridge", provider: "Regional provider", success: "96.4%", latency: "8s p95", status: "Watch" },
+      { channel: "In-app inbox", provider: "Lumora realtime", success: "99.9%", latency: "110ms p95", status: "Healthy" }
+    ],
+    consentSegments: [
+      { segment: "New users", optIn: "88%", channels: "Email, in-app", rule: "Setup only", status: "Compliant" },
+      { segment: "Mobile beta", optIn: "71%", channels: "Push, in-app", rule: "Feature alerts", status: "Healthy" },
+      { segment: "Paid users", optIn: "94%", channels: "Email, push", rule: "Billing and product", status: "Compliant" },
+      { segment: "Enterprise admins", optIn: "99%", channels: "Email, webhook", rule: "Operational notices", status: "Restricted" }
+    ],
+    quietHours: [
+      { market: "Nigeria", window: "21:00-07:00", blocked: "2.8K", exceptions: "Critical billing/security", status: "Active" },
+      { market: "Kenya", window: "21:30-07:00", blocked: "1.4K", exceptions: "Incident notices", status: "Active" },
+      { market: "South Africa", window: "22:00-07:00", blocked: "1.1K", exceptions: "Enterprise ops", status: "Active" },
+      { market: "Diaspora", window: "User timezone", blocked: "1.9K", exceptions: "Security only", status: "Active" }
+    ],
+    failoverRules: [
+      { rule: "Push token invalid", fallback: "In-app inbox", owner: "Mobile", status: "Live" },
+      { rule: "Email hard bounce", fallback: "Suppress + support note", owner: "Comms Ops", status: "Live" },
+      { rule: "Regional SMS degradation", fallback: "Delay and retry", owner: "Platform", status: "Watch" },
+      { rule: "Enterprise webhook failed", fallback: "Email admin owner", owner: "Success", status: "Live" }
+    ],
+    incidents: [
+      { incident: "Android token cleanup spike", impact: "2.1K stale devices", owner: "Mobile", eta: "Today", status: "Mitigating" },
+      { incident: "SMS provider latency", impact: "Ghana alerts delayed", owner: "Platform", eta: "4h", status: "Monitoring" },
+      { incident: "Template locale mismatch", impact: "18 Hausa messages", owner: "Language QA", eta: "Resolved", status: "Closed" }
+    ],
+    guardrails: [
+      "Notifications must respect consent, language preference, market rules, and user quiet hours by default.",
+      "Critical security and billing messages need strict templates and audit history, not marketing copy.",
+      "Sales and success teams should see engagement aggregates, never private message contents.",
+      "Mobile push delivery requires Android/iOS token hygiene, regional fallbacks, and opt-out enforcement."
     ]
   };
 }
@@ -3288,6 +3353,26 @@ function deliveryRow(item) {
   return `<div class="table-row"><strong>${item.channel}</strong><span>${item.sentToday} sent</span><span>${item.success}</span><span>${item.issue}</span></div>`;
 }
 
+function notificationChannelRow(item) {
+  return `<div class="table-row"><strong>${item.channel}</strong><span>${item.provider}</span><span>${item.success} / ${item.latency}</span><span>${item.status}</span></div>`;
+}
+
+function consentSegmentRow(item) {
+  return `<div class="table-row"><strong>${item.segment}</strong><span>${item.optIn}</span><span>${item.channels}</span><span>${item.status}</span></div>`;
+}
+
+function quietHourRow(item) {
+  return `<div class="table-row"><strong>${item.market}</strong><span>${item.window}</span><span>${item.blocked} blocked</span><span>${item.status}</span></div>`;
+}
+
+function failoverRuleRow(item) {
+  return `<div class="table-row"><strong>${item.rule}</strong><span>${item.fallback}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
+function notificationIncidentRow(item) {
+  return `<div class="table-row"><strong>${item.incident}</strong><span>${item.impact}</span><span>${item.eta}</span><span>${item.status}</span></div>`;
+}
+
 function languageCoverageRow(item) {
   return `<div class="table-row"><strong>${item.language}</strong><span>${item.countries}</span><span>${item.readiness} / ${item.confidence}</span><span>${item.owner}</span></div>`;
 }
@@ -4361,6 +4446,7 @@ function adminView() {
   if (state.adminSection === "aiGovernance") loadAdminAiGovernance();
   if (state.adminSection === "mobileOps") loadAdminMobileOps();
   if (state.adminSection === "communications") loadAdminCommunications();
+  if (state.adminSection === "notifications") loadAdminNotificationDelivery();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
   if (state.adminSection === "access") loadAdminAccess();
@@ -4483,6 +4569,7 @@ function adminSectionView(section, readiness) {
     aiGovernance: adminAiGovernance,
     mobileOps: adminMobileOps,
     communications: adminCommunications,
+    notifications: adminNotificationDelivery,
     payments: adminPayments,
     finance: adminFinance,
     unitEconomics: adminUnitEconomics,
@@ -6045,6 +6132,55 @@ function adminCommunications() {
   `;
 }
 
+function adminNotificationDelivery() {
+  const notifications = adminNotificationDeliveryData();
+  const summary = notifications.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Channels healthy", summary.channelsHealthy || "5")}
+      ${metric("Consent coverage", summary.consentCoverage || "93%")}
+      ${metric("Quiet-hour blocks", summary.quietHourBlocks || "7.2K")}
+      ${metric("Failovers today", summary.failoversToday || "18")}
+      <section class="admin-card full-admin">
+        <h2>Channel health</h2>
+        <div class="table admin-table-4">
+          ${notifications.channelHealth.map(notificationChannelRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Consent-safe segments</h2>
+        <div class="table admin-table-4">
+          ${notifications.consentSegments.map(consentSegmentRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Quiet-hour rules</h2>
+        <div class="table admin-table-4">
+          ${notifications.quietHours.map(quietHourRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Provider failover</h2>
+        <div class="table admin-table-4">
+          ${notifications.failoverRules.map(failoverRuleRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Delivery incidents</h2>
+        <div class="table admin-table-4">
+          ${notifications.incidents.map(notificationIncidentRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Notification guardrails</h2>
+        <div class="admin-checklist">
+          ${notifications.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminLanguages() {
   const languages = adminLanguagesData();
   const summary = languages.summary || {};
@@ -6933,6 +7069,7 @@ function bindEvents() {
       loadAdminAiGovernance(true);
       loadAdminMobileOps(true);
       loadAdminCommunications(true);
+      loadAdminNotificationDelivery(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);
       loadAdminAccess(true);

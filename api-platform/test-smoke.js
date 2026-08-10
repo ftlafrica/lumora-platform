@@ -28,6 +28,7 @@ const {
   adminSecurityOperations,
   adminReportingOperations,
   adminCommunicationsOperations,
+  adminNotificationDeliveryOperations,
   adminLanguageOperations,
   adminDataGovernanceOperations,
   adminIntegrationOperations,
@@ -99,6 +100,7 @@ assert.ok(accessSession.scopes.includes("capacity:plan"));
 assert.ok(accessSession.scopes.includes("security:operate"));
 assert.ok(accessSession.scopes.includes("reporting:export"));
 assert.ok(accessSession.scopes.includes("communications:send"));
+assert.ok(accessSession.scopes.includes("notifications:operate"));
 assert.ok(accessSession.scopes.includes("language:review"));
 assert.ok(accessSession.scopes.includes("data:govern"));
 assert.ok(accessSession.scopes.includes("integrations:manage"));
@@ -152,6 +154,7 @@ const adminContracts = [
   ["security", adminSecurityOperations(), data => data.summary && Array.isArray(data.threats) && Array.isArray(data.accessPosture) && Array.isArray(data.compliance)],
   ["reports", adminReportingOperations(), data => data.summary && Array.isArray(data.reportPacks) && Array.isArray(data.exports) && Array.isArray(data.schedules)],
   ["communications", adminCommunicationsOperations(), data => data.summary && Array.isArray(data.campaigns) && Array.isArray(data.broadcasts) && Array.isArray(data.delivery)],
+  ["notification delivery", adminNotificationDeliveryOperations(), data => data.summary && Array.isArray(data.channelHealth) && Array.isArray(data.consentSegments) && Array.isArray(data.quietHours)],
   ["languages", adminLanguageOperations(), data => data.summary && Array.isArray(data.coverage) && Array.isArray(data.dialectQueues) && Array.isArray(data.benchmarks)],
   ["data governance", adminDataGovernanceOperations(), data => data.summary && Array.isArray(data.retention) && Array.isArray(data.consent) && Array.isArray(data.requests)],
   ["integrations", adminIntegrationOperations(), data => data.summary && Array.isArray(data.services) && Array.isArray(data.webhooks) && Array.isArray(data.partners)],

@@ -666,6 +666,46 @@ const communicationsOperations = {
   ]
 };
 
+const notificationDeliveryOperations = {
+  summary: { channelsHealthy: 5, consentCoverage: "93%", quietHourBlocks: "7.2K", failoversToday: 18, deliveryIncidents: 1 },
+  channelHealth: [
+    { channel: "Mobile push Android", provider: "FCM", success: "98.6%", latency: "420ms p95", status: "Token cleanup" },
+    { channel: "Mobile push iOS", provider: "APNs", success: "99.1%", latency: "390ms p95", status: "Healthy" },
+    { channel: "Email", provider: "Primary ESP", success: "99.2%", latency: "2m p95", status: "Healthy" },
+    { channel: "SMS/WhatsApp bridge", provider: "Regional provider", success: "96.4%", latency: "8s p95", status: "Watch" },
+    { channel: "In-app inbox", provider: "Lumora realtime", success: "99.9%", latency: "110ms p95", status: "Healthy" }
+  ],
+  consentSegments: [
+    { segment: "New users", optIn: "88%", channels: "Email, in-app", rule: "Setup only", status: "Compliant" },
+    { segment: "Mobile beta", optIn: "71%", channels: "Push, in-app", rule: "Feature alerts", status: "Healthy" },
+    { segment: "Paid users", optIn: "94%", channels: "Email, push", rule: "Billing and product", status: "Compliant" },
+    { segment: "Enterprise admins", optIn: "99%", channels: "Email, webhook", rule: "Operational notices", status: "Restricted" }
+  ],
+  quietHours: [
+    { market: "Nigeria", window: "21:00-07:00", blocked: "2.8K", exceptions: "Critical billing/security", status: "Active" },
+    { market: "Kenya", window: "21:30-07:00", blocked: "1.4K", exceptions: "Incident notices", status: "Active" },
+    { market: "South Africa", window: "22:00-07:00", blocked: "1.1K", exceptions: "Enterprise ops", status: "Active" },
+    { market: "Diaspora", window: "User timezone", blocked: "1.9K", exceptions: "Security only", status: "Active" }
+  ],
+  failoverRules: [
+    { rule: "Push token invalid", fallback: "In-app inbox", owner: "Mobile", status: "Live" },
+    { rule: "Email hard bounce", fallback: "Suppress + support note", owner: "Comms Ops", status: "Live" },
+    { rule: "Regional SMS degradation", fallback: "Delay and retry", owner: "Platform", status: "Watch" },
+    { rule: "Enterprise webhook failed", fallback: "Email admin owner", owner: "Success", status: "Live" }
+  ],
+  incidents: [
+    { incident: "Android token cleanup spike", impact: "2.1K stale devices", owner: "Mobile", eta: "Today", status: "Mitigating" },
+    { incident: "SMS provider latency", impact: "Ghana alerts delayed", owner: "Platform", eta: "4h", status: "Monitoring" },
+    { incident: "Template locale mismatch", impact: "18 Hausa messages", owner: "Language QA", eta: "Resolved", status: "Closed" }
+  ],
+  guardrails: [
+    "Notifications must respect consent, language preference, market rules, and user quiet hours by default.",
+    "Critical security and billing messages need strict templates and audit history, not marketing copy.",
+    "Sales and success teams should see engagement aggregates, never private message contents.",
+    "Mobile push delivery requires Android/iOS token hygiene, regional fallbacks, and opt-out enforcement."
+  ]
+};
+
 const languageOperations = {
   summary: { trackedLanguages: 54, priorityMarkets: 12, dialectQueues: 128, reviewerBacklog: 312, averageConfidence: "91%" },
   coverage: [
@@ -1849,6 +1889,10 @@ function adminCommunicationsOperations() {
   return communicationsOperations;
 }
 
+function adminNotificationDeliveryOperations() {
+  return notificationDeliveryOperations;
+}
+
 function adminLanguageOperations() {
   return languageOperations;
 }
@@ -2020,7 +2064,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "data:room",
       "ai:governance",
       "mobile:operate",
-      "fraud:review"
+      "fraud:review",
+      "notifications:operate"
     ],
     audit: [
       accessEvent,
@@ -2246,6 +2291,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("communications_center_viewed", "Communications", "Info", "Operations");
       return sendJson(response, 200, adminCommunicationsOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/notification-delivery") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("notification_delivery_viewed", "Notifications", "Info", "Delivery Ops");
+      return sendJson(response, 200, adminNotificationDeliveryOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/languages") {
@@ -2488,4 +2541,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
