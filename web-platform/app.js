@@ -79,6 +79,7 @@ const ADMIN_SECTIONS = [
   { id: "launch", label: "Launch", desc: "Launch checklists, go/no-go gates, readiness, post-launch monitors, and launch guardrails." },
   { id: "okrs", label: "OKRs", desc: "Executive objectives, key results, blockers, operating cadence, and OKR guardrails." },
   { id: "rhythm", label: "Rhythm", desc: "Leadership rituals, decisions, action ownership, follow-up health, and operating guardrails." },
+  { id: "dataRoom", label: "Data Room", desc: "Controlled rooms, evidence packs, access requests, exports, and audit-safe sharing." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
@@ -228,6 +229,8 @@ const DEFAULT_STATE = {
   adminExecutiveOkrsLoadedAt: null,
   adminOperatingRhythm: null,
   adminOperatingRhythmLoadedAt: null,
+  adminDataRoom: null,
+  adminDataRoomLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -786,6 +789,26 @@ async function loadAdminOperatingRhythm(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminDataRoom(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminDataRoomLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/data-room`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Data room unavailable.");
+    state.adminDataRoom = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminDataRoomLoadedAt = Date.now();
+  } catch {
+    state.adminDataRoomLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminCommunications(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminCommunicationsLoadedAt || 0;
@@ -1194,7 +1217,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2328,6 +2351,42 @@ function adminOperatingRhythmData() {
   };
 }
 
+function adminDataRoomData() {
+  return state.adminDataRoom || {
+    summary: { activeRooms: 6, evidencePacks: 18, pendingAccess: 7, exportReadiness: "84%", restrictedItems: 42 },
+    rooms: [
+      { room: "Investor diligence", audience: "Investors", owner: "Finance/CEO Office", freshness: "92%", status: "Open" },
+      { room: "Enterprise security review", audience: "Customers", owner: "Security", freshness: "87%", status: "Open" },
+      { room: "Board packet archive", audience: "Board", owner: "CEO Office", freshness: "96%", status: "Restricted" },
+      { room: "Mobile launch evidence", audience: "Dev/Product", owner: "Release Ops", freshness: "78%", status: "Updating" }
+    ],
+    evidencePacks: [
+      { pack: "SOC 2 readiness pack", category: "Compliance", owner: "Trust", lastUpdated: "Aug 09", status: "Review" },
+      { pack: "Model source registry export", category: "AI Ops", owner: "Model Ops", lastUpdated: "Aug 10", status: "Ready" },
+      { pack: "Payment controls and invoices", category: "Finance", owner: "Finance", lastUpdated: "Aug 08", status: "Restricted" },
+      { pack: "Mobile beta QA packet", category: "Release", owner: "QA", lastUpdated: "Aug 10", status: "Updating" }
+    ],
+    accessRequests: [
+      { request: "Series A data room invite", requester: "Investor relations", scope: "Investor diligence", age: "3h", status: "Pending approval" },
+      { request: "Security questionnaire packet", requester: "Enterprise sales", scope: "Trust center", age: "5h", status: "Approved" },
+      { request: "Incident export for leadership", requester: "COO", scope: "Launch evidence", age: "1d", status: "Needs redaction" },
+      { request: "Reviewer capacity evidence", requester: "People Ops", scope: "Language QA", age: "2d", status: "Pending owner" }
+    ],
+    exports: [
+      { export: "Board monthly pack", destination: "Board portal", cadence: "Monthly", lastRun: "Aug 01", status: "Scheduled" },
+      { export: "Investor KPI snapshot", destination: "Data room", cadence: "Weekly", lastRun: "Aug 09", status: "Ready" },
+      { export: "Enterprise trust packet", destination: "Secure link", cadence: "On request", lastRun: "Aug 08", status: "Approved" },
+      { export: "Launch readiness bundle", destination: "Internal vault", cadence: "Release gate", lastRun: "Aug 10", status: "Updating" }
+    ],
+    guardrails: [
+      "Data room access should be time-bound, scoped, watermarked, and audit logged.",
+      "Sensitive exports must pass redaction review before they leave Lumora-controlled systems.",
+      "Investor, board, customer, and internal rooms should never share raw user data or secrets.",
+      "Evidence packs need freshness owners so leadership decisions are based on current artifacts."
+    ]
+  };
+}
+
 function adminPaymentData() {
   return state.adminPayments || {
     plans: ADMIN_PAYMENTS,
@@ -3168,6 +3227,22 @@ function rhythmHealthRow(item) {
   return `<div class="table-row"><strong>${item.signal}</strong><span>${item.value}</span><span>${item.trend}</span><span>${item.status}</span></div>`;
 }
 
+function dataRoomRow(item) {
+  return `<div class="table-row"><strong>${item.room}</strong><span>${item.audience}</span><span>${item.freshness}</span><span>${item.status}</span></div>`;
+}
+
+function evidencePackRow(item) {
+  return `<div class="table-row"><strong>${item.pack}</strong><span>${item.category}</span><span>${item.lastUpdated}</span><span>${item.status}</span></div>`;
+}
+
+function accessRequestRow(item) {
+  return `<div class="table-row"><strong>${item.request}</strong><span>${item.requester}</span><span>${item.age}</span><span>${item.status}</span></div>`;
+}
+
+function exportPacketRow(item) {
+  return `<div class="table-row"><strong>${item.export}</strong><span>${item.destination}</span><span>${item.lastRun}</span><span>${item.status}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -3752,6 +3827,7 @@ function adminView() {
   if (state.adminSection === "launch") loadAdminLaunchReadiness();
   if (state.adminSection === "okrs") loadAdminExecutiveOkrs();
   if (state.adminSection === "rhythm") loadAdminOperatingRhythm();
+  if (state.adminSection === "dataRoom") loadAdminDataRoom();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -3870,6 +3946,7 @@ function adminSectionView(section, readiness) {
     launch: adminLaunchReadiness,
     okrs: adminExecutiveOkrs,
     rhythm: adminOperatingRhythm,
+    dataRoom: adminDataRoom,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -5128,6 +5205,49 @@ function adminOperatingRhythm() {
   `;
 }
 
+function adminDataRoom() {
+  const dataRoom = adminDataRoomData();
+  const summary = dataRoom.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active rooms", summary.activeRooms || "6")}
+      ${metric("Evidence packs", summary.evidencePacks || "18")}
+      ${metric("Pending access", summary.pendingAccess || "7")}
+      ${metric("Export ready", summary.exportReadiness || "84%")}
+      <section class="admin-card full-admin">
+        <h2>Controlled rooms</h2>
+        <div class="table admin-table-4">
+          ${dataRoom.rooms.map(dataRoomRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Evidence packs</h2>
+        <div class="table admin-table-4">
+          ${dataRoom.evidencePacks.map(evidencePackRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Access requests</h2>
+        <div class="table admin-table-4">
+          ${dataRoom.accessRequests.map(accessRequestRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Scheduled exports</h2>
+        <div class="table admin-table-4">
+          ${dataRoom.exports.map(exportPacketRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Data room guardrails</h2>
+        <div class="admin-checklist">
+          ${dataRoom.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminCommunications() {
   const communications = adminCommunicationsData();
   const summary = communications.summary || {};
@@ -5964,6 +6084,7 @@ function bindEvents() {
       loadAdminLaunchReadiness(true);
       loadAdminExecutiveOkrs(true);
       loadAdminOperatingRhythm(true);
+      loadAdminDataRoom(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);

@@ -1348,6 +1348,40 @@ const operatingRhythmOperations = {
   ]
 };
 
+const dataRoomOperations = {
+  summary: { activeRooms: 6, evidencePacks: 18, pendingAccess: 7, exportReadiness: "84%", restrictedItems: 42 },
+  rooms: [
+    { room: "Investor diligence", audience: "Investors", owner: "Finance/CEO Office", freshness: "92%", status: "Open" },
+    { room: "Enterprise security review", audience: "Customers", owner: "Security", freshness: "87%", status: "Open" },
+    { room: "Board packet archive", audience: "Board", owner: "CEO Office", freshness: "96%", status: "Restricted" },
+    { room: "Mobile launch evidence", audience: "Dev/Product", owner: "Release Ops", freshness: "78%", status: "Updating" }
+  ],
+  evidencePacks: [
+    { pack: "SOC 2 readiness pack", category: "Compliance", owner: "Trust", lastUpdated: "Aug 09", status: "Review" },
+    { pack: "Model source registry export", category: "AI Ops", owner: "Model Ops", lastUpdated: "Aug 10", status: "Ready" },
+    { pack: "Payment controls and invoices", category: "Finance", owner: "Finance", lastUpdated: "Aug 08", status: "Restricted" },
+    { pack: "Mobile beta QA packet", category: "Release", owner: "QA", lastUpdated: "Aug 10", status: "Updating" }
+  ],
+  accessRequests: [
+    { request: "Series A data room invite", requester: "Investor relations", scope: "Investor diligence", age: "3h", status: "Pending approval" },
+    { request: "Security questionnaire packet", requester: "Enterprise sales", scope: "Trust center", age: "5h", status: "Approved" },
+    { request: "Incident export for leadership", requester: "COO", scope: "Launch evidence", age: "1d", status: "Needs redaction" },
+    { request: "Reviewer capacity evidence", requester: "People Ops", scope: "Language QA", age: "2d", status: "Pending owner" }
+  ],
+  exports: [
+    { export: "Board monthly pack", destination: "Board portal", cadence: "Monthly", lastRun: "Aug 01", status: "Scheduled" },
+    { export: "Investor KPI snapshot", destination: "Data room", cadence: "Weekly", lastRun: "Aug 09", status: "Ready" },
+    { export: "Enterprise trust packet", destination: "Secure link", cadence: "On request", lastRun: "Aug 08", status: "Approved" },
+    { export: "Launch readiness bundle", destination: "Internal vault", cadence: "Release gate", lastRun: "Aug 10", status: "Updating" }
+  ],
+  guardrails: [
+    "Data room access should be time-bound, scoped, watermarked, and audit logged.",
+    "Sensitive exports must pass redaction review before they leave Lumora-controlled systems.",
+    "Investor, board, customer, and internal rooms should never share raw user data or secrets.",
+    "Evidence packs need freshness owners so leadership decisions are based on current artifacts."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1657,6 +1691,10 @@ function adminOperatingRhythmOperations() {
   return operatingRhythmOperations;
 }
 
+function adminDataRoomOperations() {
+  return dataRoomOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1708,7 +1746,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "partnerships:manage",
       "launch:readiness",
       "okr:manage",
-      "operating:rhythm"
+      "operating:rhythm",
+      "data:room"
     ],
     audit: [
       accessEvent,
@@ -2096,6 +2135,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminOperatingRhythmOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/data-room") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("data_room_viewed", "Data Room", "Info", "Evidence Vault");
+      return sendJson(response, 200, adminDataRoomOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -2112,4 +2159,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, plans };
