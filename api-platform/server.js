@@ -195,6 +195,46 @@ const accessOperations = {
   ]
 };
 
+const identityAuthOperations = {
+  summary: { signupsToday: 2184, loginSuccess: "98.9%", mfaCoverage: "42%", ssoOrgs: 14, recoveryQueue: 27 },
+  authFunnel: [
+    { step: "Account created", users: "2,184", conversion: "100%", issue: "Healthy", owner: "Growth" },
+    { step: "Email verified", users: "1,934", conversion: "88.6%", issue: "Resend optimization", owner: "Identity" },
+    { step: "Language Passport completed", users: "1,708", conversion: "78.2%", issue: "Mobile copy test", owner: "Product" },
+    { step: "First chat started", users: "1,512", conversion: "69.2%", issue: "Onboarding nudge", owner: "Lifecycle" }
+  ],
+  signInHealth: [
+    { surface: "Web login", attempts: "18.4K", success: "99.1%", latency: "180ms p95", status: "Healthy" },
+    { surface: "Mobile login", attempts: "9.8K", success: "98.4%", latency: "220ms p95", status: "Beta watch" },
+    { surface: "Google/Apple OAuth", attempts: "6.2K", success: "99.3%", latency: "310ms p95", status: "Healthy" },
+    { surface: "Enterprise SSO", attempts: "1.1K", success: "97.8%", latency: "540ms p95", status: "IdP watch" }
+  ],
+  verification: [
+    { control: "Email verification", coverage: "88.6%", queue: "250 unverified", owner: "Identity", status: "Nudge live" },
+    { control: "Phone optional", coverage: "21%", queue: "SMS cost watch", owner: "Product", status: "Optional" },
+    { control: "MFA/passkeys", coverage: "42%", queue: "Paid users first", owner: "Security", status: "Rolling out" },
+    { control: "Enterprise SCIM", coverage: "6 orgs", queue: "8 requested", owner: "Enterprise", status: "Design" }
+  ],
+  recovery: [
+    { flow: "Password reset", volume: 84, median: "2m", risk: "Low", status: "Healthy" },
+    { flow: "Locked account", volume: 27, median: "18m", risk: "Medium", status: "Support queue" },
+    { flow: "Lost MFA", volume: 6, median: "4h", risk: "High", status: "Manual review" },
+    { flow: "Enterprise seat transfer", volume: 12, median: "1h", risk: "Medium", status: "Admin approval" }
+  ],
+  sessionRisk: [
+    { signal: "Impossible travel", count: 9, action: "Step-up challenge", owner: "Security", status: "Active" },
+    { signal: "Repeated failed login", count: 42, action: "Rate limit", owner: "Identity", status: "Mitigating" },
+    { signal: "Shared device login", count: 118, action: "Device trust prompt", owner: "Security", status: "Monitoring" },
+    { signal: "Admin session expiry", count: 0, action: "60-min enforcement", owner: "Platform", status: "Healthy" }
+  ],
+  guardrails: [
+    "Identity workflows must protect users without making low-connectivity markets feel punished.",
+    "Account recovery requires proof checks, audit logs, rate limits, and clear support handoffs.",
+    "Enterprise SSO/SCIM should never bypass Lumora role scopes, tenant boundaries, or audit requirements.",
+    "Authentication dashboards must show aggregate health and risk, not passwords, secrets, or raw private identifiers."
+  ]
+};
+
 const actionOperations = {
   summary: { openActions: 12, highPriority: 4, blocked: 2, dueToday: 7, completedToday: 18 },
   incidents: [
@@ -1873,6 +1913,10 @@ function adminAccessOperations() {
   return accessOperations;
 }
 
+function adminIdentityAuthOperations() {
+  return identityAuthOperations;
+}
+
 function adminActionOperations() {
   return actionOperations;
 }
@@ -2068,6 +2112,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "safety:review",
       "platform:operate",
       "access:grant",
+      "identity:operate",
       "api:manage",
       "knowledge:operate",
       "support:review",
@@ -2224,6 +2269,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("access_operations_viewed", "Access", "Info", "Seed Admin");
       return sendJson(response, 200, adminAccessOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/identity-auth") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("identity_auth_viewed", "Identity", "Info", "Identity Ops");
+      return sendJson(response, 200, adminIdentityAuthOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/actions") {
@@ -2594,4 +2647,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

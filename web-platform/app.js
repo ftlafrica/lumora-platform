@@ -116,6 +116,7 @@ const ADMIN_SECTIONS = [
   { id: "api", label: "API", desc: "Keys, quotas, SDKs, webhooks, rate limits, errors, and partner integration health." },
   { id: "integrations", label: "Integrations", desc: "Connected services, partner systems, webhook retries, secrets, and vendor health." },
   { id: "access", label: "Access", desc: "Seed-admin grants, RBAC, audit logs, compliance, data residency, and SSO." },
+  { id: "identity", label: "Identity", desc: "Signup, login, MFA, SSO, verification, account recovery, session risk, and auth guardrails." },
   { id: "operations", label: "Operations", desc: "Incidents, decisions, follow-ups, runbooks, owners, ETAs, and leadership action tracking." }
 ];
 
@@ -276,6 +277,8 @@ const DEFAULT_STATE = {
   adminCapacityPlanningLoadedAt: null,
   adminAccess: null,
   adminAccessLoadedAt: null,
+  adminIdentityAuth: null,
+  adminIdentityAuthLoadedAt: null,
   adminActions: null,
   adminActionsLoadedAt: null,
   adminApi: null,
@@ -1336,6 +1339,26 @@ async function loadAdminAccess(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminIdentityAuth(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminIdentityAuthLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/identity-auth`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Identity auth unavailable.");
+    state.adminIdentityAuth = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminIdentityAuthLoadedAt = Date.now();
+  } catch {
+    state.adminIdentityAuthLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminActions(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminActionsLoadedAt || 0;
@@ -1424,7 +1447,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "slo:manage", "capacity:plan", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "identity:operate", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "slo:manage", "capacity:plan", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -3149,6 +3172,48 @@ function adminAccessData() {
   };
 }
 
+function adminIdentityAuthData() {
+  return state.adminIdentityAuth || {
+    summary: { signupsToday: 2184, loginSuccess: "98.9%", mfaCoverage: "42%", ssoOrgs: 14, recoveryQueue: 27 },
+    authFunnel: [
+      { step: "Account created", users: "2,184", conversion: "100%", issue: "Healthy", owner: "Growth" },
+      { step: "Email verified", users: "1,934", conversion: "88.6%", issue: "Resend optimization", owner: "Identity" },
+      { step: "Language Passport completed", users: "1,708", conversion: "78.2%", issue: "Mobile copy test", owner: "Product" },
+      { step: "First chat started", users: "1,512", conversion: "69.2%", issue: "Onboarding nudge", owner: "Lifecycle" }
+    ],
+    signInHealth: [
+      { surface: "Web login", attempts: "18.4K", success: "99.1%", latency: "180ms p95", status: "Healthy" },
+      { surface: "Mobile login", attempts: "9.8K", success: "98.4%", latency: "220ms p95", status: "Beta watch" },
+      { surface: "Google/Apple OAuth", attempts: "6.2K", success: "99.3%", latency: "310ms p95", status: "Healthy" },
+      { surface: "Enterprise SSO", attempts: "1.1K", success: "97.8%", latency: "540ms p95", status: "IdP watch" }
+    ],
+    verification: [
+      { control: "Email verification", coverage: "88.6%", queue: "250 unverified", owner: "Identity", status: "Nudge live" },
+      { control: "Phone optional", coverage: "21%", queue: "SMS cost watch", owner: "Product", status: "Optional" },
+      { control: "MFA/passkeys", coverage: "42%", queue: "Paid users first", owner: "Security", status: "Rolling out" },
+      { control: "Enterprise SCIM", coverage: "6 orgs", queue: "8 requested", owner: "Enterprise", status: "Design" }
+    ],
+    recovery: [
+      { flow: "Password reset", volume: 84, median: "2m", risk: "Low", status: "Healthy" },
+      { flow: "Locked account", volume: 27, median: "18m", risk: "Medium", status: "Support queue" },
+      { flow: "Lost MFA", volume: 6, median: "4h", risk: "High", status: "Manual review" },
+      { flow: "Enterprise seat transfer", volume: 12, median: "1h", risk: "Medium", status: "Admin approval" }
+    ],
+    sessionRisk: [
+      { signal: "Impossible travel", count: 9, action: "Step-up challenge", owner: "Security", status: "Active" },
+      { signal: "Repeated failed login", count: 42, action: "Rate limit", owner: "Identity", status: "Mitigating" },
+      { signal: "Shared device login", count: 118, action: "Device trust prompt", owner: "Security", status: "Monitoring" },
+      { signal: "Admin session expiry", count: 0, action: "60-min enforcement", owner: "Platform", status: "Healthy" }
+    ],
+    guardrails: [
+      "Identity workflows must protect users without making low-connectivity markets feel punished.",
+      "Account recovery requires proof checks, audit logs, rate limits, and clear support handoffs.",
+      "Enterprise SSO/SCIM should never bypass Lumora role scopes, tenant boundaries, or audit requirements.",
+      "Authentication dashboards must show aggregate health and risk, not passwords, secrets, or raw private identifiers."
+    ]
+  };
+}
+
 function adminActionData() {
   return state.adminActions || {
     summary: { openActions: 12, highPriority: 4, blocked: 2, dueToday: 7, completedToday: 18 },
@@ -4054,6 +4119,26 @@ function complianceRow(item) {
   return `<div class="table-row"><strong>${item.control}</strong><span>${item.status}</span><span>${item.owner}</span></div>`;
 }
 
+function authFunnelRow(item) {
+  return `<div class="table-row"><strong>${item.step}</strong><span>${item.users}</span><span>${item.conversion}</span><span>${item.issue}</span></div>`;
+}
+
+function signInHealthRow(item) {
+  return `<div class="table-row"><strong>${item.surface}</strong><span>${item.attempts}</span><span>${item.success} / ${item.latency}</span><span>${item.status}</span></div>`;
+}
+
+function authVerificationRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.coverage}</span><span>${item.queue}</span><span>${item.status}</span></div>`;
+}
+
+function recoveryFlowRow(item) {
+  return `<div class="table-row"><strong>${item.flow}</strong><span>${item.volume} cases</span><span>${item.median}</span><span>${item.status}</span></div>`;
+}
+
+function sessionRiskRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.count} events</span><span>${item.action}</span><span>${item.status}</span></div>`;
+}
+
 function policySignalRow(item) {
   return `<div class="table-row"><strong>${item.signal}</strong><span>${item.count} reports</span><span>${item.owner} / ${item.trend}</span></div>`;
 }
@@ -4536,6 +4621,7 @@ function adminView() {
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
   if (state.adminSection === "access") loadAdminAccess();
+  if (state.adminSection === "identity") loadAdminIdentityAuth();
   if (state.adminSection === "operations") loadAdminActions();
   if (state.adminSection === "api") loadAdminApi();
   if (state.adminSection === "integrations") loadAdminIntegrations();
@@ -4679,6 +4765,7 @@ function adminSectionView(section, readiness) {
     api: adminApiManagement,
     integrations: adminIntegrations,
     access: adminAccess,
+    identity: adminIdentityAuth,
     operations: adminOperations
   };
   return (sections[section] || sections.overview)();
@@ -6896,6 +6983,55 @@ function adminAccess() {
   `;
 }
 
+function adminIdentityAuth() {
+  const identity = adminIdentityAuthData();
+  const summary = identity.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Signups today", summary.signupsToday || "2,184")}
+      ${metric("Login success", summary.loginSuccess || "98.9%")}
+      ${metric("MFA coverage", summary.mfaCoverage || "42%")}
+      ${metric("Recovery queue", summary.recoveryQueue || "27")}
+      <section class="admin-card full-admin">
+        <h2>Auth funnel</h2>
+        <div class="table admin-table-4">
+          ${identity.authFunnel.map(authFunnelRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Sign-in health</h2>
+        <div class="table admin-table-4">
+          ${identity.signInHealth.map(signInHealthRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Verification and MFA</h2>
+        <div class="table admin-table-4">
+          ${identity.verification.map(authVerificationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Account recovery</h2>
+        <div class="table admin-table-4">
+          ${identity.recovery.map(recoveryFlowRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Session risk signals</h2>
+        <div class="table admin-table-4">
+          ${identity.sessionRisk.map(sessionRiskRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Identity guardrails</h2>
+        <div class="admin-checklist">
+          ${identity.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminOperations() {
   const operations = adminActionData();
   const summary = operations.summary || {};
@@ -7210,6 +7346,7 @@ function bindEvents() {
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);
       loadAdminAccess(true);
+      loadAdminIdentityAuth(true);
       loadAdminActions(true);
       loadAdminApi(true);
       loadAdminIntegrations(true);
