@@ -428,6 +428,40 @@ const infrastructureOperations = {
   ]
 };
 
+const reliabilitySloOperations = {
+  summary: { customerUptime: "99.94%", errorBudgetUsed: "38%", sloBreaches: 2, statusReadiness: "Green", regionalWatch: 3 },
+  objectives: [
+    { objective: "Chat API availability", target: "99.9%", current: "99.94%", window: "30d", status: "Healthy" },
+    { objective: "Model response p95", target: "<900ms", current: "842ms", window: "7d", status: "Healthy" },
+    { objective: "Voice transcription p95", target: "<1.4s", current: "1.6s", window: "7d", status: "Watch" },
+    { objective: "Billing event durability", target: "99.99%", current: "99.98%", window: "30d", status: "Watch" }
+  ],
+  errorBudgets: [
+    { service: "Chat API", budget: "62% remaining", burnRate: "0.8x", owner: "Platform", status: "Safe" },
+    { service: "Model router", budget: "48% remaining", burnRate: "1.1x", owner: "AI Ops", status: "Monitor" },
+    { service: "Voice pipeline", budget: "21% remaining", burnRate: "2.4x", owner: "Voice Ops", status: "At risk" },
+    { service: "Payments webhooks", budget: "34% remaining", burnRate: "1.6x", owner: "Revenue Ops", status: "Watch" }
+  ],
+  regions: [
+    { region: "West Africa edge", uptime: "99.91%", latency: "118ms p95", owner: "Platform", status: "Healthy" },
+    { region: "East Africa edge", uptime: "99.87%", latency: "146ms p95", owner: "Platform", status: "Watch" },
+    { region: "Southern Africa edge", uptime: "99.95%", latency: "132ms p95", owner: "Platform", status: "Healthy" },
+    { region: "EU fallback", uptime: "99.99%", latency: "184ms p95", owner: "Infrastructure", status: "Standby" }
+  ],
+  statusPage: [
+    { item: "Public incident template", audience: "Customers", owner: "Comms", readiness: "94%", status: "Ready" },
+    { item: "Regional degradation banner", audience: "Users", owner: "Web/Mobile", readiness: "81%", status: "Review" },
+    { item: "Enterprise SLA export", audience: "Teams", owner: "Success", readiness: "76%", status: "Preparing" },
+    { item: "Post-incident report pack", audience: "Leadership", owner: "Ops", readiness: "89%", status: "Ready" }
+  ],
+  guardrails: [
+    "SLOs should describe user-visible reliability, not only internal infrastructure health.",
+    "High burn-rate services need rollback, capacity, or feature-throttle decisions before budget exhaustion.",
+    "Status-page messaging should be fast, accurate, region-aware, and coordinated with support macros.",
+    "Enterprise SLA reporting must use aggregated reliability data without exposing internal secrets or raw user events."
+  ]
+};
+
 const securityOperations = {
   summary: { criticalThreats: 0, mfaCoverage: "96%", ssoOrgs: 14, auditIntegrity: "Verified", dataRequests: 9 },
   threats: [
@@ -1685,6 +1719,10 @@ function adminInfrastructureOperations() {
   return infrastructureOperations;
 }
 
+function adminReliabilitySloOperations() {
+  return reliabilitySloOperations;
+}
+
 function adminSecurityOperations() {
   return securityOperations;
 }
@@ -1834,6 +1872,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "finance:read",
       "analytics:read",
       "infrastructure:operate",
+      "slo:manage",
       "security:operate",
       "reporting:export",
       "communications:send",
@@ -2034,6 +2073,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("infrastructure_reliability_viewed", "Infrastructure", "Info", "Developer");
       return sendJson(response, 200, adminInfrastructureOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/reliability-slos") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("reliability_slos_viewed", "Reliability", "Info", "SLOs");
+      return sendJson(response, 200, adminReliabilitySloOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/security") {
@@ -2300,4 +2347,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

@@ -21,6 +21,7 @@ const {
   adminFinanceOperations,
   adminAnalyticsOperations,
   adminInfrastructureOperations,
+  adminReliabilitySloOperations,
   adminSecurityOperations,
   adminReportingOperations,
   adminCommunicationsOperations,
@@ -88,6 +89,7 @@ assert.ok(accessSession.scopes.includes("support:review"));
 assert.ok(accessSession.scopes.includes("finance:read"));
 assert.ok(accessSession.scopes.includes("analytics:read"));
 assert.ok(accessSession.scopes.includes("infrastructure:operate"));
+assert.ok(accessSession.scopes.includes("slo:manage"));
 assert.ok(accessSession.scopes.includes("security:operate"));
 assert.ok(accessSession.scopes.includes("reporting:export"));
 assert.ok(accessSession.scopes.includes("communications:send"));
@@ -137,6 +139,7 @@ const adminContracts = [
   ["finance", adminFinanceOperations(), data => data.summary && Array.isArray(data.costCenters) && Array.isArray(data.forecast) && Array.isArray(data.optimization)],
   ["analytics", adminAnalyticsOperations(), data => data.summary && Array.isArray(data.retention) && Array.isArray(data.featureUsage) && Array.isArray(data.languageAdoption)],
   ["infrastructure", adminInfrastructureOperations(), data => data.summary && Array.isArray(data.services) && Array.isArray(data.clusters) && Array.isArray(data.queues)],
+  ["reliability slos", adminReliabilitySloOperations(), data => data.summary && Array.isArray(data.objectives) && Array.isArray(data.errorBudgets) && Array.isArray(data.regions)],
   ["security", adminSecurityOperations(), data => data.summary && Array.isArray(data.threats) && Array.isArray(data.accessPosture) && Array.isArray(data.compliance)],
   ["reports", adminReportingOperations(), data => data.summary && Array.isArray(data.reportPacks) && Array.isArray(data.exports) && Array.isArray(data.schedules)],
   ["communications", adminCommunicationsOperations(), data => data.summary && Array.isArray(data.campaigns) && Array.isArray(data.broadcasts) && Array.isArray(data.delivery)],

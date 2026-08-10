@@ -107,6 +107,7 @@ const ADMIN_SECTIONS = [
   { id: "security", label: "Security", desc: "Threats, MFA/SSO, device trust, audit integrity, data requests, and compliance readiness." },
   { id: "platform", label: "Platform", desc: "Web, mobile, API, infrastructure, incidents, releases, and feature flags." },
   { id: "infrastructure", label: "Infrastructure", desc: "Services, queues, GPU clusters, databases, incidents, uptime, and reliability guardrails." },
+  { id: "slos", label: "SLOs", desc: "Customer-facing uptime, error budgets, regional reliability, status page, and SLA guardrails." },
   { id: "api", label: "API", desc: "Keys, quotas, SDKs, webhooks, rate limits, errors, and partner integration health." },
   { id: "integrations", label: "Integrations", desc: "Connected services, partner systems, webhook retries, secrets, and vendor health." },
   { id: "access", label: "Access", desc: "Seed-admin grants, RBAC, audit logs, compliance, data residency, and SSO." },
@@ -256,6 +257,8 @@ const DEFAULT_STATE = {
   adminSalesLoadedAt: null,
   adminInfrastructure: null,
   adminInfrastructureLoadedAt: null,
+  adminReliabilitySlos: null,
+  adminReliabilitySlosLoadedAt: null,
   adminAccess: null,
   adminAccessLoadedAt: null,
   adminActions: null,
@@ -413,6 +416,26 @@ async function loadAdminInfrastructure(force = false) {
     state.adminInfrastructureLoadedAt = Date.now();
   } catch {
     state.adminInfrastructureLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminReliabilitySlos(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminReliabilitySlosLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/reliability-slos`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Reliability SLOs unavailable.");
+    state.adminReliabilitySlos = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminReliabilitySlosLoadedAt = Date.now();
+  } catch {
+    state.adminReliabilitySlosLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -1286,7 +1309,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "slo:manage", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1442,6 +1465,42 @@ function adminInfrastructureData() {
       "Escalate when API errors exceed 1% for 10 minutes or model route p95 exceeds 900ms.",
       "Protect audit logging and billing events as durable, never-loss queues.",
       "Keep GPU fallback capacity ready for high-traffic language launches."
+    ]
+  };
+}
+
+function adminReliabilitySlosData() {
+  return state.adminReliabilitySlos || {
+    summary: { customerUptime: "99.94%", errorBudgetUsed: "38%", sloBreaches: 2, statusReadiness: "Green", regionalWatch: 3 },
+    objectives: [
+      { objective: "Chat API availability", target: "99.9%", current: "99.94%", window: "30d", status: "Healthy" },
+      { objective: "Model response p95", target: "<900ms", current: "842ms", window: "7d", status: "Healthy" },
+      { objective: "Voice transcription p95", target: "<1.4s", current: "1.6s", window: "7d", status: "Watch" },
+      { objective: "Billing event durability", target: "99.99%", current: "99.98%", window: "30d", status: "Watch" }
+    ],
+    errorBudgets: [
+      { service: "Chat API", budget: "62% remaining", burnRate: "0.8x", owner: "Platform", status: "Safe" },
+      { service: "Model router", budget: "48% remaining", burnRate: "1.1x", owner: "AI Ops", status: "Monitor" },
+      { service: "Voice pipeline", budget: "21% remaining", burnRate: "2.4x", owner: "Voice Ops", status: "At risk" },
+      { service: "Payments webhooks", budget: "34% remaining", burnRate: "1.6x", owner: "Revenue Ops", status: "Watch" }
+    ],
+    regions: [
+      { region: "West Africa edge", uptime: "99.91%", latency: "118ms p95", owner: "Platform", status: "Healthy" },
+      { region: "East Africa edge", uptime: "99.87%", latency: "146ms p95", owner: "Platform", status: "Watch" },
+      { region: "Southern Africa edge", uptime: "99.95%", latency: "132ms p95", owner: "Platform", status: "Healthy" },
+      { region: "EU fallback", uptime: "99.99%", latency: "184ms p95", owner: "Infrastructure", status: "Standby" }
+    ],
+    statusPage: [
+      { item: "Public incident template", audience: "Customers", owner: "Comms", readiness: "94%", status: "Ready" },
+      { item: "Regional degradation banner", audience: "Users", owner: "Web/Mobile", readiness: "81%", status: "Review" },
+      { item: "Enterprise SLA export", audience: "Teams", owner: "Success", readiness: "76%", status: "Preparing" },
+      { item: "Post-incident report pack", audience: "Leadership", owner: "Ops", readiness: "89%", status: "Ready" }
+    ],
+    guardrails: [
+      "SLOs should describe user-visible reliability, not only internal infrastructure health.",
+      "High burn-rate services need rollback, capacity, or feature-throttle decisions before budget exhaustion.",
+      "Status-page messaging should be fast, accurate, region-aware, and coordinated with support macros.",
+      "Enterprise SLA reporting must use aggregated reliability data without exposing internal secrets or raw user events."
     ]
   };
 }
@@ -2972,6 +3031,22 @@ function infrastructureIncidentRow(item) {
   return `<div class="table-row"><strong>${item.id}</strong><span>${item.title}</span><span>${item.severity} / ${item.status}</span></div>`;
 }
 
+function sloObjectiveRow(item) {
+  return `<div class="table-row"><strong>${item.objective}</strong><span>${item.current} / ${item.target}</span><span>${item.window}</span><span>${item.status}</span></div>`;
+}
+
+function errorBudgetRow(item) {
+  return `<div class="table-row"><strong>${item.service}</strong><span>${item.budget}</span><span>${item.burnRate}</span><span>${item.status}</span></div>`;
+}
+
+function regionalReliabilityRow(item) {
+  return `<div class="table-row"><strong>${item.region}</strong><span>${item.uptime}</span><span>${item.latency}</span><span>${item.status}</span></div>`;
+}
+
+function statusPageRow(item) {
+  return `<div class="table-row"><strong>${item.item}</strong><span>${item.audience}</span><span>${item.readiness}</span><span>${item.status}</span></div>`;
+}
+
 function securityThreatRow(item) {
   return `<div class="table-row"><strong>${item.signal}</strong><span>${item.count} events</span><span>${item.severity} / ${item.status}</span><span>${item.owner}</span></div>`;
 }
@@ -4032,6 +4107,7 @@ function adminView() {
   if (state.adminSection === "fraud") loadAdminFraudAbuse();
   if (state.adminSection === "security") loadAdminSecurity();
   if (state.adminSection === "infrastructure") loadAdminInfrastructure();
+  if (state.adminSection === "slos") loadAdminReliabilitySlos();
   if (state.adminSection === "growth") loadAdminGrowth();
   if (state.adminSection === "analytics") loadAdminAnalytics();
   if (state.adminSection === "experiments") loadAdminExperiments();
@@ -4194,6 +4270,7 @@ function adminSectionView(section, readiness) {
     security: adminSecurity,
     platform: adminPlatform,
     infrastructure: adminInfrastructure,
+    slos: adminReliabilitySlos,
     api: adminApiManagement,
     integrations: adminIntegrations,
     access: adminAccess,
@@ -6034,6 +6111,49 @@ function adminInfrastructure() {
   `;
 }
 
+function adminReliabilitySlos() {
+  const slos = adminReliabilitySlosData();
+  const summary = slos.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Customer uptime", summary.customerUptime || "99.94%")}
+      ${metric("Error budget used", summary.errorBudgetUsed || "38%")}
+      ${metric("SLO breaches", summary.sloBreaches || "2")}
+      ${metric("Status readiness", summary.statusReadiness || "Green")}
+      <section class="admin-card full-admin">
+        <h2>Service level objectives</h2>
+        <div class="table admin-table-4">
+          ${slos.objectives.map(sloObjectiveRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Error budgets</h2>
+        <div class="table admin-table-4">
+          ${slos.errorBudgets.map(errorBudgetRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Regional reliability</h2>
+        <div class="table admin-table-4">
+          ${slos.regions.map(regionalReliabilityRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Status page readiness</h2>
+        <div class="table admin-table-4">
+          ${slos.statusPage.map(statusPageRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>SLO guardrails</h2>
+        <div class="admin-checklist">
+          ${slos.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminApiManagement() {
   const api = adminApiData();
   const summary = api.summary || {};
@@ -6424,6 +6544,7 @@ function bindEvents() {
       loadAdminFraudAbuse(true);
       loadAdminSecurity(true);
       loadAdminInfrastructure(true);
+      loadAdminReliabilitySlos(true);
       loadAdminGrowth(true);
       loadAdminAnalytics(true);
       loadAdminExperiments(true);
