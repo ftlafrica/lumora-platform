@@ -775,6 +775,46 @@ const dataGovernanceOperations = {
   ]
 };
 
+const privacyRequestOperations = {
+  summary: { openRequests: 31, exportQueue: 9, deletionQueue: 4, slaAtRisk: 3, legalHolds: 2 },
+  requests: [
+    { type: "Data export", region: "Nigeria", count: 9, sla: "7 days", owner: "Privacy", status: "Identity review" },
+    { type: "Account deletion", region: "Kenya", count: 4, sla: "30 days", owner: "Privacy", status: "Dependency check" },
+    { type: "Correction request", region: "South Africa", count: 6, sla: "14 days", owner: "Support", status: "User follow-up" },
+    { type: "Consent withdrawal", region: "Diaspora", count: 11, sla: "Immediate", owner: "Privacy", status: "Automated" },
+    { type: "Processing objection", region: "EU users", count: 1, sla: "30 days", owner: "Legal", status: "Counsel review" }
+  ],
+  exports: [
+    { package: "Profile and settings", system: "Identity", readiness: "Ready", reviewer: "Privacy", status: "Queued" },
+    { package: "Conversation history", system: "Chat store", readiness: "Consent scoped", reviewer: "Privacy", status: "Review" },
+    { package: "Billing records", system: "Payments", readiness: "Invoice only", reviewer: "Finance", status: "Ready" },
+    { package: "Support cases", system: "Support", readiness: "PII redaction", reviewer: "Support lead", status: "Redacting" }
+  ],
+  deletions: [
+    { workflow: "Consumer account deletion", dependencies: "Billing, chat, memory", blockers: "1 active invoice", status: "Waiting" },
+    { workflow: "Voice sample removal", dependencies: "Object storage, indexes", blockers: "None", status: "Ready" },
+    { workflow: "Reviewer queue redaction", dependencies: "Language QA", blockers: "2 active reviews", status: "Hold" },
+    { workflow: "Enterprise user removal", dependencies: "Workspace, SSO, audit", blockers: "Admin approval", status: "Pending" }
+  ],
+  holds: [
+    { hold: "Enterprise contract dispute", scope: "Workspace audit + invoices", owner: "Legal", expires: "2026-10-15", status: "Active" },
+    { hold: "Payment investigation", scope: "Billing events", owner: "Finance Legal", expires: "2026-09-01", status: "Active" },
+    { hold: "Safety appeal", scope: "Moderation evidence", owner: "Trust", expires: "2026-08-24", status: "Review" }
+  ],
+  residencyReviews: [
+    { market: "Nigeria", data: "Profiles and chat metadata", requirement: "West Africa policy draft", owner: "Platform", status: "Mapping" },
+    { market: "EU diaspora", data: "Export/delete requests", requirement: "GDPR workflow", owner: "Privacy", status: "Live" },
+    { market: "Enterprise tenants", data: "Knowledge bases", requirement: "Tenant-scoped processing", owner: "Enterprise", status: "Live" },
+    { market: "Mobile telemetry", data: "Device and crash events", requirement: "Consent and minimization", owner: "Mobile", status: "Review" }
+  ],
+  guardrails: [
+    "Privacy request queues must verify requester identity before exporting or deleting data.",
+    "Deletion workflows must check billing, legal hold, safety appeal, and enterprise tenant dependencies.",
+    "Exports should be time-limited, watermarked where appropriate, encrypted, and audit logged.",
+    "Privacy operations must expose workflow status, not raw private conversations or sensitive user content."
+  ]
+};
+
 const integrationOperations = {
   summary: { connectedServices: 18, degradedServices: 2, webhookRetries: 42, partnerAccounts: 11, secretsRotating: 3 },
   services: [
@@ -1901,6 +1941,10 @@ function adminDataGovernanceOperations() {
   return dataGovernanceOperations;
 }
 
+function adminPrivacyRequestOperations() {
+  return privacyRequestOperations;
+}
+
 function adminIntegrationOperations() {
   return integrationOperations;
 }
@@ -2039,6 +2083,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "communications:send",
       "language:review",
       "data:govern",
+      "privacy:operate",
       "integrations:manage",
       "experiments:operate",
       "evals:review",
@@ -2317,6 +2362,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminDataGovernanceOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/privacy-requests") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("privacy_requests_viewed", "Privacy", "Info", "Privacy Ops");
+      return sendJson(response, 200, adminPrivacyRequestOperations());
+    }
+
     if (request.method === "GET" && url.pathname === "/v1/admin/integrations") {
       if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
         return sendJson(response, 403, { error: "Seed admin access required" });
@@ -2541,4 +2594,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

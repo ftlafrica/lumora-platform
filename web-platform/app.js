@@ -104,6 +104,7 @@ const ADMIN_SECTIONS = [
   { id: "evaluations", label: "Evals", desc: "Model eval suites, benchmark runs, regressions, human samples, and release gates." },
   { id: "languages", label: "Languages", desc: "Country coverage, dialect readiness, reviewer queues, benchmarks, and expansion quality." },
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
+  { id: "privacy", label: "Privacy Ops", desc: "DSAR exports, deletion queues, correction requests, legal holds, residency reviews, and privacy guardrails." },
   { id: "knowledge", label: "Knowledge", desc: "RAG collections, sources, indexing, embeddings, permissions, freshness, and quality queues." },
   { id: "safety", label: "Safety", desc: "Moderation, corrections, privacy, red-team findings, appeals, and policy." },
   { id: "fraud", label: "Fraud", desc: "Bot defense, account abuse, payment risk, API misuse, enforcement, and appeals." },
@@ -255,6 +256,8 @@ const DEFAULT_STATE = {
   adminLanguagesLoadedAt: null,
   adminDataGovernance: null,
   adminDataGovernanceLoadedAt: null,
+  adminPrivacyRequests: null,
+  adminPrivacyRequestsLoadedAt: null,
   adminIntegrations: null,
   adminIntegrationsLoadedAt: null,
   adminExperiments: null,
@@ -993,6 +996,26 @@ async function loadAdminDataGovernance(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminPrivacyRequests(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminPrivacyRequestsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/privacy-requests`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Privacy requests unavailable.");
+    state.adminPrivacyRequests = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminPrivacyRequestsLoadedAt = Date.now();
+  } catch {
+    state.adminPrivacyRequestsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminIntegrations(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminIntegrationsLoadedAt || 0;
@@ -1401,7 +1424,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "slo:manage", "capacity:plan", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "slo:manage", "capacity:plan", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1852,6 +1875,48 @@ function adminDataGovernanceData() {
       "Memory, voice, and reviewer access must honor user consent, country rules, and tenant boundaries.",
       "Model training or evaluation datasets must remove PII and track source license, reviewer, and retention.",
       "Consumer dashboards can show personal privacy status but never expose admin data governance controls."
+    ]
+  };
+}
+
+function adminPrivacyRequestsData() {
+  return state.adminPrivacyRequests || {
+    summary: { openRequests: 31, exportQueue: 9, deletionQueue: 4, slaAtRisk: 3, legalHolds: 2 },
+    requests: [
+      { type: "Data export", region: "Nigeria", count: 9, sla: "7 days", owner: "Privacy", status: "Identity review" },
+      { type: "Account deletion", region: "Kenya", count: 4, sla: "30 days", owner: "Privacy", status: "Dependency check" },
+      { type: "Correction request", region: "South Africa", count: 6, sla: "14 days", owner: "Support", status: "User follow-up" },
+      { type: "Consent withdrawal", region: "Diaspora", count: 11, sla: "Immediate", owner: "Privacy", status: "Automated" },
+      { type: "Processing objection", region: "EU users", count: 1, sla: "30 days", owner: "Legal", status: "Counsel review" }
+    ],
+    exports: [
+      { package: "Profile and settings", system: "Identity", readiness: "Ready", reviewer: "Privacy", status: "Queued" },
+      { package: "Conversation history", system: "Chat store", readiness: "Consent scoped", reviewer: "Privacy", status: "Review" },
+      { package: "Billing records", system: "Payments", readiness: "Invoice only", reviewer: "Finance", status: "Ready" },
+      { package: "Support cases", system: "Support", readiness: "PII redaction", reviewer: "Support lead", status: "Redacting" }
+    ],
+    deletions: [
+      { workflow: "Consumer account deletion", dependencies: "Billing, chat, memory", blockers: "1 active invoice", status: "Waiting" },
+      { workflow: "Voice sample removal", dependencies: "Object storage, indexes", blockers: "None", status: "Ready" },
+      { workflow: "Reviewer queue redaction", dependencies: "Language QA", blockers: "2 active reviews", status: "Hold" },
+      { workflow: "Enterprise user removal", dependencies: "Workspace, SSO, audit", blockers: "Admin approval", status: "Pending" }
+    ],
+    holds: [
+      { hold: "Enterprise contract dispute", scope: "Workspace audit + invoices", owner: "Legal", expires: "2026-10-15", status: "Active" },
+      { hold: "Payment investigation", scope: "Billing events", owner: "Finance Legal", expires: "2026-09-01", status: "Active" },
+      { hold: "Safety appeal", scope: "Moderation evidence", owner: "Trust", expires: "2026-08-24", status: "Review" }
+    ],
+    residencyReviews: [
+      { market: "Nigeria", data: "Profiles and chat metadata", requirement: "West Africa policy draft", owner: "Platform", status: "Mapping" },
+      { market: "EU diaspora", data: "Export/delete requests", requirement: "GDPR workflow", owner: "Privacy", status: "Live" },
+      { market: "Enterprise tenants", data: "Knowledge bases", requirement: "Tenant-scoped processing", owner: "Enterprise", status: "Live" },
+      { market: "Mobile telemetry", data: "Device and crash events", requirement: "Consent and minimization", owner: "Mobile", status: "Review" }
+    ],
+    guardrails: [
+      "Privacy request queues must verify requester identity before exporting or deleting data.",
+      "Deletion workflows must check billing, legal hold, safety appeal, and enterprise tenant dependencies.",
+      "Exports should be time-limited, watermarked where appropriate, encrypted, and audit logged.",
+      "Privacy operations must expose workflow status, not raw private conversations or sensitive user content."
     ]
   };
 }
@@ -3405,6 +3470,26 @@ function privacyRequestRow(item) {
   return `<div class="table-row"><strong>${item.request}</strong><span>${item.count} open</span><span>${item.sla}</span><span>${item.status}</span></div>`;
 }
 
+function privacyOpsRequestRow(item) {
+  return `<div class="table-row"><strong>${item.type}</strong><span>${item.region}</span><span>${item.count} open</span><span>${item.status}</span></div>`;
+}
+
+function privacyExportRow(item) {
+  return `<div class="table-row"><strong>${item.package}</strong><span>${item.system}</span><span>${item.readiness}</span><span>${item.status}</span></div>`;
+}
+
+function privacyDeletionRow(item) {
+  return `<div class="table-row"><strong>${item.workflow}</strong><span>${item.dependencies}</span><span>${item.blockers}</span><span>${item.status}</span></div>`;
+}
+
+function privacyHoldRow(item) {
+  return `<div class="table-row"><strong>${item.hold}</strong><span>${item.scope}</span><span>${item.expires}</span><span>${item.status}</span></div>`;
+}
+
+function privacyResidencyRow(item) {
+  return `<div class="table-row"><strong>${item.market}</strong><span>${item.data}</span><span>${item.requirement}</span><span>${item.status}</span></div>`;
+}
+
 function integrationServiceRow(item) {
   return `<div class="table-row"><strong>${item.service}</strong><span>${item.category}</span><span>${item.status}</span><span>${item.owner}</span></div>`;
 }
@@ -4414,6 +4499,7 @@ function adminView() {
   if (state.adminSection === "evaluations") loadAdminEvaluations();
   if (state.adminSection === "languages") loadAdminLanguages();
   if (state.adminSection === "data") loadAdminDataGovernance();
+  if (state.adminSection === "privacy") loadAdminPrivacyRequests();
   if (state.adminSection === "safety") loadAdminSafety();
   if (state.adminSection === "fraud") loadAdminFraudAbuse();
   if (state.adminSection === "security") loadAdminSecurity();
@@ -4581,6 +4667,7 @@ function adminSectionView(section, readiness) {
     evaluations: adminEvaluations,
     languages: adminLanguages,
     data: adminDataGovernance,
+    privacy: adminPrivacyRequests,
     knowledge: adminKnowledge,
     safety: adminSafety,
     fraud: adminFraudAbuse,
@@ -6267,6 +6354,55 @@ function adminDataGovernance() {
   `;
 }
 
+function adminPrivacyRequests() {
+  const privacy = adminPrivacyRequestsData();
+  const summary = privacy.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Open requests", summary.openRequests || "31")}
+      ${metric("Export queue", summary.exportQueue || "9")}
+      ${metric("Deletion queue", summary.deletionQueue || "4")}
+      ${metric("SLA at risk", summary.slaAtRisk || "3")}
+      <section class="admin-card full-admin">
+        <h2>Request intake</h2>
+        <div class="table admin-table-4">
+          ${privacy.requests.map(privacyOpsRequestRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Export packages</h2>
+        <div class="table admin-table-4">
+          ${privacy.exports.map(privacyExportRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Deletion workflows</h2>
+        <div class="table admin-table-4">
+          ${privacy.deletions.map(privacyDeletionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Legal and safety holds</h2>
+        <div class="table admin-table-4">
+          ${privacy.holds.map(privacyHoldRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Residency reviews</h2>
+        <div class="table admin-table-4">
+          ${privacy.residencyReviews.map(privacyResidencyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Privacy request guardrails</h2>
+        <div class="admin-checklist">
+          ${privacy.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminIntegrations() {
   const integrations = adminIntegrationsData();
   const summary = integrations.summary || {};
@@ -7037,6 +7173,7 @@ function bindEvents() {
       loadAdminEvaluations(true);
       loadAdminLanguages(true);
       loadAdminDataGovernance(true);
+      loadAdminPrivacyRequests(true);
       loadAdminSafety(true);
       loadAdminFraudAbuse(true);
       loadAdminSecurity(true);

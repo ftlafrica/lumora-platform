@@ -31,6 +31,7 @@ const {
   adminNotificationDeliveryOperations,
   adminLanguageOperations,
   adminDataGovernanceOperations,
+  adminPrivacyRequestOperations,
   adminIntegrationOperations,
   adminExperimentationOperations,
   adminModelEvaluationOperations,
@@ -103,6 +104,7 @@ assert.ok(accessSession.scopes.includes("communications:send"));
 assert.ok(accessSession.scopes.includes("notifications:operate"));
 assert.ok(accessSession.scopes.includes("language:review"));
 assert.ok(accessSession.scopes.includes("data:govern"));
+assert.ok(accessSession.scopes.includes("privacy:operate"));
 assert.ok(accessSession.scopes.includes("integrations:manage"));
 assert.ok(accessSession.scopes.includes("experiments:operate"));
 assert.ok(accessSession.scopes.includes("evals:review"));
@@ -157,6 +159,7 @@ const adminContracts = [
   ["notification delivery", adminNotificationDeliveryOperations(), data => data.summary && Array.isArray(data.channelHealth) && Array.isArray(data.consentSegments) && Array.isArray(data.quietHours)],
   ["languages", adminLanguageOperations(), data => data.summary && Array.isArray(data.coverage) && Array.isArray(data.dialectQueues) && Array.isArray(data.benchmarks)],
   ["data governance", adminDataGovernanceOperations(), data => data.summary && Array.isArray(data.retention) && Array.isArray(data.consent) && Array.isArray(data.requests)],
+  ["privacy requests", adminPrivacyRequestOperations(), data => data.summary && Array.isArray(data.requests) && Array.isArray(data.exports) && Array.isArray(data.deletions)],
   ["integrations", adminIntegrationOperations(), data => data.summary && Array.isArray(data.services) && Array.isArray(data.webhooks) && Array.isArray(data.partners)],
   ["experiments", adminExperimentationOperations(), data => data.summary && Array.isArray(data.experiments) && Array.isArray(data.flags) && Array.isArray(data.rollouts)],
   ["evaluations", adminModelEvaluationOperations(), data => data.summary && Array.isArray(data.suites) && Array.isArray(data.runs) && Array.isArray(data.releaseGates)],
