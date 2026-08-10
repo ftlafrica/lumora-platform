@@ -21,6 +21,7 @@ const {
   adminFinanceOperations,
   adminUnitEconomicsOperations,
   adminAnalyticsOperations,
+  adminLifecycleRetentionOperations,
   adminInfrastructureOperations,
   adminReliabilitySloOperations,
   adminCapacityPlanningOperations,
@@ -91,6 +92,7 @@ assert.ok(accessSession.scopes.includes("support:review"));
 assert.ok(accessSession.scopes.includes("finance:read"));
 assert.ok(accessSession.scopes.includes("unit:economics"));
 assert.ok(accessSession.scopes.includes("analytics:read"));
+assert.ok(accessSession.scopes.includes("lifecycle:manage"));
 assert.ok(accessSession.scopes.includes("infrastructure:operate"));
 assert.ok(accessSession.scopes.includes("slo:manage"));
 assert.ok(accessSession.scopes.includes("capacity:plan"));
@@ -143,6 +145,7 @@ const adminContracts = [
   ["finance", adminFinanceOperations(), data => data.summary && Array.isArray(data.costCenters) && Array.isArray(data.forecast) && Array.isArray(data.optimization)],
   ["unit economics", adminUnitEconomicsOperations(), data => data.summary && Array.isArray(data.routeCosts) && Array.isArray(data.planEconomics) && Array.isArray(data.marginLeaks)],
   ["analytics", adminAnalyticsOperations(), data => data.summary && Array.isArray(data.retention) && Array.isArray(data.featureUsage) && Array.isArray(data.languageAdoption)],
+  ["lifecycle retention", adminLifecycleRetentionOperations(), data => data.summary && Array.isArray(data.journeys) && Array.isArray(data.churnRisks) && Array.isArray(data.winback)],
   ["infrastructure", adminInfrastructureOperations(), data => data.summary && Array.isArray(data.services) && Array.isArray(data.clusters) && Array.isArray(data.queues)],
   ["reliability slos", adminReliabilitySloOperations(), data => data.summary && Array.isArray(data.objectives) && Array.isArray(data.errorBudgets) && Array.isArray(data.regions)],
   ["capacity planning", adminCapacityPlanningOperations(), data => data.summary && Array.isArray(data.forecasts) && Array.isArray(data.computePools) && Array.isArray(data.storage)],

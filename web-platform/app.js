@@ -68,6 +68,7 @@ const ADMIN_SECTIONS = [
   { id: "overview", label: "Command", desc: "Executive health, growth, revenue, cost, and incident posture." },
   { id: "growth", label: "Growth", desc: "Visitors, activation, countries, devices, campaigns, and funnels." },
   { id: "analytics", label: "Analytics", desc: "Retention, activation, churn, feature usage, language adoption, and experiments." },
+  { id: "lifecycle", label: "Lifecycle", desc: "Onboarding, activation journeys, churn risk, winback, expansion, and retention guardrails." },
   { id: "experiments", label: "Experiments", desc: "A/B tests, feature flags, rollouts, kill switches, results, and product decision guardrails." },
   { id: "reports", label: "Reports", desc: "Leadership packs, scheduled exports, report destinations, datasets, and evidence guardrails." },
   { id: "evidence", label: "Evidence", desc: "Control evidence, audit readiness, attestations, compliance gaps, and evidence guardrails." },
@@ -201,6 +202,8 @@ const DEFAULT_STATE = {
   adminGrowthLoadedAt: null,
   adminAnalytics: null,
   adminAnalyticsLoadedAt: null,
+  adminLifecycleRetention: null,
+  adminLifecycleRetentionLoadedAt: null,
   adminReports: null,
   adminReportsLoadedAt: null,
   adminRisk: null,
@@ -1247,6 +1250,26 @@ async function loadAdminAnalytics(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminLifecycleRetention(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminLifecycleRetentionLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/lifecycle-retention`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Lifecycle retention unavailable.");
+    state.adminLifecycleRetention = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminLifecycleRetentionLoadedAt = Date.now();
+  } catch {
+    state.adminLifecycleRetentionLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminAccess(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminAccessLoadedAt || 0;
@@ -1355,7 +1378,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "infrastructure:operate", "slo:manage", "capacity:plan", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "slo:manage", "capacity:plan", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2934,6 +2957,42 @@ function adminAnalyticsData() {
   };
 }
 
+function adminLifecycleRetentionData() {
+  return state.adminLifecycleRetention || {
+    summary: { activeJourneys: 11, activationRate: "78.2%", churnRiskUsers: 642, winbackRate: "18%", expansionSignals: 214 },
+    journeys: [
+      { journey: "New user language passport", segment: "New signups", trigger: "First session", owner: "Growth", status: "Live" },
+      { journey: "First useful answer", segment: "Activated users", trigger: "No chat after signup", owner: "Product", status: "Optimizing" },
+      { journey: "Voice feature discovery", segment: "Mobile beta", trigger: "3 text chats", owner: "Mobile Growth", status: "Testing" },
+      { journey: "Teams admin onboarding", segment: "Enterprise", trigger: "Workspace created", owner: "Success", status: "Live" }
+    ],
+    churnRisks: [
+      { signal: "No second session", segment: "Free users", users: 284, owner: "Growth", status: "Nudge queued" },
+      { signal: "Payment retry fatigue", segment: "Plus", users: 91, owner: "Revenue Ops", status: "Support macro" },
+      { signal: "Low language confidence", segment: "Priority markets", users: 146, owner: "Language QA", status: "Review" },
+      { signal: "Enterprise seat inactivity", segment: "Teams", users: 121, owner: "Success", status: "CS outreach" }
+    ],
+    winback: [
+      { campaign: "Return to saved chat", audience: "Dormant free", channel: "Push/email", lift: "+8%", status: "Live" },
+      { campaign: "Voice minutes trial", audience: "Mobile dormant", channel: "Push", lift: "+11%", status: "Testing" },
+      { campaign: "Language improvement note", audience: "Correction submitters", channel: "Email", lift: "+14%", status: "Live" },
+      { campaign: "Team value recap", audience: "Enterprise admins", channel: "CS email", lift: "+6%", status: "Draft" }
+    ],
+    expansion: [
+      { signal: "Repeated translation volume", account: "EduBridge Africa", opportunity: "Teams upgrade", owner: "Success", status: "Qualified" },
+      { signal: "API quota near limit", account: "MarketUnion NG", opportunity: "Pro API pack", owner: "Sales", status: "Demo booked" },
+      { signal: "Multiple creator packs", account: "Creator Desk", opportunity: "Pro plan", owner: "Growth", status: "Offer ready" },
+      { signal: "Classroom workflows", account: "School pilot", opportunity: "Education plan", owner: "Partnerships", status: "Discovery" }
+    ],
+    guardrails: [
+      "Lifecycle messaging should feel helpful and culturally respectful, not spammy or manipulative.",
+      "Churn and expansion signals must not expose private chat content to sales or support.",
+      "User journeys should honor consent, notification preferences, country rules, and quiet hours.",
+      "Retention experiments need holdout groups so leadership can distinguish real lift from noise."
+    ]
+  };
+}
+
 function adminAccessData() {
   return state.adminAccess || {
     summary: { roles: ADMIN_ROLES.length, auditEvents: 1904, criticalThreats: 0, ssoEnabledOrgs: 14, pendingApprovals: 7 },
@@ -3797,6 +3856,22 @@ function experimentRow(item) {
   return `<div class="table-row"><strong>${item.test}</strong><span>${item.segment}</span><span>${item.lift} / ${item.status}</span></div>`;
 }
 
+function lifecycleJourneyRow(item) {
+  return `<div class="table-row"><strong>${item.journey}</strong><span>${item.segment}</span><span>${item.trigger}</span><span>${item.status}</span></div>`;
+}
+
+function churnRiskRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.segment}</span><span>${item.users} users</span><span>${item.status}</span></div>`;
+}
+
+function winbackCampaignRow(item) {
+  return `<div class="table-row"><strong>${item.campaign}</strong><span>${item.audience}</span><span>${item.lift}</span><span>${item.status}</span></div>`;
+}
+
+function expansionSignalRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.account}</span><span>${item.opportunity}</span><span>${item.status}</span></div>`;
+}
+
 function roleRow(item) {
   return `<div class="table-row"><strong>${item.role}</strong><span>${item.access}</span><span>${item.users} users</span><span>${item.approval}</span></div>`;
 }
@@ -4262,6 +4337,7 @@ function adminView() {
   if (state.adminSection === "capacity") loadAdminCapacityPlanning();
   if (state.adminSection === "growth") loadAdminGrowth();
   if (state.adminSection === "analytics") loadAdminAnalytics();
+  if (state.adminSection === "lifecycle") loadAdminLifecycleRetention();
   if (state.adminSection === "experiments") loadAdminExperiments();
   if (state.adminSection === "reports") loadAdminReports();
   if (state.adminSection === "risk") loadAdminRisk();
@@ -4383,6 +4459,7 @@ function adminSectionView(section, readiness) {
     overview: () => adminOverview(readiness),
     growth: adminGrowth,
     analytics: adminAnalytics,
+    lifecycle: adminLifecycleRetention,
     experiments: adminExperiments,
     reports: adminReports,
     risk: adminRisk,
@@ -4548,6 +4625,49 @@ function adminAnalytics() {
         <h2>Experiment board</h2>
         <div class="table">
           ${analytics.experiments.map(experimentRow).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminLifecycleRetention() {
+  const lifecycle = adminLifecycleRetentionData();
+  const summary = lifecycle.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Journeys", summary.activeJourneys || "11")}
+      ${metric("Activation", summary.activationRate || "78.2%")}
+      ${metric("Churn risk", summary.churnRiskUsers || "642")}
+      ${metric("Winback", summary.winbackRate || "18%")}
+      <section class="admin-card full-admin">
+        <h2>Lifecycle journeys</h2>
+        <div class="table admin-table-4">
+          ${lifecycle.journeys.map(lifecycleJourneyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Churn risk signals</h2>
+        <div class="table admin-table-4">
+          ${lifecycle.churnRisks.map(churnRiskRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Winback campaigns</h2>
+        <div class="table admin-table-4">
+          ${lifecycle.winback.map(winbackCampaignRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Expansion signals</h2>
+        <div class="table admin-table-4">
+          ${lifecycle.expansion.map(expansionSignalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Lifecycle guardrails</h2>
+        <div class="admin-checklist">
+          ${lifecycle.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -6789,6 +6909,7 @@ function bindEvents() {
       loadAdminCapacityPlanning(true);
       loadAdminGrowth(true);
       loadAdminAnalytics(true);
+      loadAdminLifecycleRetention(true);
       loadAdminExperiments(true);
       loadAdminReports(true);
       loadAdminRisk(true);

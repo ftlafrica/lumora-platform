@@ -428,6 +428,40 @@ const analyticsOperations = {
   ]
 };
 
+const lifecycleRetentionOperations = {
+  summary: { activeJourneys: 11, activationRate: "78.2%", churnRiskUsers: 642, winbackRate: "18%", expansionSignals: 214 },
+  journeys: [
+    { journey: "New user language passport", segment: "New signups", trigger: "First session", owner: "Growth", status: "Live" },
+    { journey: "First useful answer", segment: "Activated users", trigger: "No chat after signup", owner: "Product", status: "Optimizing" },
+    { journey: "Voice feature discovery", segment: "Mobile beta", trigger: "3 text chats", owner: "Mobile Growth", status: "Testing" },
+    { journey: "Teams admin onboarding", segment: "Enterprise", trigger: "Workspace created", owner: "Success", status: "Live" }
+  ],
+  churnRisks: [
+    { signal: "No second session", segment: "Free users", users: 284, owner: "Growth", status: "Nudge queued" },
+    { signal: "Payment retry fatigue", segment: "Plus", users: 91, owner: "Revenue Ops", status: "Support macro" },
+    { signal: "Low language confidence", segment: "Priority markets", users: 146, owner: "Language QA", status: "Review" },
+    { signal: "Enterprise seat inactivity", segment: "Teams", users: 121, owner: "Success", status: "CS outreach" }
+  ],
+  winback: [
+    { campaign: "Return to saved chat", audience: "Dormant free", channel: "Push/email", lift: "+8%", status: "Live" },
+    { campaign: "Voice minutes trial", audience: "Mobile dormant", channel: "Push", lift: "+11%", status: "Testing" },
+    { campaign: "Language improvement note", audience: "Correction submitters", channel: "Email", lift: "+14%", status: "Live" },
+    { campaign: "Team value recap", audience: "Enterprise admins", channel: "CS email", lift: "+6%", status: "Draft" }
+  ],
+  expansion: [
+    { signal: "Repeated translation volume", account: "EduBridge Africa", opportunity: "Teams upgrade", owner: "Success", status: "Qualified" },
+    { signal: "API quota near limit", account: "MarketUnion NG", opportunity: "Pro API pack", owner: "Sales", status: "Demo booked" },
+    { signal: "Multiple creator packs", account: "Creator Desk", opportunity: "Pro plan", owner: "Growth", status: "Offer ready" },
+    { signal: "Classroom workflows", account: "School pilot", opportunity: "Education plan", owner: "Partnerships", status: "Discovery" }
+  ],
+  guardrails: [
+    "Lifecycle messaging should feel helpful and culturally respectful, not spammy or manipulative.",
+    "Churn and expansion signals must not expose private chat content to sales or support.",
+    "User journeys should honor consent, notification preferences, country rules, and quiet hours.",
+    "Retention experiments need holdout groups so leadership can distinguish real lift from noise."
+  ]
+};
+
 const infrastructureOperations = {
   summary: { uptime: "99.98%", incidents: 0, gpuUtilization: "61%", queuePressure: "Normal", deployHealth: "Stable" },
   services: [
@@ -1787,6 +1821,10 @@ function adminAnalyticsOperations() {
   return analyticsOperations;
 }
 
+function adminLifecycleRetentionOperations() {
+  return lifecycleRetentionOperations;
+}
+
 function adminInfrastructureOperations() {
   return infrastructureOperations;
 }
@@ -1948,6 +1986,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "finance:read",
       "unit:economics",
       "analytics:read",
+      "lifecycle:manage",
       "infrastructure:operate",
       "slo:manage",
       "capacity:plan",
@@ -2151,6 +2190,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("analytics_center_viewed", "Analytics", "Info", "Leadership");
       return sendJson(response, 200, adminAnalyticsOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/lifecycle-retention") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("lifecycle_retention_viewed", "Lifecycle", "Info", "Retention Ops");
+      return sendJson(response, 200, adminLifecycleRetentionOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/infrastructure") {
@@ -2441,4 +2488,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
