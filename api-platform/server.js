@@ -672,6 +672,46 @@ const reportingOperations = {
   ]
 };
 
+const warehouseBiOperations = {
+  summary: { pipelinesHealthy: 18, freshness: "5 min", failedJobs: 2, certifiedMetrics: 42, restrictedDatasets: 7 },
+  pipelines: [
+    { pipeline: "Chat events stream", source: "Web/Mobile/API", freshness: "2 min", owner: "Data Platform", status: "Healthy" },
+    { pipeline: "Billing ledger sync", source: "Payments", freshness: "5 min", owner: "Finance Data", status: "Healthy" },
+    { pipeline: "Model routing telemetry", source: "AI gateway", freshness: "8 min", owner: "AI Ops", status: "Watch" },
+    { pipeline: "Support and safety cases", source: "Support/Trust", freshness: "15 min", owner: "Operations Data", status: "Healthy" }
+  ],
+  datasets: [
+    { dataset: "Executive metrics mart", domain: "Leadership", classification: "Restricted", freshness: "5 min", status: "Certified" },
+    { dataset: "Growth funnel mart", domain: "Growth", classification: "Internal", freshness: "10 min", status: "Certified" },
+    { dataset: "Language quality mart", domain: "Language QA", classification: "Restricted", freshness: "30 min", status: "Review" },
+    { dataset: "Revenue and margin mart", domain: "Finance", classification: "Confidential", freshness: "5 min", status: "Certified" }
+  ],
+  metricDefinitions: [
+    { metric: "Activation rate", owner: "Product Analytics", definition: "Language Passport + first useful chat", status: "Certified" },
+    { metric: "Paid gross margin", owner: "Finance Data", definition: "Revenue minus model/cloud/support cost", status: "Certified" },
+    { metric: "Language confidence", owner: "Language QA", definition: "Model confidence + reviewer quality score", status: "Review" },
+    { metric: "D30 retention", owner: "Growth Analytics", definition: "Active user on or after day 30", status: "Certified" }
+  ],
+  lineage: [
+    { asset: "Board dashboard", upstream: "Executive metrics mart", downstream: "Board pack", owner: "Operations", status: "Mapped" },
+    { asset: "Unit economics", upstream: "Billing + inference cost", downstream: "Finance dashboard", owner: "Finance", status: "Mapped" },
+    { asset: "Model quality", upstream: "Eval runs + corrections", downstream: "AI governance", owner: "AI QA", status: "Review" },
+    { asset: "Country launch readiness", upstream: "Growth + language QA + support", downstream: "Regional launch", owner: "Regional Ops", status: "Mapped" }
+  ],
+  accessReviews: [
+    { group: "Leadership BI", users: 9, datasets: "Executive, finance", review: "Monthly", status: "Approved" },
+    { group: "Data analysts", users: 6, datasets: "Certified marts", review: "Monthly", status: "Approved" },
+    { group: "Support analytics", users: 11, datasets: "Aggregated support", review: "Quarterly", status: "Review" },
+    { group: "External board viewer", users: 3, datasets: "Board pack only", review: "Per meeting", status: "Restricted" }
+  ],
+  guardrails: [
+    "Every leadership metric needs owner, definition, freshness, lineage, and certification status.",
+    "Restricted BI datasets must mask PII and avoid raw prompts, private conversations, and payment secrets.",
+    "Warehouse incidents should block dependent reports when freshness or quality falls below threshold.",
+    "Board and investor dashboards must clearly label simulated prototype metrics until production data is live."
+  ]
+};
+
 const communicationsOperations = {
   summary: { activeCampaigns: 8, alertsQueued: 12, deliveryRate: "98.7%", pushOptIn: "64%", incidentNotices: 3 },
   campaigns: [
@@ -1969,6 +2009,10 @@ function adminReportingOperations() {
   return reportingOperations;
 }
 
+function adminWarehouseBiOperations() {
+  return warehouseBiOperations;
+}
+
 function adminCommunicationsOperations() {
   return communicationsOperations;
 }
@@ -2125,6 +2169,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "capacity:plan",
       "security:operate",
       "reporting:export",
+      "warehouse:operate",
       "communications:send",
       "language:review",
       "data:govern",
@@ -2381,6 +2426,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("reporting_exports_viewed", "Reporting", "Info", "Leadership");
       return sendJson(response, 200, adminReportingOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/warehouse-bi") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("warehouse_bi_viewed", "Warehouse", "Info", "Data Platform");
+      return sendJson(response, 200, adminWarehouseBiOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/communications") {
@@ -2647,4 +2700,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

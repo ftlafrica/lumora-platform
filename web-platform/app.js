@@ -71,6 +71,7 @@ const ADMIN_SECTIONS = [
   { id: "lifecycle", label: "Lifecycle", desc: "Onboarding, activation journeys, churn risk, winback, expansion, and retention guardrails." },
   { id: "experiments", label: "Experiments", desc: "A/B tests, feature flags, rollouts, kill switches, results, and product decision guardrails." },
   { id: "reports", label: "Reports", desc: "Leadership packs, scheduled exports, report destinations, datasets, and evidence guardrails." },
+  { id: "warehouse", label: "Warehouse", desc: "Data pipelines, warehouse freshness, certified metrics, lineage, BI access, and data quality guardrails." },
   { id: "evidence", label: "Evidence", desc: "Control evidence, audit readiness, attestations, compliance gaps, and evidence guardrails." },
   { id: "trust", label: "Trust", desc: "Customer-safe trust center posture, security reviews, certifications, subprocessors, and public-status guardrails." },
   { id: "board", label: "Board", desc: "Board packets, strategic decisions, investor metrics, escalations, and governance guardrails." },
@@ -209,6 +210,8 @@ const DEFAULT_STATE = {
   adminLifecycleRetentionLoadedAt: null,
   adminReports: null,
   adminReportsLoadedAt: null,
+  adminWarehouseBi: null,
+  adminWarehouseBiLoadedAt: null,
   adminRisk: null,
   adminRiskLoadedAt: null,
   adminLegal: null,
@@ -514,6 +517,26 @@ async function loadAdminReports(force = false) {
     state.adminReportsLoadedAt = Date.now();
   } catch {
     state.adminReportsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminWarehouseBi(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminWarehouseBiLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/warehouse-bi`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Warehouse BI unavailable.");
+    state.adminWarehouseBi = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminWarehouseBiLoadedAt = Date.now();
+  } catch {
+    state.adminWarehouseBiLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -1447,7 +1470,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "identity:operate", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "slo:manage", "capacity:plan", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "identity:operate", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "slo:manage", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1747,6 +1770,48 @@ function adminReportsData() {
       "Sensitive reports require watermarking, expiry, and restricted download history.",
       "Board and investor packs must separate simulated prototype metrics from production data.",
       "Privacy, payment, and security evidence exports require approval before sharing."
+    ]
+  };
+}
+
+function adminWarehouseBiData() {
+  return state.adminWarehouseBi || {
+    summary: { pipelinesHealthy: 18, freshness: "5 min", failedJobs: 2, certifiedMetrics: 42, restrictedDatasets: 7 },
+    pipelines: [
+      { pipeline: "Chat events stream", source: "Web/Mobile/API", freshness: "2 min", owner: "Data Platform", status: "Healthy" },
+      { pipeline: "Billing ledger sync", source: "Payments", freshness: "5 min", owner: "Finance Data", status: "Healthy" },
+      { pipeline: "Model routing telemetry", source: "AI gateway", freshness: "8 min", owner: "AI Ops", status: "Watch" },
+      { pipeline: "Support and safety cases", source: "Support/Trust", freshness: "15 min", owner: "Operations Data", status: "Healthy" }
+    ],
+    datasets: [
+      { dataset: "Executive metrics mart", domain: "Leadership", classification: "Restricted", freshness: "5 min", status: "Certified" },
+      { dataset: "Growth funnel mart", domain: "Growth", classification: "Internal", freshness: "10 min", status: "Certified" },
+      { dataset: "Language quality mart", domain: "Language QA", classification: "Restricted", freshness: "30 min", status: "Review" },
+      { dataset: "Revenue and margin mart", domain: "Finance", classification: "Confidential", freshness: "5 min", status: "Certified" }
+    ],
+    metricDefinitions: [
+      { metric: "Activation rate", owner: "Product Analytics", definition: "Language Passport + first useful chat", status: "Certified" },
+      { metric: "Paid gross margin", owner: "Finance Data", definition: "Revenue minus model/cloud/support cost", status: "Certified" },
+      { metric: "Language confidence", owner: "Language QA", definition: "Model confidence + reviewer quality score", status: "Review" },
+      { metric: "D30 retention", owner: "Growth Analytics", definition: "Active user on or after day 30", status: "Certified" }
+    ],
+    lineage: [
+      { asset: "Board dashboard", upstream: "Executive metrics mart", downstream: "Board pack", owner: "Operations", status: "Mapped" },
+      { asset: "Unit economics", upstream: "Billing + inference cost", downstream: "Finance dashboard", owner: "Finance", status: "Mapped" },
+      { asset: "Model quality", upstream: "Eval runs + corrections", downstream: "AI governance", owner: "AI QA", status: "Review" },
+      { asset: "Country launch readiness", upstream: "Growth + language QA + support", downstream: "Regional launch", owner: "Regional Ops", status: "Mapped" }
+    ],
+    accessReviews: [
+      { group: "Leadership BI", users: 9, datasets: "Executive, finance", review: "Monthly", status: "Approved" },
+      { group: "Data analysts", users: 6, datasets: "Certified marts", review: "Monthly", status: "Approved" },
+      { group: "Support analytics", users: 11, datasets: "Aggregated support", review: "Quarterly", status: "Review" },
+      { group: "External board viewer", users: 3, datasets: "Board pack only", review: "Per meeting", status: "Restricted" }
+    ],
+    guardrails: [
+      "Every leadership metric needs owner, definition, freshness, lineage, and certification status.",
+      "Restricted BI datasets must mask PII and avoid raw prompts, private conversations, and payment secrets.",
+      "Warehouse incidents should block dependent reports when freshness or quality falls below threshold.",
+      "Board and investor dashboards must clearly label simulated prototype metrics until production data is live."
     ]
   };
 }
@@ -3467,6 +3532,26 @@ function datasetRow(item) {
   return `<div class="table-row"><strong>${item.dataset}</strong><span>${item.source}</span><span>${item.freshness}</span><span>${item.owner}</span></div>`;
 }
 
+function warehousePipelineRow(item) {
+  return `<div class="table-row"><strong>${item.pipeline}</strong><span>${item.source}</span><span>${item.freshness}</span><span>${item.status}</span></div>`;
+}
+
+function warehouseDatasetRow(item) {
+  return `<div class="table-row"><strong>${item.dataset}</strong><span>${item.domain}</span><span>${item.classification}</span><span>${item.status}</span></div>`;
+}
+
+function metricDefinitionRow(item) {
+  return `<div class="table-row"><strong>${item.metric}</strong><span>${item.owner}</span><span>${item.definition}</span><span>${item.status}</span></div>`;
+}
+
+function lineageRow(item) {
+  return `<div class="table-row"><strong>${item.asset}</strong><span>${item.upstream}</span><span>${item.downstream}</span><span>${item.status}</span></div>`;
+}
+
+function biAccessRow(item) {
+  return `<div class="table-row"><strong>${item.group}</strong><span>${item.users} users</span><span>${item.datasets}</span><span>${item.status}</span></div>`;
+}
+
 function campaignRow(item) {
   return `<div class="table-row"><strong>${item.campaign}</strong><span>${item.audience}</span><span>${item.channel}</span><span>${item.status}</span></div>`;
 }
@@ -4596,6 +4681,7 @@ function adminView() {
   if (state.adminSection === "lifecycle") loadAdminLifecycleRetention();
   if (state.adminSection === "experiments") loadAdminExperiments();
   if (state.adminSection === "reports") loadAdminReports();
+  if (state.adminSection === "warehouse") loadAdminWarehouseBi();
   if (state.adminSection === "risk") loadAdminRisk();
   if (state.adminSection === "legal") loadAdminLegal();
   if (state.adminSection === "people") loadAdminPeople();
@@ -4720,6 +4806,7 @@ function adminSectionView(section, readiness) {
     lifecycle: adminLifecycleRetention,
     experiments: adminExperiments,
     reports: adminReports,
+    warehouse: adminWarehouseBi,
     risk: adminRisk,
     legal: adminLegal,
     people: adminPeople,
@@ -5397,6 +5484,55 @@ function adminReports() {
         <h2>Reporting guardrails</h2>
         <div class="admin-checklist">
           ${reports.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminWarehouseBi() {
+  const warehouse = adminWarehouseBiData();
+  const summary = warehouse.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Healthy pipelines", summary.pipelinesHealthy || "18")}
+      ${metric("Freshness", summary.freshness || "5 min")}
+      ${metric("Failed jobs", summary.failedJobs || "2")}
+      ${metric("Certified metrics", summary.certifiedMetrics || "42")}
+      <section class="admin-card full-admin">
+        <h2>Pipeline health</h2>
+        <div class="table admin-table-4">
+          ${warehouse.pipelines.map(warehousePipelineRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Certified datasets</h2>
+        <div class="table admin-table-4">
+          ${warehouse.datasets.map(warehouseDatasetRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Metric definitions</h2>
+        <div class="table admin-table-4">
+          ${warehouse.metricDefinitions.map(metricDefinitionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Lineage map</h2>
+        <div class="table admin-table-4">
+          ${warehouse.lineage.map(lineageRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>BI access reviews</h2>
+        <div class="table admin-table-4">
+          ${warehouse.accessReviews.map(biAccessRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Warehouse guardrails</h2>
+        <div class="admin-checklist">
+          ${warehouse.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -7321,6 +7457,7 @@ function bindEvents() {
       loadAdminLifecycleRetention(true);
       loadAdminExperiments(true);
       loadAdminReports(true);
+      loadAdminWarehouseBi(true);
       loadAdminRisk(true);
       loadAdminLegal(true);
       loadAdminPeople(true);

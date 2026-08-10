@@ -28,6 +28,7 @@ const {
   adminCapacityPlanningOperations,
   adminSecurityOperations,
   adminReportingOperations,
+  adminWarehouseBiOperations,
   adminCommunicationsOperations,
   adminNotificationDeliveryOperations,
   adminLanguageOperations,
@@ -102,6 +103,7 @@ assert.ok(accessSession.scopes.includes("slo:manage"));
 assert.ok(accessSession.scopes.includes("capacity:plan"));
 assert.ok(accessSession.scopes.includes("security:operate"));
 assert.ok(accessSession.scopes.includes("reporting:export"));
+assert.ok(accessSession.scopes.includes("warehouse:operate"));
 assert.ok(accessSession.scopes.includes("communications:send"));
 assert.ok(accessSession.scopes.includes("notifications:operate"));
 assert.ok(accessSession.scopes.includes("language:review"));
@@ -158,6 +160,7 @@ const adminContracts = [
   ["capacity planning", adminCapacityPlanningOperations(), data => data.summary && Array.isArray(data.forecasts) && Array.isArray(data.computePools) && Array.isArray(data.storage)],
   ["security", adminSecurityOperations(), data => data.summary && Array.isArray(data.threats) && Array.isArray(data.accessPosture) && Array.isArray(data.compliance)],
   ["reports", adminReportingOperations(), data => data.summary && Array.isArray(data.reportPacks) && Array.isArray(data.exports) && Array.isArray(data.schedules)],
+  ["warehouse bi", adminWarehouseBiOperations(), data => data.summary && Array.isArray(data.pipelines) && Array.isArray(data.datasets) && Array.isArray(data.metricDefinitions)],
   ["communications", adminCommunicationsOperations(), data => data.summary && Array.isArray(data.campaigns) && Array.isArray(data.broadcasts) && Array.isArray(data.delivery)],
   ["notification delivery", adminNotificationDeliveryOperations(), data => data.summary && Array.isArray(data.channelHealth) && Array.isArray(data.consentSegments) && Array.isArray(data.quietHours)],
   ["languages", adminLanguageOperations(), data => data.summary && Array.isArray(data.coverage) && Array.isArray(data.dialectQueues) && Array.isArray(data.benchmarks)],
