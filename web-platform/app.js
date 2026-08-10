@@ -103,6 +103,7 @@ const ADMIN_SECTIONS = [
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
   { id: "knowledge", label: "Knowledge", desc: "RAG collections, sources, indexing, embeddings, permissions, freshness, and quality queues." },
   { id: "safety", label: "Safety", desc: "Moderation, corrections, privacy, red-team findings, appeals, and policy." },
+  { id: "fraud", label: "Fraud", desc: "Bot defense, account abuse, payment risk, API misuse, enforcement, and appeals." },
   { id: "security", label: "Security", desc: "Threats, MFA/SSO, device trust, audit integrity, data requests, and compliance readiness." },
   { id: "platform", label: "Platform", desc: "Web, mobile, API, infrastructure, incidents, releases, and feature flags." },
   { id: "infrastructure", label: "Infrastructure", desc: "Services, queues, GPU clusters, databases, incidents, uptime, and reliability guardrails." },
@@ -265,6 +266,8 @@ const DEFAULT_STATE = {
   adminKnowledgeLoadedAt: null,
   adminSupport: null,
   adminSupportLoadedAt: null,
+  adminFraudAbuse: null,
+  adminFraudAbuseLoadedAt: null,
   user: {
     name: "Murewa Oyetoro",
     email: "murewa@example.com",
@@ -1115,6 +1118,26 @@ async function loadAdminSafety(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminFraudAbuse(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminFraudAbuseLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/fraud-abuse`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Fraud and abuse operations unavailable.");
+    state.adminFraudAbuse = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminFraudAbuseLoadedAt = Date.now();
+  } catch {
+    state.adminFraudAbuseLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminGrowth(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminGrowthLoadedAt || 0;
@@ -1263,7 +1286,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2640,6 +2663,42 @@ function adminSafetyData() {
   };
 }
 
+function adminFraudAbuseData() {
+  return state.adminFraudAbuse || {
+    summary: { openCases: 73, botBlocks: "18.4K", paymentRisk: "$6.8K", apiAbuse: 22, falsePositiveRate: "1.7%" },
+    abuseQueues: [
+      { queue: "Account farming", surface: "Signup", volume: 28, owner: "Trust Ops", status: "Reviewing" },
+      { queue: "Prompt spam bursts", surface: "Chat/API", volume: 19, owner: "Safety", status: "Throttled" },
+      { queue: "Referral abuse", surface: "Growth", volume: 14, owner: "Growth Ops", status: "Investigating" },
+      { queue: "Support impersonation", surface: "Support", volume: 12, owner: "Support Trust", status: "Escalated" }
+    ],
+    botDefense: [
+      { signal: "High-velocity signup cluster", market: "Nigeria", action: "Step-up verification", confidence: "91%", status: "Active" },
+      { signal: "Credential stuffing pattern", market: "Pan-African", action: "Rate limit", confidence: "88%", status: "Blocked" },
+      { signal: "Scraper on pricing routes", market: "Unknown", action: "Edge challenge", confidence: "82%", status: "Watching" },
+      { signal: "Synthetic mobile sessions", market: "Kenya", action: "Device trust check", confidence: "76%", status: "Tuning" }
+    ],
+    paymentRisk: [
+      { risk: "Card testing", plan: "Plus", exposure: "$2.1K", owner: "Payments", status: "Blocked" },
+      { risk: "Chargeback cluster", plan: "Pro", exposure: "$3.4K", owner: "Finance", status: "Review" },
+      { risk: "Trial cycling", plan: "Free/Plus", exposure: "$860", owner: "Growth Ops", status: "Limited" },
+      { risk: "Invoice impersonation", plan: "Teams", exposure: "$420", owner: "Revenue Ops", status: "Escalated" }
+    ],
+    enforcement: [
+      { action: "Temporary account hold", count: 31, reviewer: "Trust Ops", appealWindow: "7 days", status: "Active" },
+      { action: "API key suspension", count: 8, reviewer: "Developer Ops", appealWindow: "3 days", status: "Active" },
+      { action: "Payment retry block", count: 17, reviewer: "Finance", appealWindow: "Manual", status: "Queued" },
+      { action: "Market-level rate limit", count: 4, reviewer: "Platform", appealWindow: "24h", status: "Watching" }
+    ],
+    guardrails: [
+      "Fraud controls should protect Lumora without unfairly blocking legitimate users in low-connectivity markets.",
+      "Every enforcement action needs reason, evidence, reviewer, appeal path, and expiry or review date.",
+      "Payment fraud workflows must coordinate with support so affected users receive clear next steps.",
+      "Bot and abuse signals should use privacy-preserving aggregates instead of exposing raw prompts or sensitive account data."
+    ]
+  };
+}
+
 function adminGrowthData() {
   return state.adminGrowth || {
     summary: { visitorsToday: 4812, newVisitors: 2184, returningVisitors: 2628, signupConversion: "12.4%", mobileWebShare: "38%" },
@@ -3465,6 +3524,22 @@ function safetyQueueRow(item) {
   return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.owner} / ${item.priority}</span></div>`;
 }
 
+function abuseQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.surface}</span><span>${item.volume} cases</span><span>${item.status}</span></div>`;
+}
+
+function botDefenseRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.market}</span><span>${item.confidence}</span><span>${item.status}</span></div>`;
+}
+
+function paymentRiskRow(item) {
+  return `<div class="table-row"><strong>${item.risk}</strong><span>${item.plan}</span><span>${item.exposure}</span><span>${item.status}</span></div>`;
+}
+
+function enforcementRow(item) {
+  return `<div class="table-row"><strong>${item.action}</strong><span>${item.count} items</span><span>${item.appealWindow}</span><span>${item.status}</span></div>`;
+}
+
 function countryRow(item) {
   return `<div class="table-row"><strong>${item.country}</strong><span>${item.users} users</span><span>${item.growth}</span></div>`;
 }
@@ -3954,6 +4029,7 @@ function adminView() {
   if (state.adminSection === "languages") loadAdminLanguages();
   if (state.adminSection === "data") loadAdminDataGovernance();
   if (state.adminSection === "safety") loadAdminSafety();
+  if (state.adminSection === "fraud") loadAdminFraudAbuse();
   if (state.adminSection === "security") loadAdminSecurity();
   if (state.adminSection === "infrastructure") loadAdminInfrastructure();
   if (state.adminSection === "growth") loadAdminGrowth();
@@ -4114,6 +4190,7 @@ function adminSectionView(section, readiness) {
     data: adminDataGovernance,
     knowledge: adminKnowledge,
     safety: adminSafety,
+    fraud: adminFraudAbuse,
     security: adminSecurity,
     platform: adminPlatform,
     infrastructure: adminInfrastructure,
@@ -4536,6 +4613,49 @@ function adminSafety() {
         <h2>Safety guardrails</h2>
         <div class="admin-checklist">
           ${safety.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminFraudAbuse() {
+  const fraud = adminFraudAbuseData();
+  const summary = fraud.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Open cases", summary.openCases || "73")}
+      ${metric("Bot blocks", summary.botBlocks || "18.4K")}
+      ${metric("Payment risk", summary.paymentRisk || "$6.8K")}
+      ${metric("API abuse", summary.apiAbuse || "22")}
+      <section class="admin-card full-admin">
+        <h2>Abuse queues</h2>
+        <div class="table admin-table-4">
+          ${fraud.abuseQueues.map(abuseQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Bot defense</h2>
+        <div class="table admin-table-4">
+          ${fraud.botDefense.map(botDefenseRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Payment risk</h2>
+        <div class="table admin-table-4">
+          ${fraud.paymentRisk.map(paymentRiskRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Enforcement and appeals</h2>
+        <div class="table admin-table-4">
+          ${fraud.enforcement.map(enforcementRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Fraud guardrails</h2>
+        <div class="admin-checklist">
+          ${fraud.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -6301,6 +6421,7 @@ function bindEvents() {
       loadAdminLanguages(true);
       loadAdminDataGovernance(true);
       loadAdminSafety(true);
+      loadAdminFraudAbuse(true);
       loadAdminSecurity(true);
       loadAdminInfrastructure(true);
       loadAdminGrowth(true);

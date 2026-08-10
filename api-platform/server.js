@@ -1450,6 +1450,40 @@ const mobileOpsOperations = {
   ]
 };
 
+const fraudAbuseOperations = {
+  summary: { openCases: 73, botBlocks: "18.4K", paymentRisk: "$6.8K", apiAbuse: 22, falsePositiveRate: "1.7%" },
+  abuseQueues: [
+    { queue: "Account farming", surface: "Signup", volume: 28, owner: "Trust Ops", status: "Reviewing" },
+    { queue: "Prompt spam bursts", surface: "Chat/API", volume: 19, owner: "Safety", status: "Throttled" },
+    { queue: "Referral abuse", surface: "Growth", volume: 14, owner: "Growth Ops", status: "Investigating" },
+    { queue: "Support impersonation", surface: "Support", volume: 12, owner: "Support Trust", status: "Escalated" }
+  ],
+  botDefense: [
+    { signal: "High-velocity signup cluster", market: "Nigeria", action: "Step-up verification", confidence: "91%", status: "Active" },
+    { signal: "Credential stuffing pattern", market: "Pan-African", action: "Rate limit", confidence: "88%", status: "Blocked" },
+    { signal: "Scraper on pricing routes", market: "Unknown", action: "Edge challenge", confidence: "82%", status: "Watching" },
+    { signal: "Synthetic mobile sessions", market: "Kenya", action: "Device trust check", confidence: "76%", status: "Tuning" }
+  ],
+  paymentRisk: [
+    { risk: "Card testing", plan: "Plus", exposure: "$2.1K", owner: "Payments", status: "Blocked" },
+    { risk: "Chargeback cluster", plan: "Pro", exposure: "$3.4K", owner: "Finance", status: "Review" },
+    { risk: "Trial cycling", plan: "Free/Plus", exposure: "$860", owner: "Growth Ops", status: "Limited" },
+    { risk: "Invoice impersonation", plan: "Teams", exposure: "$420", owner: "Revenue Ops", status: "Escalated" }
+  ],
+  enforcement: [
+    { action: "Temporary account hold", count: 31, reviewer: "Trust Ops", appealWindow: "7 days", status: "Active" },
+    { action: "API key suspension", count: 8, reviewer: "Developer Ops", appealWindow: "3 days", status: "Active" },
+    { action: "Payment retry block", count: 17, reviewer: "Finance", appealWindow: "Manual", status: "Queued" },
+    { action: "Market-level rate limit", count: 4, reviewer: "Platform", appealWindow: "24h", status: "Watching" }
+  ],
+  guardrails: [
+    "Fraud controls should protect Lumora without unfairly blocking legitimate users in low-connectivity markets.",
+    "Every enforcement action needs reason, evidence, reviewer, appeal path, and expiry or review date.",
+    "Payment fraud workflows must coordinate with support so affected users receive clear next steps.",
+    "Bot and abuse signals should use privacy-preserving aggregates instead of exposing raw prompts or sensitive account data."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1771,6 +1805,10 @@ function adminMobileOpsOperations() {
   return mobileOpsOperations;
 }
 
+function adminFraudAbuseOperations() {
+  return fraudAbuseOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1825,7 +1863,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "operating:rhythm",
       "data:room",
       "ai:governance",
-      "mobile:operate"
+      "mobile:operate",
+      "fraud:review"
     ],
     audit: [
       accessEvent,
@@ -2237,6 +2276,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminMobileOpsOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/fraud-abuse") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("fraud_abuse_viewed", "Fraud", "Info", "Fraud & Abuse");
+      return sendJson(response, 200, adminFraudAbuseOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -2253,4 +2300,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
