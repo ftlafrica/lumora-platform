@@ -93,6 +93,7 @@ const ADMIN_SECTIONS = [
   { id: "community", label: "Community", desc: "Contributors, corrections, ambassadors, events, ecosystem programs, and trust guardrails." },
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
   { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
+  { id: "unitEconomics", label: "Unit Econ", desc: "Cost per message, plan margins, route economics, margin leaks, and pricing actions." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
   { id: "success", label: "Success", desc: "Enterprise account health, onboarding, renewals, expansion, and customer success playbooks." },
   { id: "sales", label: "Sales", desc: "Enterprise pipeline, demos, procurement, partners, and expansion revenue motions." },
@@ -186,6 +187,8 @@ const DEFAULT_STATE = {
   adminPaymentsLoadedAt: null,
   adminFinance: null,
   adminFinanceLoadedAt: null,
+  adminUnitEconomics: null,
+  adminUnitEconomicsLoadedAt: null,
   adminUsers: null,
   adminUsersLoadedAt: null,
   adminModels: null,
@@ -1104,6 +1107,26 @@ async function loadAdminFinance(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminUnitEconomics(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminUnitEconomicsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/unit-economics`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Unit economics unavailable.");
+    state.adminUnitEconomics = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminUnitEconomicsLoadedAt = Date.now();
+  } catch {
+    state.adminUnitEconomicsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminUsers(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminUsersLoadedAt || 0;
@@ -1332,7 +1355,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "slo:manage", "capacity:plan", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "infrastructure:operate", "slo:manage", "capacity:plan", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2700,6 +2723,42 @@ function adminFinanceData() {
   };
 }
 
+function adminUnitEconomicsData() {
+  return state.adminUnitEconomics || {
+    summary: { costPerMessage: "$0.0038", revenuePerPaidMessage: "$0.021", freeUserCost: "$0.42/mo", paidGrossMargin: "78%", marginLeaks: 5 },
+    routeCosts: [
+      { route: "General chat", cost: "$0.0024/msg", revenue: "$0.018/msg", margin: "87%", status: "Healthy" },
+      { route: "Translation", cost: "$0.0036/msg", revenue: "$0.020/msg", margin: "82%", status: "Healthy" },
+      { route: "Voice transcription", cost: "$0.011/min", revenue: "$0.036/min", margin: "69%", status: "Watch" },
+      { route: "RAG knowledge answer", cost: "$0.0068/msg", revenue: "$0.024/msg", margin: "72%", status: "Optimize" }
+    ],
+    planEconomics: [
+      { plan: "Free", arpu: "$0.00", monthlyCost: "$0.42/user", margin: "Subsidized", status: "Quota watch" },
+      { plan: "Plus", arpu: "$8.00", monthlyCost: "$1.64/user", margin: "79%", status: "Healthy" },
+      { plan: "Pro", arpu: "$18.00", monthlyCost: "$3.82/user", margin: "78%", status: "Healthy" },
+      { plan: "Teams", arpu: "$621/org", monthlyCost: "$108/org", margin: "83%", status: "Expansion" }
+    ],
+    marginLeaks: [
+      { leak: "Repeated translation retries", source: "Model routing", exposure: "$3.1K/mo", owner: "AI Ops", status: "Caching" },
+      { leak: "Voice beta overuse", source: "Free plan", exposure: "$2.4K/mo", owner: "Mobile", status: "Quota review" },
+      { leak: "Uncached RAG retrieval", source: "Knowledge", exposure: "$1.8K/mo", owner: "Knowledge Ops", status: "Batching" },
+      { leak: "Failed payment retry load", source: "Billing", exposure: "$980/mo", owner: "Revenue Ops", status: "Dunning" }
+    ],
+    pricingActions: [
+      { action: "Introduce voice minute bundles", segment: "Plus/Pro", impact: "+6% margin", owner: "Product/Growth", status: "Design" },
+      { action: "Add Teams usage alerts", segment: "Enterprise", impact: "Reduce overage surprise", owner: "Success", status: "Ready" },
+      { action: "Lower-cost fallback for low-risk prompts", segment: "Free", impact: "$2.6K/mo savings", owner: "AI Ops", status: "Testing" },
+      { action: "Cache common education prompts", segment: "Schools", impact: "$1.1K/mo savings", owner: "Knowledge Ops", status: "Queued" }
+    ],
+    guardrails: [
+      "Unit economics should be tracked by plan, route, language, market, model, and surface.",
+      "Free-plan subsidies need explicit quotas, abuse controls, and conversion experiments.",
+      "Pricing decisions should preserve user trust while protecting expensive routes such as voice and RAG.",
+      "Cost dashboards must avoid exposing vendor-sensitive pricing, raw prompts, or private customer data."
+    ]
+  };
+}
+
 function adminUserData() {
   return state.adminUsers || {
     summary: { consumers: "18.4K", organizations: 47, enterpriseSeats: 1280, riskReviews: 92 },
@@ -3630,6 +3689,22 @@ function financeOptimizationRow(item) {
   return `<div class="table-row"><strong>${item.action}</strong><span>${item.savings}</span><span>${item.status}</span></div>`;
 }
 
+function routeEconomicsRow(item) {
+  return `<div class="table-row"><strong>${item.route}</strong><span>${item.cost}</span><span>${item.margin}</span><span>${item.status}</span></div>`;
+}
+
+function planEconomicsRow(item) {
+  return `<div class="table-row"><strong>${item.plan}</strong><span>${item.arpu}</span><span>${item.monthlyCost}</span><span>${item.margin}</span></div>`;
+}
+
+function marginLeakRow(item) {
+  return `<div class="table-row"><strong>${item.leak}</strong><span>${item.source}</span><span>${item.exposure}</span><span>${item.status}</span></div>`;
+}
+
+function pricingActionRow(item) {
+  return `<div class="table-row"><strong>${item.action}</strong><span>${item.segment}</span><span>${item.impact}</span><span>${item.status}</span></div>`;
+}
+
 function userQueueRow(item) {
   return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.owner} / ${item.status}</span></div>`;
 }
@@ -4172,6 +4247,7 @@ function adminView() {
   if (state.adminSection === "platform") loadAdminPlatform();
   if (state.adminSection === "payments") loadAdminPayments();
   if (state.adminSection === "finance") loadAdminFinance();
+  if (state.adminSection === "unitEconomics") loadAdminUnitEconomics();
   if (state.adminSection === "users") loadAdminUsers();
   if (state.adminSection === "support") loadAdminSupport();
   if (state.adminSection === "models") loadAdminModels();
@@ -4332,6 +4408,7 @@ function adminSectionView(section, readiness) {
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
+    unitEconomics: adminUnitEconomics,
     users: adminUsers,
     success: adminCustomerSuccess,
     sales: adminSales,
@@ -4554,6 +4631,49 @@ function adminFinance() {
         <h2>Finance operating controls</h2>
         <div class="admin-checklist">
           ${finance.controls.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminUnitEconomics() {
+  const unit = adminUnitEconomicsData();
+  const summary = unit.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Cost/message", summary.costPerMessage || "$0.0038")}
+      ${metric("Paid rev/message", summary.revenuePerPaidMessage || "$0.021")}
+      ${metric("Free user cost", summary.freeUserCost || "$0.42/mo")}
+      ${metric("Paid margin", summary.paidGrossMargin || "78%")}
+      <section class="admin-card full-admin">
+        <h2>Route economics</h2>
+        <div class="table admin-table-4">
+          ${unit.routeCosts.map(routeEconomicsRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Plan economics</h2>
+        <div class="table admin-table-4">
+          ${unit.planEconomics.map(planEconomicsRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Margin leaks</h2>
+        <div class="table admin-table-4">
+          ${unit.marginLeaks.map(marginLeakRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Pricing and routing actions</h2>
+        <div class="table admin-table-4">
+          ${unit.pricingActions.map(pricingActionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Unit economics guardrails</h2>
+        <div class="admin-checklist">
+          ${unit.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -6654,6 +6774,7 @@ function bindEvents() {
       loadAdminPlatform(true);
       loadAdminPayments(true);
       loadAdminFinance(true);
+      loadAdminUnitEconomics(true);
       loadAdminUsers(true);
       loadAdminSupport(true);
       loadAdminModels(true);

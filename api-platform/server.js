@@ -358,6 +358,40 @@ const financeOperations = {
   ]
 };
 
+const unitEconomicsOperations = {
+  summary: { costPerMessage: "$0.0038", revenuePerPaidMessage: "$0.021", freeUserCost: "$0.42/mo", paidGrossMargin: "78%", marginLeaks: 5 },
+  routeCosts: [
+    { route: "General chat", cost: "$0.0024/msg", revenue: "$0.018/msg", margin: "87%", status: "Healthy" },
+    { route: "Translation", cost: "$0.0036/msg", revenue: "$0.020/msg", margin: "82%", status: "Healthy" },
+    { route: "Voice transcription", cost: "$0.011/min", revenue: "$0.036/min", margin: "69%", status: "Watch" },
+    { route: "RAG knowledge answer", cost: "$0.0068/msg", revenue: "$0.024/msg", margin: "72%", status: "Optimize" }
+  ],
+  planEconomics: [
+    { plan: "Free", arpu: "$0.00", monthlyCost: "$0.42/user", margin: "Subsidized", status: "Quota watch" },
+    { plan: "Plus", arpu: "$8.00", monthlyCost: "$1.64/user", margin: "79%", status: "Healthy" },
+    { plan: "Pro", arpu: "$18.00", monthlyCost: "$3.82/user", margin: "78%", status: "Healthy" },
+    { plan: "Teams", arpu: "$621/org", monthlyCost: "$108/org", margin: "83%", status: "Expansion" }
+  ],
+  marginLeaks: [
+    { leak: "Repeated translation retries", source: "Model routing", exposure: "$3.1K/mo", owner: "AI Ops", status: "Caching" },
+    { leak: "Voice beta overuse", source: "Free plan", exposure: "$2.4K/mo", owner: "Mobile", status: "Quota review" },
+    { leak: "Uncached RAG retrieval", source: "Knowledge", exposure: "$1.8K/mo", owner: "Knowledge Ops", status: "Batching" },
+    { leak: "Failed payment retry load", source: "Billing", exposure: "$980/mo", owner: "Revenue Ops", status: "Dunning" }
+  ],
+  pricingActions: [
+    { action: "Introduce voice minute bundles", segment: "Plus/Pro", impact: "+6% margin", owner: "Product/Growth", status: "Design" },
+    { action: "Add Teams usage alerts", segment: "Enterprise", impact: "Reduce overage surprise", owner: "Success", status: "Ready" },
+    { action: "Lower-cost fallback for low-risk prompts", segment: "Free", impact: "$2.6K/mo savings", owner: "AI Ops", status: "Testing" },
+    { action: "Cache common education prompts", segment: "Schools", impact: "$1.1K/mo savings", owner: "Knowledge Ops", status: "Queued" }
+  ],
+  guardrails: [
+    "Unit economics should be tracked by plan, route, language, market, model, and surface.",
+    "Free-plan subsidies need explicit quotas, abuse controls, and conversion experiments.",
+    "Pricing decisions should preserve user trust while protecting expensive routes such as voice and RAG.",
+    "Cost dashboards must avoid exposing vendor-sensitive pricing, raw prompts, or private customer data."
+  ]
+};
+
 const analyticsOperations = {
   summary: { d30Retention: "68%", churn: "4.2%", activation: "78.2%", voiceUsage: "21%", savedWorkflows: "14.6K" },
   retention: [
@@ -1745,6 +1779,10 @@ function adminFinanceOperations() {
   return financeOperations;
 }
 
+function adminUnitEconomicsOperations() {
+  return unitEconomicsOperations;
+}
+
 function adminAnalyticsOperations() {
   return analyticsOperations;
 }
@@ -1908,6 +1946,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "knowledge:operate",
       "support:review",
       "finance:read",
+      "unit:economics",
       "analytics:read",
       "infrastructure:operate",
       "slo:manage",
@@ -2096,6 +2135,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("finance_cost_center_viewed", "Finance", "Info", "Finance");
       return sendJson(response, 200, adminFinanceOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/unit-economics") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("unit_economics_viewed", "Finance", "Info", "Unit Economics");
+      return sendJson(response, 200, adminUnitEconomicsOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/analytics") {
@@ -2394,4 +2441,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
