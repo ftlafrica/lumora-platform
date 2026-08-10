@@ -1416,6 +1416,40 @@ const aiGovernanceOperations = {
   ]
 };
 
+const mobileOpsOperations = {
+  summary: { activeBuilds: 4, crashFree: "99.42%", betaUsers: "3,840", storeReadiness: "86%", blockedDevices: 12 },
+  releases: [
+    { release: "Android 1.0.8 beta", track: "Play Console beta", rollout: "35%", owner: "Android Lead", status: "Watching" },
+    { release: "iOS 1.0.5 beta", track: "TestFlight", rollout: "28%", owner: "iOS Lead", status: "Crash fix" },
+    { release: "Android offline language pack", track: "Internal", rollout: "0%", owner: "Mobile AI", status: "QA" },
+    { release: "iOS voice consent flow", track: "TestFlight", rollout: "12%", owner: "Trust/Mobile", status: "Review" }
+  ],
+  crashHealth: [
+    { signal: "Android chat composer crash", platform: "Android", affected: "0.38%", owner: "Android QA", status: "Fix testing" },
+    { signal: "iOS audio permission loop", platform: "iOS", affected: "0.21%", owner: "iOS QA", status: "Investigating" },
+    { signal: "Low-memory startup delay", platform: "Android", affected: "1.4%", owner: "Performance", status: "Optimizing" },
+    { signal: "Push token refresh failure", platform: "iOS", affected: "0.12%", owner: "Platform", status: "Watching" }
+  ],
+  storeReadiness: [
+    { item: "Play Store listing", platform: "Android", owner: "Growth", readiness: "92%", status: "Ready" },
+    { item: "App Store privacy nutrition", platform: "iOS", owner: "Data Gov", readiness: "81%", status: "Review" },
+    { item: "Localized screenshots", platform: "Both", owner: "Design", readiness: "74%", status: "Updating" },
+    { item: "Age rating and policy declarations", platform: "Both", owner: "Legal", readiness: "88%", status: "Ready" }
+  ],
+  deviceLabs: [
+    { device: "Samsung A-series low memory", market: "Nigeria/Ghana", coverage: "86%", owner: "Android QA", status: "Active" },
+    { device: "Tecno/Infinix mid-range", market: "West Africa", coverage: "79%", owner: "Android QA", status: "Needs run" },
+    { device: "iPhone 11-13", market: "South Africa/Kenya", coverage: "91%", owner: "iOS QA", status: "Active" },
+    { device: "Tablet classroom mode", market: "Education pilots", coverage: "63%", owner: "QA", status: "Backlog" }
+  ],
+  guardrails: [
+    "Mobile rollouts should pause automatically when crash-free sessions, latency, login, or payment health drops below threshold.",
+    "Android and iOS store claims must match shipped language coverage, privacy behavior, and supported markets.",
+    "Device lab coverage should prioritize high-usage African devices, low-memory conditions, and unreliable networks.",
+    "Voice, memory, payment, and child/education flows need explicit privacy and consent checks before public rollout."
+  ]
+};
+
 function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -1733,6 +1767,10 @@ function adminAiGovernanceOperations() {
   return aiGovernanceOperations;
 }
 
+function adminMobileOpsOperations() {
+  return mobileOpsOperations;
+}
+
 function adminAccessSession(operator = "Seed Admin") {
   const issuedAt = new Date().toISOString();
   const accessEvent = recordAdminEvent("seed_admin_session_issued", "Access", "Info", operator);
@@ -1786,7 +1824,8 @@ function adminAccessSession(operator = "Seed Admin") {
       "okr:manage",
       "operating:rhythm",
       "data:room",
-      "ai:governance"
+      "ai:governance",
+      "mobile:operate"
     ],
     audit: [
       accessEvent,
@@ -2190,6 +2229,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminAiGovernanceOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/mobile-ops") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("mobile_ops_viewed", "Mobile Ops", "Info", "Mobile Operations");
+      return sendJson(response, 200, adminMobileOpsOperations());
+    }
+
     return sendJson(response, 404, { error: "Route not found" });
   } catch (error) {
     return sendJson(response, 400, { error: error.message || "Bad request" });
@@ -2206,4 +2253,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, plans };

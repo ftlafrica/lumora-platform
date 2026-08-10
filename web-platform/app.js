@@ -81,6 +81,7 @@ const ADMIN_SECTIONS = [
   { id: "rhythm", label: "Rhythm", desc: "Leadership rituals, decisions, action ownership, follow-up health, and operating guardrails." },
   { id: "dataRoom", label: "Data Room", desc: "Controlled rooms, evidence packs, access requests, exports, and audit-safe sharing." },
   { id: "aiGovernance", label: "AI Gov", desc: "Model approvals, risk tiers, deployment gates, policy exceptions, and review sign-offs." },
+  { id: "mobileOps", label: "Mobile Ops", desc: "Android/iOS releases, crash health, store readiness, device labs, and rollout guardrails." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
   { id: "communications", label: "Comms", desc: "Broadcasts, campaigns, templates, incident notices, push/email health, and delivery guardrails." },
@@ -234,6 +235,8 @@ const DEFAULT_STATE = {
   adminDataRoomLoadedAt: null,
   adminAiGovernance: null,
   adminAiGovernanceLoadedAt: null,
+  adminMobileOps: null,
+  adminMobileOpsLoadedAt: null,
   adminCommunications: null,
   adminCommunicationsLoadedAt: null,
   adminLanguages: null,
@@ -832,6 +835,26 @@ async function loadAdminAiGovernance(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminMobileOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminMobileOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/mobile-ops`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Mobile ops unavailable.");
+    state.adminMobileOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminMobileOpsLoadedAt = Date.now();
+  } catch {
+    state.adminMobileOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminCommunications(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminCommunicationsLoadedAt || 0;
@@ -1240,7 +1263,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2446,6 +2469,42 @@ function adminAiGovernanceData() {
   };
 }
 
+function adminMobileOpsData() {
+  return state.adminMobileOps || {
+    summary: { activeBuilds: 4, crashFree: "99.42%", betaUsers: "3,840", storeReadiness: "86%", blockedDevices: 12 },
+    releases: [
+      { release: "Android 1.0.8 beta", track: "Play Console beta", rollout: "35%", owner: "Android Lead", status: "Watching" },
+      { release: "iOS 1.0.5 beta", track: "TestFlight", rollout: "28%", owner: "iOS Lead", status: "Crash fix" },
+      { release: "Android offline language pack", track: "Internal", rollout: "0%", owner: "Mobile AI", status: "QA" },
+      { release: "iOS voice consent flow", track: "TestFlight", rollout: "12%", owner: "Trust/Mobile", status: "Review" }
+    ],
+    crashHealth: [
+      { signal: "Android chat composer crash", platform: "Android", affected: "0.38%", owner: "Android QA", status: "Fix testing" },
+      { signal: "iOS audio permission loop", platform: "iOS", affected: "0.21%", owner: "iOS QA", status: "Investigating" },
+      { signal: "Low-memory startup delay", platform: "Android", affected: "1.4%", owner: "Performance", status: "Optimizing" },
+      { signal: "Push token refresh failure", platform: "iOS", affected: "0.12%", owner: "Platform", status: "Watching" }
+    ],
+    storeReadiness: [
+      { item: "Play Store listing", platform: "Android", owner: "Growth", readiness: "92%", status: "Ready" },
+      { item: "App Store privacy nutrition", platform: "iOS", owner: "Data Gov", readiness: "81%", status: "Review" },
+      { item: "Localized screenshots", platform: "Both", owner: "Design", readiness: "74%", status: "Updating" },
+      { item: "Age rating and policy declarations", platform: "Both", owner: "Legal", readiness: "88%", status: "Ready" }
+    ],
+    deviceLabs: [
+      { device: "Samsung A-series low memory", market: "Nigeria/Ghana", coverage: "86%", owner: "Android QA", status: "Active" },
+      { device: "Tecno/Infinix mid-range", market: "West Africa", coverage: "79%", owner: "Android QA", status: "Needs run" },
+      { device: "iPhone 11-13", market: "South Africa/Kenya", coverage: "91%", owner: "iOS QA", status: "Active" },
+      { device: "Tablet classroom mode", market: "Education pilots", coverage: "63%", owner: "QA", status: "Backlog" }
+    ],
+    guardrails: [
+      "Mobile rollouts should pause automatically when crash-free sessions, latency, login, or payment health drops below threshold.",
+      "Android and iOS store claims must match shipped language coverage, privacy behavior, and supported markets.",
+      "Device lab coverage should prioritize high-usage African devices, low-memory conditions, and unreliable networks.",
+      "Voice, memory, payment, and child/education flows need explicit privacy and consent checks before public rollout."
+    ]
+  };
+}
+
 function adminPaymentData() {
   return state.adminPayments || {
     plans: ADMIN_PAYMENTS,
@@ -3318,6 +3377,22 @@ function governanceReviewRow(item) {
   return `<div class="table-row"><strong>${item.review}</strong><span>${item.model}</span><span>${item.due}</span><span>${item.status}</span></div>`;
 }
 
+function mobileReleaseRow(item) {
+  return `<div class="table-row"><strong>${item.release}</strong><span>${item.track}</span><span>${item.rollout}</span><span>${item.status}</span></div>`;
+}
+
+function mobileCrashRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.platform}</span><span>${item.affected}</span><span>${item.status}</span></div>`;
+}
+
+function storeReadinessRow(item) {
+  return `<div class="table-row"><strong>${item.item}</strong><span>${item.platform}</span><span>${item.readiness}</span><span>${item.status}</span></div>`;
+}
+
+function deviceLabRow(item) {
+  return `<div class="table-row"><strong>${item.device}</strong><span>${item.market}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
 function paymentPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.users}</span><span>${item.mrr}</span><span>${item.status}</span></div>`;
 }
@@ -3904,6 +3979,7 @@ function adminView() {
   if (state.adminSection === "rhythm") loadAdminOperatingRhythm();
   if (state.adminSection === "dataRoom") loadAdminDataRoom();
   if (state.adminSection === "aiGovernance") loadAdminAiGovernance();
+  if (state.adminSection === "mobileOps") loadAdminMobileOps();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "success") loadAdminCustomerSuccess();
   if (state.adminSection === "sales") loadAdminSales();
@@ -4024,6 +4100,7 @@ function adminSectionView(section, readiness) {
     rhythm: adminOperatingRhythm,
     dataRoom: adminDataRoom,
     aiGovernance: adminAiGovernance,
+    mobileOps: adminMobileOps,
     communications: adminCommunications,
     payments: adminPayments,
     finance: adminFinance,
@@ -5368,6 +5445,49 @@ function adminAiGovernance() {
   `;
 }
 
+function adminMobileOps() {
+  const mobile = adminMobileOpsData();
+  const summary = mobile.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active builds", summary.activeBuilds || "4")}
+      ${metric("Crash-free", summary.crashFree || "99.42%")}
+      ${metric("Beta users", summary.betaUsers || "3,840")}
+      ${metric("Store ready", summary.storeReadiness || "86%")}
+      <section class="admin-card full-admin">
+        <h2>Mobile releases</h2>
+        <div class="table admin-table-4">
+          ${mobile.releases.map(mobileReleaseRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Crash and performance health</h2>
+        <div class="table admin-table-4">
+          ${mobile.crashHealth.map(mobileCrashRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Store readiness</h2>
+        <div class="table admin-table-4">
+          ${mobile.storeReadiness.map(storeReadinessRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Device lab coverage</h2>
+        <div class="table admin-table-4">
+          ${mobile.deviceLabs.map(deviceLabRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Mobile rollout guardrails</h2>
+        <div class="admin-checklist">
+          ${mobile.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminCommunications() {
   const communications = adminCommunicationsData();
   const summary = communications.summary || {};
@@ -6206,6 +6326,7 @@ function bindEvents() {
       loadAdminOperatingRhythm(true);
       loadAdminDataRoom(true);
       loadAdminAiGovernance(true);
+      loadAdminMobileOps(true);
       loadAdminCommunications(true);
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);
