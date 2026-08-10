@@ -462,6 +462,40 @@ const reliabilitySloOperations = {
   ]
 };
 
+const capacityPlanningOperations = {
+  summary: { forecastWindow: "90 days", demandGrowth: "+42%", gpuHeadroom: "31%", dbHeadroom: "44%", capacityRisks: 4 },
+  forecasts: [
+    { forecast: "Mobile launch traffic", surface: "Android/iOS", expectedLift: "+38%", peakWindow: "Sep launch", status: "Preparing" },
+    { forecast: "Creator campaign spike", surface: "Web chat", expectedLift: "+24%", peakWindow: "Aug 22", status: "Covered" },
+    { forecast: "Enterprise Teams pilot", surface: "API/Teams", expectedLift: "+18%", peakWindow: "Sep pilots", status: "Watch" },
+    { forecast: "Language expansion benchmarks", surface: "AI evals", expectedLift: "+31%", peakWindow: "Weekly", status: "Scheduled" }
+  ],
+  computePools: [
+    { pool: "GPU inference A", region: "West Africa edge", utilization: "69%", headroom: "31%", status: "Healthy" },
+    { pool: "GPU inference B", region: "EU fallback", utilization: "42%", headroom: "58%", status: "Standby" },
+    { pool: "CPU realtime workers", region: "Africa/EU", utilization: "61%", headroom: "39%", status: "Healthy" },
+    { pool: "Embedding batch workers", region: "Global", utilization: "78%", headroom: "22%", status: "Watch" }
+  ],
+  storage: [
+    { store: "Primary Postgres", area: "Accounts/billing", growth: "+14% m/m", headroom: "44%", status: "Healthy" },
+    { store: "Vector database", area: "RAG/knowledge", growth: "+29% m/m", headroom: "36%", status: "Scale plan" },
+    { store: "Object storage", area: "Exports/media", growth: "+21% m/m", headroom: "52%", status: "Healthy" },
+    { store: "Audit log archive", area: "Admin/security", growth: "+18% m/m", headroom: "48%", status: "Healthy" }
+  ],
+  plans: [
+    { plan: "Reserve GPU burst pool", owner: "Infrastructure", impact: "Reduce launch latency risk", eta: "Aug 16", status: "Approved" },
+    { plan: "Shard vector index by region", owner: "Knowledge Ops", impact: "Improve retrieval headroom", eta: "Aug 23", status: "Design" },
+    { plan: "Prewarm mobile API edge", owner: "Platform", impact: "Lower first-chat latency", eta: "Aug 14", status: "In progress" },
+    { plan: "Queue autoscaling policy", owner: "SRE", impact: "Protect eval and webhook queues", eta: "Aug 18", status: "Review" }
+  ],
+  guardrails: [
+    "Capacity plans should be tied to product launches, growth campaigns, enterprise pilots, and language expansion forecasts.",
+    "High-traffic routes need prewarming, rollback, and throttling plans before public launch windows.",
+    "Compute and storage scaling should balance cost controls with customer-facing SLO protection.",
+    "Capacity dashboards must avoid exposing infrastructure secrets, raw customer data, or vendor-sensitive pricing."
+  ]
+};
+
 const securityOperations = {
   summary: { criticalThreats: 0, mfaCoverage: "96%", ssoOrgs: 14, auditIntegrity: "Verified", dataRequests: 9 },
   threats: [
@@ -1723,6 +1757,10 @@ function adminReliabilitySloOperations() {
   return reliabilitySloOperations;
 }
 
+function adminCapacityPlanningOperations() {
+  return capacityPlanningOperations;
+}
+
 function adminSecurityOperations() {
   return securityOperations;
 }
@@ -1873,6 +1911,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "analytics:read",
       "infrastructure:operate",
       "slo:manage",
+      "capacity:plan",
       "security:operate",
       "reporting:export",
       "communications:send",
@@ -2081,6 +2120,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("reliability_slos_viewed", "Reliability", "Info", "SLOs");
       return sendJson(response, 200, adminReliabilitySloOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/capacity-planning") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("capacity_planning_viewed", "Capacity", "Info", "Capacity Planning");
+      return sendJson(response, 200, adminCapacityPlanningOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/security") {
@@ -2347,4 +2394,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminAnalyticsOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminCommunicationsOperations, adminLanguageOperations, adminDataGovernanceOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

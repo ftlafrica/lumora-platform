@@ -108,6 +108,7 @@ const ADMIN_SECTIONS = [
   { id: "platform", label: "Platform", desc: "Web, mobile, API, infrastructure, incidents, releases, and feature flags." },
   { id: "infrastructure", label: "Infrastructure", desc: "Services, queues, GPU clusters, databases, incidents, uptime, and reliability guardrails." },
   { id: "slos", label: "SLOs", desc: "Customer-facing uptime, error budgets, regional reliability, status page, and SLA guardrails." },
+  { id: "capacity", label: "Capacity", desc: "Demand forecasts, GPU headroom, storage growth, scaling plans, and capacity guardrails." },
   { id: "api", label: "API", desc: "Keys, quotas, SDKs, webhooks, rate limits, errors, and partner integration health." },
   { id: "integrations", label: "Integrations", desc: "Connected services, partner systems, webhook retries, secrets, and vendor health." },
   { id: "access", label: "Access", desc: "Seed-admin grants, RBAC, audit logs, compliance, data residency, and SSO." },
@@ -259,6 +260,8 @@ const DEFAULT_STATE = {
   adminInfrastructureLoadedAt: null,
   adminReliabilitySlos: null,
   adminReliabilitySlosLoadedAt: null,
+  adminCapacityPlanning: null,
+  adminCapacityPlanningLoadedAt: null,
   adminAccess: null,
   adminAccessLoadedAt: null,
   adminActions: null,
@@ -436,6 +439,26 @@ async function loadAdminReliabilitySlos(force = false) {
     state.adminReliabilitySlosLoadedAt = Date.now();
   } catch {
     state.adminReliabilitySlosLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminCapacityPlanning(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminCapacityPlanningLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/capacity-planning`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Capacity planning unavailable.");
+    state.adminCapacityPlanning = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminCapacityPlanningLoadedAt = Date.now();
+  } catch {
+    state.adminCapacityPlanningLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -1309,7 +1332,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "slo:manage", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "api:manage", "knowledge:operate", "support:review", "finance:read", "analytics:read", "infrastructure:operate", "slo:manage", "capacity:plan", "security:operate", "reporting:export", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "language:review", "data:govern", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1501,6 +1524,42 @@ function adminReliabilitySlosData() {
       "High burn-rate services need rollback, capacity, or feature-throttle decisions before budget exhaustion.",
       "Status-page messaging should be fast, accurate, region-aware, and coordinated with support macros.",
       "Enterprise SLA reporting must use aggregated reliability data without exposing internal secrets or raw user events."
+    ]
+  };
+}
+
+function adminCapacityPlanningData() {
+  return state.adminCapacityPlanning || {
+    summary: { forecastWindow: "90 days", demandGrowth: "+42%", gpuHeadroom: "31%", dbHeadroom: "44%", capacityRisks: 4 },
+    forecasts: [
+      { forecast: "Mobile launch traffic", surface: "Android/iOS", expectedLift: "+38%", peakWindow: "Sep launch", status: "Preparing" },
+      { forecast: "Creator campaign spike", surface: "Web chat", expectedLift: "+24%", peakWindow: "Aug 22", status: "Covered" },
+      { forecast: "Enterprise Teams pilot", surface: "API/Teams", expectedLift: "+18%", peakWindow: "Sep pilots", status: "Watch" },
+      { forecast: "Language expansion benchmarks", surface: "AI evals", expectedLift: "+31%", peakWindow: "Weekly", status: "Scheduled" }
+    ],
+    computePools: [
+      { pool: "GPU inference A", region: "West Africa edge", utilization: "69%", headroom: "31%", status: "Healthy" },
+      { pool: "GPU inference B", region: "EU fallback", utilization: "42%", headroom: "58%", status: "Standby" },
+      { pool: "CPU realtime workers", region: "Africa/EU", utilization: "61%", headroom: "39%", status: "Healthy" },
+      { pool: "Embedding batch workers", region: "Global", utilization: "78%", headroom: "22%", status: "Watch" }
+    ],
+    storage: [
+      { store: "Primary Postgres", area: "Accounts/billing", growth: "+14% m/m", headroom: "44%", status: "Healthy" },
+      { store: "Vector database", area: "RAG/knowledge", growth: "+29% m/m", headroom: "36%", status: "Scale plan" },
+      { store: "Object storage", area: "Exports/media", growth: "+21% m/m", headroom: "52%", status: "Healthy" },
+      { store: "Audit log archive", area: "Admin/security", growth: "+18% m/m", headroom: "48%", status: "Healthy" }
+    ],
+    plans: [
+      { plan: "Reserve GPU burst pool", owner: "Infrastructure", impact: "Reduce launch latency risk", eta: "Aug 16", status: "Approved" },
+      { plan: "Shard vector index by region", owner: "Knowledge Ops", impact: "Improve retrieval headroom", eta: "Aug 23", status: "Design" },
+      { plan: "Prewarm mobile API edge", owner: "Platform", impact: "Lower first-chat latency", eta: "Aug 14", status: "In progress" },
+      { plan: "Queue autoscaling policy", owner: "SRE", impact: "Protect eval and webhook queues", eta: "Aug 18", status: "Review" }
+    ],
+    guardrails: [
+      "Capacity plans should be tied to product launches, growth campaigns, enterprise pilots, and language expansion forecasts.",
+      "High-traffic routes need prewarming, rollback, and throttling plans before public launch windows.",
+      "Compute and storage scaling should balance cost controls with customer-facing SLO protection.",
+      "Capacity dashboards must avoid exposing infrastructure secrets, raw customer data, or vendor-sensitive pricing."
     ]
   };
 }
@@ -3047,6 +3106,22 @@ function statusPageRow(item) {
   return `<div class="table-row"><strong>${item.item}</strong><span>${item.audience}</span><span>${item.readiness}</span><span>${item.status}</span></div>`;
 }
 
+function capacityForecastRow(item) {
+  return `<div class="table-row"><strong>${item.forecast}</strong><span>${item.surface}</span><span>${item.expectedLift}</span><span>${item.status}</span></div>`;
+}
+
+function computePoolRow(item) {
+  return `<div class="table-row"><strong>${item.pool}</strong><span>${item.region}</span><span>${item.headroom}</span><span>${item.status}</span></div>`;
+}
+
+function storageCapacityRow(item) {
+  return `<div class="table-row"><strong>${item.store}</strong><span>${item.area}</span><span>${item.headroom}</span><span>${item.status}</span></div>`;
+}
+
+function scalingPlanRow(item) {
+  return `<div class="table-row"><strong>${item.plan}</strong><span>${item.owner}</span><span>${item.eta}</span><span>${item.status}</span></div>`;
+}
+
 function securityThreatRow(item) {
   return `<div class="table-row"><strong>${item.signal}</strong><span>${item.count} events</span><span>${item.severity} / ${item.status}</span><span>${item.owner}</span></div>`;
 }
@@ -4108,6 +4183,7 @@ function adminView() {
   if (state.adminSection === "security") loadAdminSecurity();
   if (state.adminSection === "infrastructure") loadAdminInfrastructure();
   if (state.adminSection === "slos") loadAdminReliabilitySlos();
+  if (state.adminSection === "capacity") loadAdminCapacityPlanning();
   if (state.adminSection === "growth") loadAdminGrowth();
   if (state.adminSection === "analytics") loadAdminAnalytics();
   if (state.adminSection === "experiments") loadAdminExperiments();
@@ -4271,6 +4347,7 @@ function adminSectionView(section, readiness) {
     platform: adminPlatform,
     infrastructure: adminInfrastructure,
     slos: adminReliabilitySlos,
+    capacity: adminCapacityPlanning,
     api: adminApiManagement,
     integrations: adminIntegrations,
     access: adminAccess,
@@ -6154,6 +6231,49 @@ function adminReliabilitySlos() {
   `;
 }
 
+function adminCapacityPlanning() {
+  const capacity = adminCapacityPlanningData();
+  const summary = capacity.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Forecast window", summary.forecastWindow || "90 days")}
+      ${metric("Demand growth", summary.demandGrowth || "+42%")}
+      ${metric("GPU headroom", summary.gpuHeadroom || "31%")}
+      ${metric("Capacity risks", summary.capacityRisks || "4")}
+      <section class="admin-card full-admin">
+        <h2>Demand forecasts</h2>
+        <div class="table admin-table-4">
+          ${capacity.forecasts.map(capacityForecastRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Compute pools</h2>
+        <div class="table admin-table-4">
+          ${capacity.computePools.map(computePoolRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Storage capacity</h2>
+        <div class="table admin-table-4">
+          ${capacity.storage.map(storageCapacityRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Scaling plans</h2>
+        <div class="table admin-table-4">
+          ${capacity.plans.map(scalingPlanRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Capacity guardrails</h2>
+        <div class="admin-checklist">
+          ${capacity.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminApiManagement() {
   const api = adminApiData();
   const summary = api.summary || {};
@@ -6545,6 +6665,7 @@ function bindEvents() {
       loadAdminSecurity(true);
       loadAdminInfrastructure(true);
       loadAdminReliabilitySlos(true);
+      loadAdminCapacityPlanning(true);
       loadAdminGrowth(true);
       loadAdminAnalytics(true);
       loadAdminExperiments(true);
