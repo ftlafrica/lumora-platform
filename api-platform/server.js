@@ -821,6 +821,47 @@ const languageOperations = {
   ]
 };
 
+const localizationContentOperations = {
+  summary: { localesInProgress: 18, stringsReady: "84%", glossaryTerms: 420, reviewerBacklog: 96, releaseBlockers: 3 },
+  localeReadiness: [
+    { locale: "English + Nigerian Pidgin", surface: "Web chat", completion: "96%", reviewer: "Community QA", status: "Ready" },
+    { locale: "Yoruba", surface: "Welcome/Auth/Chat", completion: "88%", reviewer: "Yoruba reviewers", status: "Review" },
+    { locale: "Swahili", surface: "Web + mobile beta", completion: "82%", reviewer: "East Africa QA", status: "Review" },
+    { locale: "Hausa", surface: "Core chat flows", completion: "74%", reviewer: "Hausa reviewers", status: "Blocked terms" },
+    { locale: "Zulu/Xhosa", surface: "Mobile onboarding", completion: "68%", reviewer: "South Africa QA", status: "Drafting" }
+  ],
+  contentQueues: [
+    { queue: "New UI strings", count: 128, surface: "Admin + mobile", owner: "Localization", status: "Translating" },
+    { queue: "Tone-sensitive copy", count: 42, surface: "Auth, plans, billing", owner: "Content Design", status: "Native review" },
+    { queue: "Safety policy translations", count: 31, surface: "Safety/support", owner: "Trust", status: "Legal review" },
+    { queue: "Release notes", count: 18, surface: "Web/mobile", owner: "Comms", status: "Queued" }
+  ],
+  glossary: [
+    { term: "Language Passport", treatment: "Keep brand phrase + explain locally", languages: "All priority", owner: "Brand", status: "Approved" },
+    { term: "Bridge language", treatment: "Translate concept, avoid literal confusion", languages: "Yoruba, Swahili, Hausa", owner: "Language QA", status: "Review" },
+    { term: "Memory", treatment: "Privacy-safe wording", languages: "All", owner: "Privacy", status: "Approved" },
+    { term: "Seed Admin", treatment: "Do not localize in UI", languages: "Admin only", owner: "Security", status: "Locked" }
+  ],
+  reviewerWorkflow: [
+    { workflow: "Native linguistic review", reviewers: 18, backlog: 96, sla: "48h", status: "Busy" },
+    { workflow: "Cultural tone pass", reviewers: 9, backlog: 44, sla: "72h", status: "Healthy" },
+    { workflow: "Legal/safety copy review", reviewers: 4, backlog: 31, sla: "5 days", status: "Watch" },
+    { workflow: "Mobile truncation QA", reviewers: 6, backlog: 52, sla: "Release gate", status: "Testing" }
+  ],
+  releaseChecks: [
+    { check: "No missing production strings", surface: "Web", owner: "Frontend", status: "Pass" },
+    { check: "Mobile small-screen truncation", surface: "Android/iOS", owner: "Mobile", status: "Watch" },
+    { check: "Glossary consistency", surface: "All priority locales", owner: "Localization", status: "Review" },
+    { check: "Safety/legal approved wording", surface: "Policy + appeals", owner: "Trust/Legal", status: "Blocked" }
+  ],
+  guardrails: [
+    "Localized product copy must preserve meaning, tone, safety, privacy, and plan/billing accuracy.",
+    "Native reviewers should approve culturally sensitive copy before public release in priority markets.",
+    "Mobile localization must test truncation, right-sized type, and input clarity on small screens.",
+    "Glossary and translation memory should avoid regional bias while keeping Lumora understandable across Africa."
+  ]
+};
+
 const dataGovernanceOperations = {
   summary: { retentionPolicies: 9, consentCoverage: "88%", residencyRegions: 4, deletionRequests: 4, piiFindings: 29 },
   retention: [
@@ -2025,6 +2066,10 @@ function adminLanguageOperations() {
   return languageOperations;
 }
 
+function adminLocalizationContentOperations() {
+  return localizationContentOperations;
+}
+
 function adminDataGovernanceOperations() {
   return dataGovernanceOperations;
 }
@@ -2172,6 +2217,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "warehouse:operate",
       "communications:send",
       "language:review",
+      "localization:manage",
       "data:govern",
       "privacy:operate",
       "integrations:manage",
@@ -2460,6 +2506,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminLanguageOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/localization-content") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("localization_content_viewed", "Localization", "Info", "Content Ops");
+      return sendJson(response, 200, adminLocalizationContentOperations());
+    }
+
     if (request.method === "GET" && url.pathname === "/v1/admin/data-governance") {
       if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
         return sendJson(response, 403, { error: "Seed admin access required" });
@@ -2700,4 +2754,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

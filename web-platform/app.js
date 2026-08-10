@@ -104,6 +104,7 @@ const ADMIN_SECTIONS = [
   { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
   { id: "evaluations", label: "Evals", desc: "Model eval suites, benchmark runs, regressions, human samples, and release gates." },
   { id: "languages", label: "Languages", desc: "Country coverage, dialect readiness, reviewer queues, benchmarks, and expansion quality." },
+  { id: "localization", label: "Localize", desc: "UI copy localization, translation QA, glossary control, reviewer workflow, and release guardrails." },
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
   { id: "privacy", label: "Privacy Ops", desc: "DSAR exports, deletion queues, correction requests, legal holds, residency reviews, and privacy guardrails." },
   { id: "knowledge", label: "Knowledge", desc: "RAG collections, sources, indexing, embeddings, permissions, freshness, and quality queues." },
@@ -258,6 +259,8 @@ const DEFAULT_STATE = {
   adminNotificationDeliveryLoadedAt: null,
   adminLanguages: null,
   adminLanguagesLoadedAt: null,
+  adminLocalizationContent: null,
+  adminLocalizationContentLoadedAt: null,
   adminDataGovernance: null,
   adminDataGovernanceLoadedAt: null,
   adminPrivacyRequests: null,
@@ -1002,6 +1005,26 @@ async function loadAdminLanguages(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminLocalizationContent(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminLocalizationContentLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/localization-content`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Localization content unavailable.");
+    state.adminLocalizationContent = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminLocalizationContentLoadedAt = Date.now();
+  } catch {
+    state.adminLocalizationContentLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminDataGovernance(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminDataGovernanceLoadedAt || 0;
@@ -1470,7 +1493,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "identity:operate", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "slo:manage", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "identity:operate", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "slo:manage", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1927,6 +1950,49 @@ function adminLanguagesData() {
       "Dialect fixes must preserve meaning, tone, safety context, and user-selected bridge language.",
       "Low-confidence outputs should admit uncertainty and offer alternatives instead of guessing.",
       "Country expansion requires readiness, reviewer coverage, safety policy, and model route validation."
+    ]
+  };
+}
+
+function adminLocalizationContentData() {
+  return state.adminLocalizationContent || {
+    summary: { localesInProgress: 18, stringsReady: "84%", glossaryTerms: 420, reviewerBacklog: 96, releaseBlockers: 3 },
+    localeReadiness: [
+      { locale: "English + Nigerian Pidgin", surface: "Web chat", completion: "96%", reviewer: "Community QA", status: "Ready" },
+      { locale: "Yoruba", surface: "Welcome/Auth/Chat", completion: "88%", reviewer: "Yoruba reviewers", status: "Review" },
+      { locale: "Swahili", surface: "Web + mobile beta", completion: "82%", reviewer: "East Africa QA", status: "Review" },
+      { locale: "Hausa", surface: "Core chat flows", completion: "74%", reviewer: "Hausa reviewers", status: "Blocked terms" },
+      { locale: "Zulu/Xhosa", surface: "Mobile onboarding", completion: "68%", reviewer: "South Africa QA", status: "Drafting" }
+    ],
+    contentQueues: [
+      { queue: "New UI strings", count: 128, surface: "Admin + mobile", owner: "Localization", status: "Translating" },
+      { queue: "Tone-sensitive copy", count: 42, surface: "Auth, plans, billing", owner: "Content Design", status: "Native review" },
+      { queue: "Safety policy translations", count: 31, surface: "Safety/support", owner: "Trust", status: "Legal review" },
+      { queue: "Release notes", count: 18, surface: "Web/mobile", owner: "Comms", status: "Queued" }
+    ],
+    glossary: [
+      { term: "Language Passport", treatment: "Keep brand phrase + explain locally", languages: "All priority", owner: "Brand", status: "Approved" },
+      { term: "Bridge language", treatment: "Translate concept, avoid literal confusion", languages: "Yoruba, Swahili, Hausa", owner: "Language QA", status: "Review" },
+      { term: "Memory", treatment: "Privacy-safe wording", languages: "All", owner: "Privacy", status: "Approved" },
+      { term: "Seed Admin", treatment: "Do not localize in UI", languages: "Admin only", owner: "Security", status: "Locked" }
+    ],
+    reviewerWorkflow: [
+      { workflow: "Native linguistic review", reviewers: 18, backlog: 96, sla: "48h", status: "Busy" },
+      { workflow: "Cultural tone pass", reviewers: 9, backlog: 44, sla: "72h", status: "Healthy" },
+      { workflow: "Legal/safety copy review", reviewers: 4, backlog: 31, sla: "5 days", status: "Watch" },
+      { workflow: "Mobile truncation QA", reviewers: 6, backlog: 52, sla: "Release gate", status: "Testing" }
+    ],
+    releaseChecks: [
+      { check: "No missing production strings", surface: "Web", owner: "Frontend", status: "Pass" },
+      { check: "Mobile small-screen truncation", surface: "Android/iOS", owner: "Mobile", status: "Watch" },
+      { check: "Glossary consistency", surface: "All priority locales", owner: "Localization", status: "Review" },
+      { check: "Safety/legal approved wording", surface: "Policy + appeals", owner: "Trust/Legal", status: "Blocked" }
+    ],
+    guardrails: [
+      "Localized product copy must preserve meaning, tone, safety, privacy, and plan/billing accuracy.",
+      "Native reviewers should approve culturally sensitive copy before public release in priority markets.",
+      "Mobile localization must test truncation, right-sized type, and input clarity on small screens.",
+      "Glossary and translation memory should avoid regional bias while keeping Lumora understandable across Africa."
     ]
   };
 }
@@ -3604,6 +3670,26 @@ function languageBenchmarkRow(item) {
   return `<div class="table-row"><strong>${item.benchmark}</strong><span>${item.score}</span><span>${item.gap}</span><span>${item.owner}</span></div>`;
 }
 
+function localizationReadinessRow(item) {
+  return `<div class="table-row"><strong>${item.locale}</strong><span>${item.surface}</span><span>${item.completion}</span><span>${item.status}</span></div>`;
+}
+
+function localizationQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} strings</span><span>${item.surface}</span><span>${item.status}</span></div>`;
+}
+
+function glossaryTermRow(item) {
+  return `<div class="table-row"><strong>${item.term}</strong><span>${item.treatment}</span><span>${item.languages}</span><span>${item.status}</span></div>`;
+}
+
+function localizationReviewerRow(item) {
+  return `<div class="table-row"><strong>${item.workflow}</strong><span>${item.reviewers} reviewers</span><span>${item.backlog} backlog</span><span>${item.status}</span></div>`;
+}
+
+function localizationReleaseRow(item) {
+  return `<div class="table-row"><strong>${item.check}</strong><span>${item.surface}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
 function retentionPolicyRow(item) {
   return `<div class="table-row"><strong>${item.policy}</strong><span>${item.scope}</span><span>${item.duration}</span><span>${item.status}</span></div>`;
 }
@@ -4668,6 +4754,7 @@ function adminView() {
   if (state.adminSection === "models") loadAdminModels();
   if (state.adminSection === "evaluations") loadAdminEvaluations();
   if (state.adminSection === "languages") loadAdminLanguages();
+  if (state.adminSection === "localization") loadAdminLocalizationContent();
   if (state.adminSection === "data") loadAdminDataGovernance();
   if (state.adminSection === "privacy") loadAdminPrivacyRequests();
   if (state.adminSection === "safety") loadAdminSafety();
@@ -4839,6 +4926,7 @@ function adminSectionView(section, readiness) {
     models: () => adminModels(readiness),
     evaluations: adminEvaluations,
     languages: adminLanguages,
+    localization: adminLocalizationContent,
     data: adminDataGovernance,
     privacy: adminPrivacyRequests,
     knowledge: adminKnowledge,
@@ -6534,6 +6622,55 @@ function adminLanguages() {
   `;
 }
 
+function adminLocalizationContent() {
+  const localization = adminLocalizationContentData();
+  const summary = localization.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Locales in progress", summary.localesInProgress || "18")}
+      ${metric("Strings ready", summary.stringsReady || "84%")}
+      ${metric("Glossary terms", summary.glossaryTerms || "420")}
+      ${metric("Release blockers", summary.releaseBlockers || "3")}
+      <section class="admin-card full-admin">
+        <h2>Locale readiness</h2>
+        <div class="table admin-table-4">
+          ${localization.localeReadiness.map(localizationReadinessRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Content queues</h2>
+        <div class="table admin-table-4">
+          ${localization.contentQueues.map(localizationQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Glossary and termbase</h2>
+        <div class="table admin-table-4">
+          ${localization.glossary.map(glossaryTermRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Reviewer workflow</h2>
+        <div class="table admin-table-4">
+          ${localization.reviewerWorkflow.map(localizationReviewerRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Release checks</h2>
+        <div class="table admin-table-4">
+          ${localization.releaseChecks.map(localizationReleaseRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Localization guardrails</h2>
+        <div class="admin-checklist">
+          ${localization.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminDataGovernance() {
   const data = adminDataGovernanceData();
   const summary = data.summary || {};
@@ -7444,6 +7581,7 @@ function bindEvents() {
       loadAdminModels(true);
       loadAdminEvaluations(true);
       loadAdminLanguages(true);
+      loadAdminLocalizationContent(true);
       loadAdminDataGovernance(true);
       loadAdminPrivacyRequests(true);
       loadAdminSafety(true);
