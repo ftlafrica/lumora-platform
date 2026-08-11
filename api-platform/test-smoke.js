@@ -20,6 +20,7 @@ const {
   adminApiOperations,
   adminKnowledgeOperations,
   adminSupportOperations,
+  adminCustomerExperienceOperations,
   adminFinanceOperations,
   adminUnitEconomicsOperations,
   adminAnalyticsOperations,
@@ -98,6 +99,7 @@ assert.ok(accessSession.scopes.includes("identity:operate"));
 assert.ok(accessSession.scopes.includes("api:manage"));
 assert.ok(accessSession.scopes.includes("knowledge:operate"));
 assert.ok(accessSession.scopes.includes("support:review"));
+assert.ok(accessSession.scopes.includes("cx:review"));
 assert.ok(accessSession.scopes.includes("finance:read"));
 assert.ok(accessSession.scopes.includes("unit:economics"));
 assert.ok(accessSession.scopes.includes("analytics:read"));
@@ -160,6 +162,7 @@ const adminContracts = [
   ["api", adminApiOperations(), data => data.summary && Array.isArray(data.keys) && Array.isArray(data.quotas) && Array.isArray(data.webhooks) && Array.isArray(data.sdks)],
   ["knowledge", adminKnowledgeOperations(), data => data.summary && Array.isArray(data.collections) && Array.isArray(data.sources) && Array.isArray(data.indexingJobs)],
   ["support", adminSupportOperations(), data => data.summary && Array.isArray(data.queues) && Array.isArray(data.escalations) && Array.isArray(data.boundaries)],
+  ["customer experience", adminCustomerExperienceOperations(), data => data.summary && Array.isArray(data.sentimentThemes) && Array.isArray(data.feedbackChannels) && Array.isArray(data.productInsights)],
   ["finance", adminFinanceOperations(), data => data.summary && Array.isArray(data.costCenters) && Array.isArray(data.forecast) && Array.isArray(data.optimization)],
   ["unit economics", adminUnitEconomicsOperations(), data => data.summary && Array.isArray(data.routeCosts) && Array.isArray(data.planEconomics) && Array.isArray(data.marginLeaks)],
   ["analytics", adminAnalyticsOperations(), data => data.summary && Array.isArray(data.retention) && Array.isArray(data.featureUsage) && Array.isArray(data.languageAdoption)],

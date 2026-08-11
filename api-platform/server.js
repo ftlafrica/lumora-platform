@@ -406,6 +406,48 @@ const supportOperations = {
   ]
 };
 
+const customerExperienceOperations = {
+  summary: { nps: 48, csat: "4.6", feedbackItems: 1284, appRating: "4.7", productInsights: 36 },
+  sentimentThemes: [
+    { theme: "Natural local tone", volume: 384, sentiment: "Positive", owner: "Language QA", status: "Strength" },
+    { theme: "Mobile composer polish", volume: 172, sentiment: "Mixed", owner: "Product Design", status: "Improving" },
+    { theme: "Voice latency", volume: 91, sentiment: "Negative", owner: "Voice Ops", status: "Watch" },
+    { theme: "Plan limits clarity", volume: 138, sentiment: "Mixed", owner: "Growth", status: "Copy review" },
+    { theme: "Translation confidence", volume: 212, sentiment: "Positive", owner: "AI QA", status: "Monitor" }
+  ],
+  feedbackChannels: [
+    { channel: "In-app feedback", items: 624, topSignal: "Tone quality", owner: "Product", status: "Active" },
+    { channel: "Support tickets", items: 184, topSignal: "Account and billing", owner: "Support", status: "SLA watch" },
+    { channel: "App store reviews", items: 238, topSignal: "Mobile UX", owner: "Mobile", status: "Beta review" },
+    { channel: "Community corrections", items: 312, topSignal: "Dialect nuance", owner: "Language QA", status: "Reviewer queue" },
+    { channel: "Enterprise QBRs", items: 21, topSignal: "Workspace controls", owner: "Success", status: "Roadmap input" }
+  ],
+  productInsights: [
+    { insight: "Users love code-switching when tone stays natural", evidence: "384 positive mentions", owner: "Language QA", action: "Expand eval samples" },
+    { insight: "Mobile composer still feels heavy on small screens", evidence: "172 mixed mentions", owner: "Design", action: "Compact composer pass" },
+    { insight: "Voice Circle value is clear, latency hurts trust", evidence: "91 negative mentions", owner: "Voice Ops", action: "Latency sprint" },
+    { insight: "Teams buyers need clearer admin/user separation", evidence: "8 QBR notes", owner: "Enterprise", action: "Admin docs" }
+  ],
+  appStoreSignals: [
+    { surface: "iOS beta", rating: "4.6", reviews: 86, theme: "Beautiful UI, voice latency", status: "Monitor" },
+    { surface: "Android beta", rating: "4.7", reviews: 112, theme: "Language choices, mobile polish", status: "Improving" },
+    { surface: "Mobile web", rating: "4.5", reviews: 40, theme: "Fast start, composer sizing", status: "Design follow-up" },
+    { surface: "Desktop web", rating: "4.8", reviews: 64, theme: "Clean chat and sidebar", status: "Strong" }
+  ],
+  escalationReasons: [
+    { reason: "Wrong dialect or too formal", count: 118, owner: "Language QA", status: "Native review" },
+    { reason: "Payment or plan confusion", count: 42, owner: "Revenue Support", status: "Macro update" },
+    { reason: "Account access", count: 58, owner: "Support", status: "SLA watch" },
+    { reason: "Model answer uncertainty", count: 37, owner: "AI QA", status: "Eval sample" }
+  ],
+  guardrails: [
+    "Customer experience dashboards should aggregate feedback and never expose private chat contents to broad operators.",
+    "Negative sentiment must route to an accountable owner with a product, support, language, or reliability action.",
+    "Feedback from African language communities should be reviewed with native speakers before becoming product policy.",
+    "Leadership should compare NPS, CSAT, retention, support volume, and language quality together before making roadmap calls."
+  ]
+};
+
 const financeOperations = {
   summary: { mrr: "$184K", arr: "$2.2M", grossMargin: "74%", gpuToday: "$9.8K", savingsIdentified: "14%" },
   costCenters: [
@@ -2141,6 +2183,10 @@ function adminSupportOperations() {
   return supportOperations;
 }
 
+function adminCustomerExperienceOperations() {
+  return customerExperienceOperations;
+}
+
 function adminFinanceOperations() {
   return financeOperations;
 }
@@ -2341,6 +2387,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "api:manage",
       "knowledge:operate",
       "support:review",
+      "cx:review",
       "finance:read",
       "unit:economics",
       "analytics:read",
@@ -2546,6 +2593,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("support_center_viewed", "Support", "Info", "Support");
       return sendJson(response, 200, adminSupportOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/customer-experience") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("customer_experience_viewed", "Customer Experience", "Info", "Product");
+      return sendJson(response, 200, adminCustomerExperienceOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/finance") {
@@ -2916,4 +2971,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

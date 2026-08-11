@@ -101,6 +101,7 @@ const ADMIN_SECTIONS = [
   { id: "success", label: "Success", desc: "Enterprise account health, onboarding, renewals, expansion, and customer success playbooks." },
   { id: "sales", label: "Sales", desc: "Enterprise pipeline, demos, procurement, partners, and expansion revenue motions." },
   { id: "support", label: "Support", desc: "Tickets, SLA, escalations, CSAT, macros, user-impact signals, and safe support boundaries." },
+  { id: "customerExperience", label: "CX", desc: "NPS, CSAT, sentiment themes, product insights, app-store signals, and customer experience guardrails." },
   { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
   { id: "evaluations", label: "Evals", desc: "Model eval suites, benchmark runs, regressions, human samples, and release gates." },
   { id: "languages", label: "Languages", desc: "Country coverage, dialect readiness, reviewer queues, benchmarks, and expansion quality." },
@@ -302,6 +303,8 @@ const DEFAULT_STATE = {
   adminKnowledgeLoadedAt: null,
   adminSupport: null,
   adminSupportLoadedAt: null,
+  adminCustomerExperience: null,
+  adminCustomerExperienceLoadedAt: null,
   adminFraudAbuse: null,
   adminFraudAbuseLoadedAt: null,
   user: {
@@ -1554,6 +1557,26 @@ async function loadAdminSupport(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminCustomerExperience(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminCustomerExperienceLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/customer-experience`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Customer experience intelligence unavailable.");
+    state.adminCustomerExperience = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminCustomerExperienceLoadedAt = Date.now();
+  } catch {
+    state.adminCustomerExperienceLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 function localAdminSession() {
   const issuedAt = new Date().toISOString();
   return {
@@ -1562,7 +1585,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "identity:operate", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -3680,6 +3703,50 @@ function adminSupportData() {
   };
 }
 
+function adminCustomerExperienceData() {
+  return state.adminCustomerExperience || {
+    summary: { nps: 48, csat: "4.6", feedbackItems: 1284, appRating: "4.7", productInsights: 36 },
+    sentimentThemes: [
+      { theme: "Natural local tone", volume: 384, sentiment: "Positive", owner: "Language QA", status: "Strength" },
+      { theme: "Mobile composer polish", volume: 172, sentiment: "Mixed", owner: "Product Design", status: "Improving" },
+      { theme: "Voice latency", volume: 91, sentiment: "Negative", owner: "Voice Ops", status: "Watch" },
+      { theme: "Plan limits clarity", volume: 138, sentiment: "Mixed", owner: "Growth", status: "Copy review" },
+      { theme: "Translation confidence", volume: 212, sentiment: "Positive", owner: "AI QA", status: "Monitor" }
+    ],
+    feedbackChannels: [
+      { channel: "In-app feedback", items: 624, topSignal: "Tone quality", owner: "Product", status: "Active" },
+      { channel: "Support tickets", items: 184, topSignal: "Account and billing", owner: "Support", status: "SLA watch" },
+      { channel: "App store reviews", items: 238, topSignal: "Mobile UX", owner: "Mobile", status: "Beta review" },
+      { channel: "Community corrections", items: 312, topSignal: "Dialect nuance", owner: "Language QA", status: "Reviewer queue" },
+      { channel: "Enterprise QBRs", items: 21, topSignal: "Workspace controls", owner: "Success", status: "Roadmap input" }
+    ],
+    productInsights: [
+      { insight: "Users love code-switching when tone stays natural", evidence: "384 positive mentions", owner: "Language QA", action: "Expand eval samples" },
+      { insight: "Mobile composer still feels heavy on small screens", evidence: "172 mixed mentions", owner: "Design", action: "Compact composer pass" },
+      { insight: "Voice Circle value is clear, latency hurts trust", evidence: "91 negative mentions", owner: "Voice Ops", action: "Latency sprint" },
+      { insight: "Teams buyers need clearer admin/user separation", evidence: "8 QBR notes", owner: "Enterprise", action: "Admin docs" }
+    ],
+    appStoreSignals: [
+      { surface: "iOS beta", rating: "4.6", reviews: 86, theme: "Beautiful UI, voice latency", status: "Monitor" },
+      { surface: "Android beta", rating: "4.7", reviews: 112, theme: "Language choices, mobile polish", status: "Improving" },
+      { surface: "Mobile web", rating: "4.5", reviews: 40, theme: "Fast start, composer sizing", status: "Design follow-up" },
+      { surface: "Desktop web", rating: "4.8", reviews: 64, theme: "Clean chat and sidebar", status: "Strong" }
+    ],
+    escalationReasons: [
+      { reason: "Wrong dialect or too formal", count: 118, owner: "Language QA", status: "Native review" },
+      { reason: "Payment or plan confusion", count: 42, owner: "Revenue Support", status: "Macro update" },
+      { reason: "Account access", count: 58, owner: "Support", status: "SLA watch" },
+      { reason: "Model answer uncertainty", count: 37, owner: "AI QA", status: "Eval sample" }
+    ],
+    guardrails: [
+      "Customer experience dashboards should aggregate feedback and never expose private chat contents to broad operators.",
+      "Negative sentiment must route to an accountable owner with a product, support, language, or reliability action.",
+      "Feedback from African language communities should be reviewed with native speakers before becoming product policy.",
+      "Leadership should compare NPS, CSAT, retention, support volume, and language quality together before making roadmap calls."
+    ]
+  };
+}
+
 function formatAdminTime(timestamp) {
   if (!timestamp) return "Not loaded";
   return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -4456,6 +4523,26 @@ function supportMacroRow(item) {
   return `<div class="table-row"><strong>${item.macro}</strong><span>${item.use}</span><span>${item.status}</span></div>`;
 }
 
+function sentimentThemeRow(item) {
+  return `<div class="table-row"><strong>${item.theme}</strong><span>${item.volume} mentions</span><span>${item.sentiment}</span><span>${item.status}</span></div>`;
+}
+
+function feedbackChannelRow(item) {
+  return `<div class="table-row"><strong>${item.channel}</strong><span>${item.items} items</span><span>${item.topSignal}</span><span>${item.status}</span></div>`;
+}
+
+function productInsightRow(item) {
+  return `<div class="table-row"><strong>${item.insight}</strong><span>${item.evidence}</span><span>${item.owner}</span><span>${item.action}</span></div>`;
+}
+
+function appStoreSignalRow(item) {
+  return `<div class="table-row"><strong>${item.surface}</strong><span>${item.rating} rating</span><span>${item.theme}</span><span>${item.status}</span></div>`;
+}
+
+function escalationReasonRow(item) {
+  return `<div class="table-row"><strong>${item.reason}</strong><span>${item.count} cases</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
 function modelHealthRow(item) {
   return `<div class="table-row"><strong>${item.name}</strong><span>${item.readiness} / ${item.latencyMs}ms</span><span>${item.successRate} / ${item.status}</span></div>`;
 }
@@ -5010,6 +5097,7 @@ function adminView() {
   if (state.adminSection === "unitEconomics") loadAdminUnitEconomics();
   if (state.adminSection === "users") loadAdminUsers();
   if (state.adminSection === "support") loadAdminSupport();
+  if (state.adminSection === "customerExperience") loadAdminCustomerExperience();
   if (state.adminSection === "models") loadAdminModels();
   if (state.adminSection === "evaluations") loadAdminEvaluations();
   if (state.adminSection === "languages") loadAdminLanguages();
@@ -5184,6 +5272,7 @@ function adminSectionView(section, readiness) {
     success: adminCustomerSuccess,
     sales: adminSales,
     support: adminSupport,
+    customerExperience: adminCustomerExperience,
     models: () => adminModels(readiness),
     evaluations: adminEvaluations,
     languages: adminLanguages,
@@ -5572,6 +5661,55 @@ function adminSupport() {
         <h2>Support data boundaries</h2>
         <div class="admin-checklist">
           ${support.boundaries.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminCustomerExperience() {
+  const cx = adminCustomerExperienceData();
+  const summary = cx.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("NPS", summary.nps ?? "48")}
+      ${metric("CSAT", summary.csat || "4.6")}
+      ${metric("Feedback items", summary.feedbackItems || "1,284")}
+      ${metric("App rating", summary.appRating || "4.7")}
+      <section class="admin-card full-admin">
+        <h2>Sentiment themes</h2>
+        <div class="table admin-table-4">
+          ${cx.sentimentThemes.map(sentimentThemeRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Feedback channels</h2>
+        <div class="table admin-table-4">
+          ${cx.feedbackChannels.map(feedbackChannelRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Product insight loop</h2>
+        <div class="table admin-table-4">
+          ${cx.productInsights.map(productInsightRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>App and surface signals</h2>
+        <div class="table admin-table-4">
+          ${cx.appStoreSignals.map(appStoreSignalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Escalation reasons</h2>
+        <div class="table admin-table-4">
+          ${cx.escalationReasons.map(escalationReasonRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Customer experience guardrails</h2>
+        <div class="admin-checklist">
+          ${cx.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -7990,6 +8128,7 @@ function bindEvents() {
       loadAdminUnitEconomics(true);
       loadAdminUsers(true);
       loadAdminSupport(true);
+      loadAdminCustomerExperience(true);
       loadAdminModels(true);
       loadAdminEvaluations(true);
       loadAdminLanguages(true);
