@@ -96,6 +96,7 @@ const ADMIN_SECTIONS = [
   { id: "community", label: "Community", desc: "Contributors, corrections, ambassadors, events, ecosystem programs, and trust guardrails." },
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
   { id: "entitlements", label: "Entitlements", desc: "Plan limits, usage metering, overages, voice minutes, API quotas, upgrade gates, and quota guardrails." },
+  { id: "revenueAssurance", label: "Revenue Ops", desc: "Revenue leakage, VAT/GST coverage, payout reconciliation, recognition, invoice exceptions, and audit guardrails." },
   { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
   { id: "unitEconomics", label: "Unit Econ", desc: "Cost per message, plan margins, route economics, margin leaks, and pricing actions." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
@@ -202,6 +203,8 @@ const DEFAULT_STATE = {
   adminPaymentsLoadedAt: null,
   adminEntitlements: null,
   adminEntitlementsLoadedAt: null,
+  adminRevenueAssurance: null,
+  adminRevenueAssuranceLoadedAt: null,
   adminFinance: null,
   adminFinanceLoadedAt: null,
   adminUnitEconomics: null,
@@ -1286,6 +1289,26 @@ async function loadAdminEntitlements(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminRevenueAssurance(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminRevenueAssuranceLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/revenue-assurance`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Revenue assurance operations unavailable.");
+    state.adminRevenueAssurance = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminRevenueAssuranceLoadedAt = Date.now();
+  } catch {
+    state.adminRevenueAssuranceLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminFinance(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminFinanceLoadedAt || 0;
@@ -1654,7 +1677,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "users:read", "models:operate", "licensing:review", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "users:read", "models:operate", "licensing:review", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -3326,6 +3349,48 @@ function adminEntitlementData() {
   };
 }
 
+function adminRevenueAssuranceData() {
+  return state.adminRevenueAssurance || {
+    summary: { leakageRisk: "$18.7K", taxRegions: 12, reconciliationLag: "27m", invoiceExceptions: 16, recognitionHealth: "94%" },
+    taxCoverage: [
+      { market: "Nigeria", tax: "VAT", coverage: "Ready", owner: "Finance", status: "Healthy" },
+      { market: "Kenya", tax: "VAT", coverage: "Provider mapped", owner: "Finance", status: "Review" },
+      { market: "South Africa", tax: "VAT", coverage: "Ready", owner: "Revenue Ops", status: "Healthy" },
+      { market: "Ghana", tax: "VAT", coverage: "Rules pending", owner: "Legal/Finance", status: "Watch" }
+    ],
+    leakageSignals: [
+      { signal: "Failed dunning recovery", exposure: "$11.4K", source: "Cards", owner: "Revenue Ops", status: "Active" },
+      { signal: "Teams invoice mismatch", exposure: "$4.8K", source: "Seat changes", owner: "Finance", status: "Review" },
+      { signal: "Unbilled API overage", exposure: "$1.7K", source: "API quotas", owner: "Developer Platform", status: "Queued" },
+      { signal: "Tax rule gap", exposure: "$800", source: "New market", owner: "Legal/Finance", status: "Watch" }
+    ],
+    reconciliation: [
+      { stream: "Card processor payouts", expected: "$82.1K", matched: "99.2%", lag: "12m", status: "Healthy" },
+      { stream: "Mobile store payouts", expected: "$18.6K", matched: "97.4%", lag: "27m", status: "Review" },
+      { stream: "Teams invoices", expected: "$141K", matched: "94.8%", lag: "Same day", status: "Watch" },
+      { stream: "Refund ledger", expected: "$4.2K", matched: "100%", lag: "8m", status: "Healthy" }
+    ],
+    recognition: [
+      { product: "Plus monthly", policy: "Monthly subscription", deferred: "$23.2K", owner: "Finance", status: "Healthy" },
+      { product: "Pro annual", policy: "Recognize over term", deferred: "$61.4K", owner: "Finance", status: "Healthy" },
+      { product: "Teams contract", policy: "Contract schedule", deferred: "$188K", owner: "CFO", status: "Review" },
+      { product: "Usage overage", policy: "Metered usage", deferred: "$3.6K", owner: "Revenue Ops", status: "Watch" }
+    ],
+    auditTasks: [
+      { task: "Reconcile processor fees", owner: "Finance", due: "Today", status: "Open" },
+      { task: "Validate VAT mapping for Ghana beta", owner: "Legal/Finance", due: "Aug 16", status: "Queued" },
+      { task: "Approve Teams invoice exceptions", owner: "CFO", due: "This week", status: "Review" },
+      { task: "Match mobile store payouts", owner: "Revenue Ops", due: "Today", status: "Active" }
+    ],
+    guardrails: [
+      "Revenue reporting must reconcile plan, invoice, payment-provider, tax, refund, and entitlement records.",
+      "Tax rules should be market-aware before public paid launch in any country.",
+      "Manual invoice corrections require audit trail, approver, customer impact, and revenue recognition review.",
+      "Leadership views should show exposure and status without exposing raw card, bank, or customer payment secrets."
+    ]
+  };
+}
+
 function adminFinanceData() {
   return state.adminFinance || {
     summary: { mrr: "$184K", arr: "$2.2M", grossMargin: "74%", gpuToday: "$9.8K", savingsIdentified: "14%" },
@@ -4683,6 +4748,26 @@ function entitlementExceptionRow(item) {
   return `<div class="table-row"><strong>${item.account}</strong><span>${item.exception}</span><span>${item.expires}</span><span>${item.status}</span></div>`;
 }
 
+function taxCoverageRow(item) {
+  return `<div class="table-row"><strong>${item.market}</strong><span>${item.tax}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
+function leakageSignalRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.exposure}</span><span>${item.source}</span><span>${item.status}</span></div>`;
+}
+
+function reconciliationRow(item) {
+  return `<div class="table-row"><strong>${item.stream}</strong><span>${item.expected}</span><span>${item.matched}</span><span>${item.status}</span></div>`;
+}
+
+function recognitionRow(item) {
+  return `<div class="table-row"><strong>${item.product}</strong><span>${item.policy}</span><span>${item.deferred}</span><span>${item.status}</span></div>`;
+}
+
+function revenueAuditTaskRow(item) {
+  return `<div class="table-row"><strong>${item.task}</strong><span>${item.owner}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
 function financeCostRow(item) {
   return `<div class="table-row"><strong>${item.center}</strong><span>${item.spend}</span><span>${item.driver}</span><span>${item.status}</span></div>`;
 }
@@ -5354,6 +5439,7 @@ function adminView() {
   if (state.adminSection === "devex") loadAdminDevexCicd();
   if (state.adminSection === "payments") loadAdminPayments();
   if (state.adminSection === "entitlements") loadAdminEntitlements();
+  if (state.adminSection === "revenueAssurance") loadAdminRevenueAssurance();
   if (state.adminSection === "finance") loadAdminFinance();
   if (state.adminSection === "unitEconomics") loadAdminUnitEconomics();
   if (state.adminSection === "users") loadAdminUsers();
@@ -5530,6 +5616,7 @@ function adminSectionView(section, readiness) {
     notifications: adminNotificationDelivery,
     payments: adminPayments,
     entitlements: adminEntitlements,
+    revenueAssurance: adminRevenueAssurance,
     finance: adminFinance,
     unitEconomics: adminUnitEconomics,
     users: adminUsers,
@@ -5812,6 +5899,55 @@ function adminEntitlements() {
         <h2>Entitlement guardrails</h2>
         <div class="admin-checklist">
           ${entitlements.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminRevenueAssurance() {
+  const revenue = adminRevenueAssuranceData();
+  const summary = revenue.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Leakage risk", summary.leakageRisk || "$18.7K")}
+      ${metric("Tax regions", summary.taxRegions || "12")}
+      ${metric("Reconcile lag", summary.reconciliationLag || "27m")}
+      ${metric("Recognition", summary.recognitionHealth || "94%")}
+      <section class="admin-card full-admin">
+        <h2>Tax coverage</h2>
+        <div class="table admin-table-4">
+          ${revenue.taxCoverage.map(taxCoverageRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Revenue leakage signals</h2>
+        <div class="table admin-table-4">
+          ${revenue.leakageSignals.map(leakageSignalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Payout reconciliation</h2>
+        <div class="table admin-table-4">
+          ${revenue.reconciliation.map(reconciliationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Revenue recognition</h2>
+        <div class="table admin-table-4">
+          ${revenue.recognition.map(recognitionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Audit tasks</h2>
+        <div class="table admin-table-4">
+          ${revenue.auditTasks.map(revenueAuditTaskRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Revenue assurance guardrails</h2>
+        <div class="admin-checklist">
+          ${revenue.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -8538,6 +8674,7 @@ function bindEvents() {
       loadAdminDevexCicd(true);
       loadAdminPayments(true);
       loadAdminEntitlements(true);
+      loadAdminRevenueAssurance(true);
       loadAdminFinance(true);
       loadAdminUnitEconomics(true);
       loadAdminUsers(true);

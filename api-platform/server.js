@@ -144,6 +144,46 @@ const entitlementOperations = {
   ]
 };
 
+const revenueAssuranceOperations = {
+  summary: { leakageRisk: "$18.7K", taxRegions: 12, reconciliationLag: "27m", invoiceExceptions: 16, recognitionHealth: "94%" },
+  taxCoverage: [
+    { market: "Nigeria", tax: "VAT", coverage: "Ready", owner: "Finance", status: "Healthy" },
+    { market: "Kenya", tax: "VAT", coverage: "Provider mapped", owner: "Finance", status: "Review" },
+    { market: "South Africa", tax: "VAT", coverage: "Ready", owner: "Revenue Ops", status: "Healthy" },
+    { market: "Ghana", tax: "VAT", coverage: "Rules pending", owner: "Legal/Finance", status: "Watch" }
+  ],
+  leakageSignals: [
+    { signal: "Failed dunning recovery", exposure: "$11.4K", source: "Cards", owner: "Revenue Ops", status: "Active" },
+    { signal: "Teams invoice mismatch", exposure: "$4.8K", source: "Seat changes", owner: "Finance", status: "Review" },
+    { signal: "Unbilled API overage", exposure: "$1.7K", source: "API quotas", owner: "Developer Platform", status: "Queued" },
+    { signal: "Tax rule gap", exposure: "$800", source: "New market", owner: "Legal/Finance", status: "Watch" }
+  ],
+  reconciliation: [
+    { stream: "Card processor payouts", expected: "$82.1K", matched: "99.2%", lag: "12m", status: "Healthy" },
+    { stream: "Mobile store payouts", expected: "$18.6K", matched: "97.4%", lag: "27m", status: "Review" },
+    { stream: "Teams invoices", expected: "$141K", matched: "94.8%", lag: "Same day", status: "Watch" },
+    { stream: "Refund ledger", expected: "$4.2K", matched: "100%", lag: "8m", status: "Healthy" }
+  ],
+  recognition: [
+    { product: "Plus monthly", policy: "Monthly subscription", deferred: "$23.2K", owner: "Finance", status: "Healthy" },
+    { product: "Pro annual", policy: "Recognize over term", deferred: "$61.4K", owner: "Finance", status: "Healthy" },
+    { product: "Teams contract", policy: "Contract schedule", deferred: "$188K", owner: "CFO", status: "Review" },
+    { product: "Usage overage", policy: "Metered usage", deferred: "$3.6K", owner: "Revenue Ops", status: "Watch" }
+  ],
+  auditTasks: [
+    { task: "Reconcile processor fees", owner: "Finance", due: "Today", status: "Open" },
+    { task: "Validate VAT mapping for Ghana beta", owner: "Legal/Finance", due: "Aug 16", status: "Queued" },
+    { task: "Approve Teams invoice exceptions", owner: "CFO", due: "This week", status: "Review" },
+    { task: "Match mobile store payouts", owner: "Revenue Ops", due: "Today", status: "Active" }
+  ],
+  guardrails: [
+    "Revenue reporting must reconcile plan, invoice, payment-provider, tax, refund, and entitlement records.",
+    "Tax rules should be market-aware before public paid launch in any country.",
+    "Manual invoice corrections require audit trail, approver, customer impact, and revenue recognition review.",
+    "Leadership views should show exposure and status without exposing raw card, bank, or customer payment secrets."
+  ]
+};
+
 const userOperations = {
   summary: { consumers: "18.4K", organizations: 47, enterpriseSeats: 1280, riskReviews: 92 },
   accountQueues: [
@@ -2256,6 +2296,10 @@ function adminEntitlementOperations() {
   return entitlementOperations;
 }
 
+function adminRevenueAssuranceOperations() {
+  return revenueAssuranceOperations;
+}
+
 function adminUserOperations() {
   return userOperations;
 }
@@ -2515,6 +2559,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "growth:read",
       "payments:read",
       "entitlements:manage",
+      "revenue:assure",
       "users:read",
       "models:operate",
       "licensing:review",
@@ -2661,6 +2706,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("entitlements_viewed", "Entitlements", "Info", "Revenue Ops");
       return sendJson(response, 200, adminEntitlementOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/revenue-assurance") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("revenue_assurance_viewed", "Revenue Assurance", "Info", "Revenue Ops");
+      return sendJson(response, 200, adminRevenueAssuranceOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/users") {
@@ -3135,4 +3188,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
