@@ -123,6 +123,7 @@ const ADMIN_SECTIONS = [
   { id: "api", label: "API", desc: "Keys, quotas, SDKs, webhooks, rate limits, errors, and partner integration health." },
   { id: "integrations", label: "Integrations", desc: "Connected services, partner systems, webhook retries, secrets, and vendor health." },
   { id: "access", label: "Access", desc: "Seed-admin grants, RBAC, audit logs, compliance, data residency, and SSO." },
+  { id: "investigations", label: "Investigate", desc: "Case reviews, evidence custody, incident timelines, legal holds, handoffs, and forensic guardrails." },
   { id: "identity", label: "Identity", desc: "Signup, login, MFA, SSO, verification, account recovery, session risk, and auth guardrails." },
   { id: "operations", label: "Operations", desc: "Incidents, decisions, follow-ups, runbooks, owners, ETAs, and leadership action tracking." }
 ];
@@ -296,6 +297,8 @@ const DEFAULT_STATE = {
   adminCapacityPlanningLoadedAt: null,
   adminAccess: null,
   adminAccessLoadedAt: null,
+  adminInvestigations: null,
+  adminInvestigationsLoadedAt: null,
   adminIdentityAuth: null,
   adminIdentityAuthLoadedAt: null,
   adminActions: null,
@@ -1480,6 +1483,26 @@ async function loadAdminAccess(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminInvestigations(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminInvestigationsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/investigations`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Investigation operations unavailable.");
+    state.adminInvestigations = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminInvestigationsLoadedAt = Date.now();
+  } catch {
+    state.adminInvestigationsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminIdentityAuth(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminIdentityAuthLoadedAt || 0;
@@ -1608,7 +1631,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "licensing:review", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "licensing:review", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -3593,6 +3616,49 @@ function adminAccessData() {
   };
 }
 
+function adminInvestigationsData() {
+  return state.adminInvestigations || {
+    summary: { openCases: 18, highPriority: 5, evidenceItems: 284, legalHolds: 7, averageResolution: "2.4d" },
+    cases: [
+      { id: "INV-2401", case: "Suspicious admin session", surface: "Admin Console", priority: "High", owner: "Security", status: "Evidence review" },
+      { id: "INV-2402", case: "Payment retry anomaly", surface: "Billing", priority: "Medium", owner: "Finance Ops", status: "Correlating logs" },
+      { id: "INV-2403", case: "API key abuse pattern", surface: "Developer API", priority: "High", owner: "Trust/Security", status: "Containment" },
+      { id: "INV-2404", case: "Language quality manipulation report", surface: "Community corrections", priority: "Medium", owner: "Language QA", status: "Reviewer audit" },
+      { id: "INV-2405", case: "Enterprise workspace access dispute", surface: "Teams", priority: "High", owner: "Legal/Support", status: "Hold active" }
+    ],
+    evidenceCustody: [
+      { evidence: "Admin audit log export", source: "Immutable audit stream", custodian: "Security", retention: "7 years", status: "Sealed" },
+      { evidence: "Billing webhook trail", source: "Payments queue", custodian: "Finance Ops", retention: "5 years", status: "Verified" },
+      { evidence: "API rate-limit trace", source: "Gateway logs", custodian: "Platform", retention: "180 days", status: "Redacted" },
+      { evidence: "Reviewer correction sample", source: "Language QA queue", custodian: "Language QA", retention: "90 days", status: "Anonymized" }
+    ],
+    timelines: [
+      { incident: "API key abuse pattern", firstSeen: "08:12", contained: "08:31", owner: "Security", status: "Post-review" },
+      { incident: "Payment retry anomaly", firstSeen: "09:04", contained: "09:44", owner: "Finance Ops", status: "Monitoring" },
+      { incident: "Admin session risk", firstSeen: "10:18", contained: "10:23", owner: "Security", status: "Escalated" },
+      { incident: "Reviewer queue manipulation", firstSeen: "11:02", contained: "Open", owner: "Language QA", status: "Investigating" }
+    ],
+    legalHolds: [
+      { hold: "Enterprise workspace dispute", scope: "Org audit and seat changes", owner: "Legal", expiry: "Counsel review", status: "Active" },
+      { hold: "Payment anomaly review", scope: "Billing webhooks and retries", owner: "Finance/Legal", expiry: "30 days", status: "Active" },
+      { hold: "Admin session investigation", scope: "Access logs and device trust", owner: "Security", expiry: "60 days", status: "Active" },
+      { hold: "Community correction abuse", scope: "Reviewer actions only", owner: "Trust", expiry: "14 days", status: "Scoped" }
+    ],
+    handoffs: [
+      { handoff: "Security to Legal", caseId: "INV-2401", requirement: "Break-glass review", status: "Queued" },
+      { handoff: "Finance to Support", caseId: "INV-2402", requirement: "Customer-safe explanation", status: "Draft" },
+      { handoff: "Trust to Platform", caseId: "INV-2403", requirement: "Rate-limit rule", status: "In progress" },
+      { handoff: "Language QA to Community", caseId: "INV-2404", requirement: "Reviewer coaching", status: "Pending" }
+    ],
+    guardrails: [
+      "Investigations must use least-privilege access, scoped evidence, immutable audit trails, and named case owners.",
+      "Private chat content should never be opened for broad investigation without approved legal, safety, or privacy basis.",
+      "Evidence exports must be redacted, sealed, and tied to retention policy, legal hold, and chain of custody.",
+      "Customer-facing updates should be coordinated through Support, Legal, Security, and Communications before release."
+    ]
+  };
+}
+
 function adminIdentityAuthData() {
   return state.adminIdentityAuth || {
     summary: { signupsToday: 2184, loginSuccess: "98.9%", mfaCoverage: "42%", ssoOrgs: 14, recoveryQueue: 27 },
@@ -4724,6 +4790,26 @@ function complianceRow(item) {
   return `<div class="table-row"><strong>${item.control}</strong><span>${item.status}</span><span>${item.owner}</span></div>`;
 }
 
+function investigationCaseRow(item) {
+  return `<div class="table-row"><strong>${item.id}</strong><span>${item.case}</span><span>${item.priority}</span><span>${item.status}</span></div>`;
+}
+
+function evidenceCustodyRow(item) {
+  return `<div class="table-row"><strong>${item.evidence}</strong><span>${item.source}</span><span>${item.retention}</span><span>${item.status}</span></div>`;
+}
+
+function investigationTimelineRow(item) {
+  return `<div class="table-row"><strong>${item.incident}</strong><span>${item.firstSeen}</span><span>${item.contained}</span><span>${item.status}</span></div>`;
+}
+
+function legalHoldRow(item) {
+  return `<div class="table-row"><strong>${item.hold}</strong><span>${item.scope}</span><span>${item.expiry}</span><span>${item.status}</span></div>`;
+}
+
+function investigationHandoffRow(item) {
+  return `<div class="table-row"><strong>${item.handoff}</strong><span>${item.caseId}</span><span>${item.requirement}</span><span>${item.status}</span></div>`;
+}
+
 function authFunnelRow(item) {
   return `<div class="table-row"><strong>${item.step}</strong><span>${item.users}</span><span>${item.conversion}</span><span>${item.issue}</span></div>`;
 }
@@ -5238,6 +5324,7 @@ function adminView() {
   if (state.adminSection === "api") loadAdminApi();
   if (state.adminSection === "integrations") loadAdminIntegrations();
   if (state.adminSection === "knowledge") loadAdminKnowledge();
+  if (state.adminSection === "investigations") loadAdminInvestigations();
   const readiness = MODEL_REGISTRY.reduce((acc, item) => {
     acc[item.readiness] = (acc[item.readiness] || 0) + 1;
     return acc;
@@ -5384,6 +5471,7 @@ function adminSectionView(section, readiness) {
     api: adminApiManagement,
     integrations: adminIntegrations,
     access: adminAccess,
+    investigations: adminInvestigations,
     identity: adminIdentityAuth,
     operations: adminOperations
   };
@@ -7945,6 +8033,55 @@ function adminAccess() {
   `;
 }
 
+function adminInvestigations() {
+  const investigations = adminInvestigationsData();
+  const summary = investigations.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Open cases", summary.openCases || "18")}
+      ${metric("High priority", summary.highPriority || "5")}
+      ${metric("Evidence items", summary.evidenceItems || "284")}
+      ${metric("Legal holds", summary.legalHolds || "7")}
+      <section class="admin-card full-admin">
+        <h2>Investigation cases</h2>
+        <div class="table admin-table-4">
+          ${investigations.cases.map(investigationCaseRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Evidence custody</h2>
+        <div class="table admin-table-4">
+          ${investigations.evidenceCustody.map(evidenceCustodyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Incident timelines</h2>
+        <div class="table admin-table-4">
+          ${investigations.timelines.map(investigationTimelineRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Legal holds</h2>
+        <div class="table admin-table-4">
+          ${investigations.legalHolds.map(legalHoldRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Cross-team handoffs</h2>
+        <div class="table admin-table-4">
+          ${investigations.handoffs.map(investigationHandoffRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Forensic guardrails</h2>
+        <div class="admin-checklist">
+          ${investigations.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminIdentityAuth() {
   const identity = adminIdentityAuthData();
   const summary = identity.summary || {};
@@ -8315,6 +8452,7 @@ function bindEvents() {
       loadAdminCustomerSuccess(true);
       loadAdminSales(true);
       loadAdminAccess(true);
+      loadAdminInvestigations(true);
       loadAdminIdentityAuth(true);
       loadAdminActions(true);
       loadAdminApi(true);

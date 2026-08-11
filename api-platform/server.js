@@ -281,6 +281,47 @@ const accessOperations = {
   ]
 };
 
+const investigationOperations = {
+  summary: { openCases: 18, highPriority: 5, evidenceItems: 284, legalHolds: 7, averageResolution: "2.4d" },
+  cases: [
+    { id: "INV-2401", case: "Suspicious admin session", surface: "Admin Console", priority: "High", owner: "Security", status: "Evidence review" },
+    { id: "INV-2402", case: "Payment retry anomaly", surface: "Billing", priority: "Medium", owner: "Finance Ops", status: "Correlating logs" },
+    { id: "INV-2403", case: "API key abuse pattern", surface: "Developer API", priority: "High", owner: "Trust/Security", status: "Containment" },
+    { id: "INV-2404", case: "Language quality manipulation report", surface: "Community corrections", priority: "Medium", owner: "Language QA", status: "Reviewer audit" },
+    { id: "INV-2405", case: "Enterprise workspace access dispute", surface: "Teams", priority: "High", owner: "Legal/Support", status: "Hold active" }
+  ],
+  evidenceCustody: [
+    { evidence: "Admin audit log export", source: "Immutable audit stream", custodian: "Security", retention: "7 years", status: "Sealed" },
+    { evidence: "Billing webhook trail", source: "Payments queue", custodian: "Finance Ops", retention: "5 years", status: "Verified" },
+    { evidence: "API rate-limit trace", source: "Gateway logs", custodian: "Platform", retention: "180 days", status: "Redacted" },
+    { evidence: "Reviewer correction sample", source: "Language QA queue", custodian: "Language QA", retention: "90 days", status: "Anonymized" }
+  ],
+  timelines: [
+    { incident: "API key abuse pattern", firstSeen: "08:12", contained: "08:31", owner: "Security", status: "Post-review" },
+    { incident: "Payment retry anomaly", firstSeen: "09:04", contained: "09:44", owner: "Finance Ops", status: "Monitoring" },
+    { incident: "Admin session risk", firstSeen: "10:18", contained: "10:23", owner: "Security", status: "Escalated" },
+    { incident: "Reviewer queue manipulation", firstSeen: "11:02", contained: "Open", owner: "Language QA", status: "Investigating" }
+  ],
+  legalHolds: [
+    { hold: "Enterprise workspace dispute", scope: "Org audit and seat changes", owner: "Legal", expiry: "Counsel review", status: "Active" },
+    { hold: "Payment anomaly review", scope: "Billing webhooks and retries", owner: "Finance/Legal", expiry: "30 days", status: "Active" },
+    { hold: "Admin session investigation", scope: "Access logs and device trust", owner: "Security", expiry: "60 days", status: "Active" },
+    { hold: "Community correction abuse", scope: "Reviewer actions only", owner: "Trust", expiry: "14 days", status: "Scoped" }
+  ],
+  handoffs: [
+    { handoff: "Security to Legal", caseId: "INV-2401", requirement: "Break-glass review", status: "Queued" },
+    { handoff: "Finance to Support", caseId: "INV-2402", requirement: "Customer-safe explanation", status: "Draft" },
+    { handoff: "Trust to Platform", caseId: "INV-2403", requirement: "Rate-limit rule", status: "In progress" },
+    { handoff: "Language QA to Community", caseId: "INV-2404", requirement: "Reviewer coaching", status: "Pending" }
+  ],
+  guardrails: [
+    "Investigations must use least-privilege access, scoped evidence, immutable audit trails, and named case owners.",
+    "Private chat content should never be opened for broad investigation without approved legal, safety, or privacy basis.",
+    "Evidence exports must be redacted, sealed, and tied to retention policy, legal hold, and chain of custody.",
+    "Customer-facing updates should be coordinated through Support, Legal, Security, and Communications before release."
+  ]
+};
+
 const identityAuthOperations = {
   summary: { signupsToday: 2184, loginSuccess: "98.9%", mfaCoverage: "42%", ssoOrgs: 14, recoveryQueue: 27 },
   authFunnel: [
@@ -2211,6 +2252,10 @@ function adminAccessOperations() {
   return accessOperations;
 }
 
+function adminInvestigationOperations() {
+  return investigationOperations;
+}
+
 function adminIdentityAuthOperations() {
   return identityAuthOperations;
 }
@@ -2432,6 +2477,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "platform:operate",
       "devex:operate",
       "access:grant",
+      "investigations:review",
       "identity:operate",
       "api:manage",
       "knowledge:operate",
@@ -2610,6 +2656,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("access_operations_viewed", "Access", "Info", "Seed Admin");
       return sendJson(response, 200, adminAccessOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/investigations") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("investigations_viewed", "Investigations", "Info", "Security");
+      return sendJson(response, 200, adminInvestigationOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/identity-auth") {
@@ -3028,4 +3082,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
