@@ -12,6 +12,7 @@ const {
   adminPaymentOperations,
   adminUserOperations,
   adminModelOperations,
+  adminModelLicensingOperations,
   adminSafetyOperations,
   adminGrowthOperations,
   adminAccessOperations,
@@ -100,6 +101,7 @@ assert.ok(accessSession.scopes.includes("api:manage"));
 assert.ok(accessSession.scopes.includes("knowledge:operate"));
 assert.ok(accessSession.scopes.includes("support:review"));
 assert.ok(accessSession.scopes.includes("cx:review"));
+assert.ok(accessSession.scopes.includes("licensing:review"));
 assert.ok(accessSession.scopes.includes("finance:read"));
 assert.ok(accessSession.scopes.includes("unit:economics"));
 assert.ok(accessSession.scopes.includes("analytics:read"));
@@ -154,6 +156,7 @@ const adminContracts = [
   ["payments", adminPaymentOperations(), data => Array.isArray(data.plans) && Array.isArray(data.queues) && Array.isArray(data.invoices)],
   ["users", adminUserOperations(), data => data.summary && Array.isArray(data.accountQueues) && Array.isArray(data.organizations)],
   ["models", adminModelOperations(), data => Array.isArray(data.registry) && Array.isArray(data.health) && data.summary.modelSources >= modelRegistry.length],
+  ["model licensing", adminModelLicensingOperations(), data => data.summary && Array.isArray(data.modelLicenses) && Array.isArray(data.datasetSources) && Array.isArray(data.rightsRisks)],
   ["safety", adminSafetyOperations(), data => data.summary && Array.isArray(data.moderationQueues) && Array.isArray(data.languageQuality)],
   ["growth", adminGrowthOperations(), data => data.summary && Array.isArray(data.funnel) && Array.isArray(data.countries) && Array.isArray(data.channels)],
   ["access", adminAccessOperations(), data => data.summary && Array.isArray(data.roles) && Array.isArray(data.approvals) && Array.isArray(data.compliance)],

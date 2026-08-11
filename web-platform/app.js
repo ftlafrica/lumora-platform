@@ -103,6 +103,7 @@ const ADMIN_SECTIONS = [
   { id: "support", label: "Support", desc: "Tickets, SLA, escalations, CSAT, macros, user-impact signals, and safe support boundaries." },
   { id: "customerExperience", label: "CX", desc: "NPS, CSAT, sentiment themes, product insights, app-store signals, and customer experience guardrails." },
   { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
+  { id: "licensing", label: "Licensing", desc: "Model licenses, dataset provenance, rights risks, usage restrictions, attribution, and consent guardrails." },
   { id: "evaluations", label: "Evals", desc: "Model eval suites, benchmark runs, regressions, human samples, and release gates." },
   { id: "languages", label: "Languages", desc: "Country coverage, dialect readiness, reviewer queues, benchmarks, and expansion quality." },
   { id: "localization", label: "Localize", desc: "UI copy localization, translation QA, glossary control, reviewer workflow, and release guardrails." },
@@ -205,6 +206,8 @@ const DEFAULT_STATE = {
   adminUsersLoadedAt: null,
   adminModels: null,
   adminModelsLoadedAt: null,
+  adminModelLicensing: null,
+  adminModelLicensingLoadedAt: null,
   adminSafety: null,
   adminSafetyLoadedAt: null,
   adminSecurity: null,
@@ -1337,6 +1340,26 @@ async function loadAdminModels(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminModelLicensing(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminModelLicensingLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/model-licensing`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Model licensing operations unavailable.");
+    state.adminModelLicensing = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminModelLicensingLoadedAt = Date.now();
+  } catch {
+    state.adminModelLicensingLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminSafety(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminSafetyLoadedAt || 0;
@@ -1585,7 +1608,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "licensing:review", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -3338,6 +3361,52 @@ function adminModelData(readiness = {}) {
   };
 }
 
+function adminModelLicensingData() {
+  return state.adminModelLicensing || {
+    summary: { modelSources: MODEL_REGISTRY.length, licenseReviews: 10, restrictedUse: 2, attributionTasks: 6, rightsRisks: 4 },
+    modelLicenses: [
+      { model: "Masakhane NLP", source: "huggingface.co/masakhane", license: "Project-specific/open research", use: "Review before commercial launch", status: "Legal review" },
+      { model: "InkubaLM", source: "huggingface.co/lelapa/InkubaLM-0.4B", license: "Open model card review", use: "Generation and fine-tuning", status: "Attribution needed" },
+      { model: "AfroLM", source: "huggingface.co/bonadossou/afrolm_active_learning", license: "Research/open review", use: "Classification and embeddings", status: "Review" },
+      { model: "AfriBERTa", source: "huggingface.co/castorini/afriberta_base", license: "Model card review", use: "NER/classification", status: "Watch" },
+      { model: "AfriNLLB", source: "huggingface.co/AfriNLP/AfriNLLB-12enc-12dec-full-ft", license: "Model card review", use: "Translation", status: "Priority review" },
+      { model: "Meta NLLB-200", source: "huggingface.co/facebook/nllb-200-distilled-600M", license: "Meta license review", use: "Translation fallback", status: "Restricted-use check" },
+      { model: "Meta MMS", source: "huggingface.co/facebook/mms-1b-all", license: "Meta license review", use: "Speech coverage", status: "Restricted-use check" },
+      { model: "Simba-H", source: "huggingface.co/UBC-NLP/Simba-H", license: "Research ecosystem review", use: "Speech benchmarking", status: "Attribution needed" }
+    ],
+    datasetSources: [
+      { dataset: "Masakhane benchmarks", origin: "Community/research", consent: "Source-level review", owner: "Language QA", status: "Mapped" },
+      { dataset: "African social text samples", origin: "Public/social domain", consent: "PII and platform terms review", owner: "Data Governance", status: "Restricted" },
+      { dataset: "Speech benchmarks", origin: "Research corpora", consent: "License review", owner: "Voice Ops", status: "Review" },
+      { dataset: "Community corrections", origin: "Lumora opt-in users", consent: "Explicit contribution consent", owner: "Privacy", status: "Designed" }
+    ],
+    usageRestrictions: [
+      { restriction: "Commercial use uncertainty", scope: "Research model cards", owner: "Legal", status: "Review before production" },
+      { restriction: "PII in open/social datasets", scope: "Tone and sentiment routes", owner: "Data Governance", status: "Redaction required" },
+      { restriction: "Voice biometric sensitivity", scope: "ASR/TTS pipelines", owner: "Privacy", status: "Consent required" },
+      { restriction: "Attribution and citation", scope: "All model source displays", owner: "AI Ops", status: "Task queued" }
+    ],
+    attributionTasks: [
+      { task: "Create model source registry page", owner: "AI Ops", due: "Before beta", status: "Draft" },
+      { task: "Add user-facing source acknowledgements", owner: "Product", due: "Before launch", status: "Design" },
+      { task: "Map license obligations by model route", owner: "Legal", due: "This week", status: "In progress" },
+      { task: "Document community correction consent", owner: "Privacy", due: "Before reviewer loop", status: "Review" }
+    ],
+    rightsRisks: [
+      { risk: "Dataset provenance unclear", impact: "High", owner: "Data Governance", mitigation: "Block production route until source approved", status: "Open" },
+      { risk: "Attribution missing in generated docs", impact: "Medium", owner: "Product", mitigation: "Model registry disclosure", status: "Queued" },
+      { risk: "Restricted model used by paid plan", impact: "High", owner: "Legal", mitigation: "Route eligibility rules", status: "Review" },
+      { risk: "User correction reused without consent", impact: "High", owner: "Privacy", mitigation: "Opt-in contribution workflow", status: "Designed" }
+    ],
+    guardrails: [
+      "No model or dataset should move to production until license, provenance, privacy, and attribution obligations are recorded.",
+      "Paid-plan use requires a stronger commercial-use review than research-only experimentation.",
+      "Community corrections and voice samples require explicit user consent before training, benchmarking, or reviewer reuse.",
+      "Model source disclosures should be visible to leadership, developers, legal, and users where appropriate."
+    ]
+  };
+}
+
 function adminSafetyData() {
   return state.adminSafety || {
     summary: { moderationFlags: 418, appeals: 44, corrections: 1284, correctionsPending: 312, safetyAlerts: 19 },
@@ -4555,6 +4624,26 @@ function fallbackQueueRow(item) {
   return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.owner} / ${item.priority}</span></div>`;
 }
 
+function modelLicenseRow(item) {
+  return `<div class="table-row"><strong>${item.model}</strong><span>${item.license}</span><span>${item.use}</span><span>${item.status}</span></div>`;
+}
+
+function datasetSourceRow(item) {
+  return `<div class="table-row"><strong>${item.dataset}</strong><span>${item.origin}</span><span>${item.consent}</span><span>${item.status}</span></div>`;
+}
+
+function usageRestrictionRow(item) {
+  return `<div class="table-row"><strong>${item.restriction}</strong><span>${item.scope}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
+function attributionTaskRow(item) {
+  return `<div class="table-row"><strong>${item.task}</strong><span>${item.owner}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
+function rightsRiskRow(item) {
+  return `<div class="table-row"><strong>${item.risk}</strong><span>${item.impact}</span><span>${item.mitigation}</span><span>${item.status}</span></div>`;
+}
+
 function safetyQueueRow(item) {
   return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.owner} / ${item.priority}</span></div>`;
 }
@@ -5099,6 +5188,7 @@ function adminView() {
   if (state.adminSection === "support") loadAdminSupport();
   if (state.adminSection === "customerExperience") loadAdminCustomerExperience();
   if (state.adminSection === "models") loadAdminModels();
+  if (state.adminSection === "licensing") loadAdminModelLicensing();
   if (state.adminSection === "evaluations") loadAdminEvaluations();
   if (state.adminSection === "languages") loadAdminLanguages();
   if (state.adminSection === "localization") loadAdminLocalizationContent();
@@ -5274,6 +5364,7 @@ function adminSectionView(section, readiness) {
     support: adminSupport,
     customerExperience: adminCustomerExperience,
     models: () => adminModels(readiness),
+    licensing: adminModelLicensing,
     evaluations: adminEvaluations,
     languages: adminLanguages,
     localization: adminLocalizationContent,
@@ -5757,6 +5848,55 @@ function adminModels(readiness) {
       <section class="admin-card wide">
         <h2>AI Ops principles</h2>
         <div class="admin-checklist"><span>Detect language, dialect, task, and tone.</span><span>Route by readiness, license, latency, cost, and safety.</span><span>Fallback to NLLB/MMS/general LLM where local model quality is low.</span><span>Send tone corrections into native-speaker review queues.</span></div>
+      </section>
+    </div>
+  `;
+}
+
+function adminModelLicensing() {
+  const licensing = adminModelLicensingData();
+  const summary = licensing.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Model sources", summary.modelSources || MODEL_REGISTRY.length)}
+      ${metric("License reviews", summary.licenseReviews || "10")}
+      ${metric("Restricted use", summary.restrictedUse || "2")}
+      ${metric("Rights risks", summary.rightsRisks || "4")}
+      <section class="admin-card full-admin">
+        <h2>Model license register</h2>
+        <div class="table admin-table-4">
+          ${licensing.modelLicenses.map(modelLicenseRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Dataset provenance</h2>
+        <div class="table admin-table-4">
+          ${licensing.datasetSources.map(datasetSourceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Usage restrictions</h2>
+        <div class="table admin-table-4">
+          ${licensing.usageRestrictions.map(usageRestrictionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Attribution tasks</h2>
+        <div class="table admin-table-4">
+          ${licensing.attributionTasks.map(attributionTaskRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Rights risks</h2>
+        <div class="table admin-table-4">
+          ${licensing.rightsRisks.map(rightsRiskRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Licensing guardrails</h2>
+        <div class="admin-checklist">
+          ${licensing.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
       </section>
     </div>
   `;
@@ -8130,6 +8270,7 @@ function bindEvents() {
       loadAdminSupport(true);
       loadAdminCustomerExperience(true);
       loadAdminModels(true);
+      loadAdminModelLicensing(true);
       loadAdminEvaluations(true);
       loadAdminLanguages(true);
       loadAdminLocalizationContent(true);

@@ -148,6 +148,50 @@ const modelOperations = {
   }))
 };
 
+const modelLicensingOperations = {
+  summary: { modelSources: modelRegistry.length, licenseReviews: 10, restrictedUse: 2, attributionTasks: 6, rightsRisks: 4 },
+  modelLicenses: [
+    { model: "Masakhane NLP", source: "huggingface.co/masakhane", license: "Project-specific/open research", use: "Review before commercial launch", status: "Legal review" },
+    { model: "InkubaLM", source: "huggingface.co/lelapa/InkubaLM-0.4B", license: "Open model card review", use: "Generation and fine-tuning", status: "Attribution needed" },
+    { model: "AfroLM", source: "huggingface.co/bonadossou/afrolm_active_learning", license: "Research/open review", use: "Classification and embeddings", status: "Review" },
+    { model: "AfriBERTa", source: "huggingface.co/castorini/afriberta_base", license: "Model card review", use: "NER/classification", status: "Watch" },
+    { model: "AfriNLLB", source: "huggingface.co/AfriNLP/AfriNLLB-12enc-12dec-full-ft", license: "Model card review", use: "Translation", status: "Priority review" },
+    { model: "Meta NLLB-200", source: "huggingface.co/facebook/nllb-200-distilled-600M", license: "Meta license review", use: "Translation fallback", status: "Restricted-use check" },
+    { model: "Meta MMS", source: "huggingface.co/facebook/mms-1b-all", license: "Meta license review", use: "Speech coverage", status: "Restricted-use check" },
+    { model: "Simba-H", source: "huggingface.co/UBC-NLP/Simba-H", license: "Research ecosystem review", use: "Speech benchmarking", status: "Attribution needed" }
+  ],
+  datasetSources: [
+    { dataset: "Masakhane benchmarks", origin: "Community/research", consent: "Source-level review", owner: "Language QA", status: "Mapped" },
+    { dataset: "African social text samples", origin: "Public/social domain", consent: "PII and platform terms review", owner: "Data Governance", status: "Restricted" },
+    { dataset: "Speech benchmarks", origin: "Research corpora", consent: "License review", owner: "Voice Ops", status: "Review" },
+    { dataset: "Community corrections", origin: "Lumora opt-in users", consent: "Explicit contribution consent", owner: "Privacy", status: "Designed" }
+  ],
+  usageRestrictions: [
+    { restriction: "Commercial use uncertainty", scope: "Research model cards", owner: "Legal", status: "Review before production" },
+    { restriction: "PII in open/social datasets", scope: "Tone and sentiment routes", owner: "Data Governance", status: "Redaction required" },
+    { restriction: "Voice biometric sensitivity", scope: "ASR/TTS pipelines", owner: "Privacy", status: "Consent required" },
+    { restriction: "Attribution and citation", scope: "All model source displays", owner: "AI Ops", status: "Task queued" }
+  ],
+  attributionTasks: [
+    { task: "Create model source registry page", owner: "AI Ops", due: "Before beta", status: "Draft" },
+    { task: "Add user-facing source acknowledgements", owner: "Product", due: "Before launch", status: "Design" },
+    { task: "Map license obligations by model route", owner: "Legal", due: "This week", status: "In progress" },
+    { task: "Document community correction consent", owner: "Privacy", due: "Before reviewer loop", status: "Review" }
+  ],
+  rightsRisks: [
+    { risk: "Dataset provenance unclear", impact: "High", owner: "Data Governance", mitigation: "Block production route until source approved", status: "Open" },
+    { risk: "Attribution missing in generated docs", impact: "Medium", owner: "Product", mitigation: "Model registry disclosure", status: "Queued" },
+    { risk: "Restricted model used by paid plan", impact: "High", owner: "Legal", mitigation: "Route eligibility rules", status: "Review" },
+    { risk: "User correction reused without consent", impact: "High", owner: "Privacy", mitigation: "Opt-in contribution workflow", status: "Designed" }
+  ],
+  guardrails: [
+    "No model or dataset should move to production until license, provenance, privacy, and attribution obligations are recorded.",
+    "Paid-plan use requires a stronger commercial-use review than research-only experimentation.",
+    "Community corrections and voice samples require explicit user consent before training, benchmarking, or reviewer reuse.",
+    "Model source disclosures should be visible to leadership, developers, legal, and users where appropriate."
+  ]
+};
+
 const safetyOperations = {
   summary: { moderationFlags: 418, appeals: 44, corrections: 1284, correctionsPending: 312, safetyAlerts: 19 },
   moderationQueues: [
@@ -2151,6 +2195,10 @@ function adminModelOperations() {
   };
 }
 
+function adminModelLicensingOperations() {
+  return modelLicensingOperations;
+}
+
 function adminSafetyOperations() {
   return safetyOperations;
 }
@@ -2379,6 +2427,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "payments:read",
       "users:read",
       "models:operate",
+      "licensing:review",
       "safety:review",
       "platform:operate",
       "devex:operate",
@@ -2529,6 +2578,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("model_operations_viewed", "AI Ops", "Info", "Model Ops");
       return sendJson(response, 200, adminModelOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/model-licensing") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("model_licensing_viewed", "AI Licensing", "Info", "Legal");
+      return sendJson(response, 200, adminModelLicensingOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/safety") {
@@ -2971,4 +3028,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
