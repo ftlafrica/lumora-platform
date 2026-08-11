@@ -578,6 +578,48 @@ const infrastructureOperations = {
   ]
 };
 
+const businessContinuityOperations = {
+  summary: { recoveryReadiness: "88%", backupFreshness: "12 min", openContinuityRisks: 4, restoreDrills: 3, rtoCoverage: "92%" },
+  recoveryObjectives: [
+    { service: "Chat API", rto: "15 min", rpo: "5 min", owner: "Platform", status: "Ready" },
+    { service: "User profiles", rto: "30 min", rpo: "10 min", owner: "Identity", status: "Ready" },
+    { service: "Payments ledger", rto: "20 min", rpo: "0 min", owner: "Finance/SRE", status: "Strict" },
+    { service: "Model routing", rto: "10 min", rpo: "15 min", owner: "AI Ops", status: "Fallback ready" },
+    { service: "Knowledge indexes", rto: "2 hr", rpo: "30 min", owner: "Knowledge Ops", status: "Watch" }
+  ],
+  backups: [
+    { asset: "Primary relational database", cadence: "Continuous WAL + hourly snapshot", lastRestore: "2026-08-05", owner: "SRE", status: "Verified" },
+    { asset: "Object storage", cadence: "Versioned daily snapshots", lastRestore: "2026-08-03", owner: "Infrastructure", status: "Verified" },
+    { asset: "Vector indexes", cadence: "6-hour snapshot", lastRestore: "2026-07-31", owner: "Knowledge Ops", status: "Drill due" },
+    { asset: "Audit logs", cadence: "Immutable stream", lastRestore: "2026-08-07", owner: "Security", status: "Protected" },
+    { asset: "Mobile release artifacts", cadence: "Per approved build", lastRestore: "2026-08-01", owner: "Mobile", status: "Archived" }
+  ],
+  continuityRisks: [
+    { risk: "Knowledge index restore time", impact: "Medium", owner: "Knowledge Ops", mitigation: "Warm standby index", status: "In progress" },
+    { risk: "Regional payment provider outage", impact: "High", owner: "Revenue Ops", mitigation: "Secondary provider runbook", status: "Design" },
+    { risk: "Seed admin unavailability", impact: "High", owner: "Security", mitigation: "Break-glass approval chain", status: "Review" },
+    { risk: "Mobile store release delay", impact: "Medium", owner: "Mobile", mitigation: "Remote config and force-update policy", status: "Ready" }
+  ],
+  incidentCommand: [
+    { role: "Incident commander", primary: "SRE Lead", backup: "Platform Lead", status: "Assigned" },
+    { role: "Customer communications", primary: "Comms Lead", backup: "Support Lead", status: "Assigned" },
+    { role: "Revenue protection", primary: "Finance Ops", backup: "Success Ops", status: "Assigned" },
+    { role: "Security/privacy", primary: "Security Lead", backup: "Legal Counsel", status: "Assigned" }
+  ],
+  regionalFallback: [
+    { region: "West Africa edge", fallback: "EU fallback", dependency: "API + model route", status: "Ready" },
+    { region: "East Africa edge", fallback: "West Africa edge", dependency: "Chat + translation", status: "Watch latency" },
+    { region: "Southern Africa edge", fallback: "EU fallback", dependency: "Auth + chat", status: "Ready" },
+    { region: "Global API partners", fallback: "Rate-limited safe mode", dependency: "API keys + webhooks", status: "Designed" }
+  ],
+  guardrails: [
+    "Recovery plans must protect user trust first: private chats, payments, identity, and audit logs have the strictest restore controls.",
+    "Every critical service needs a named owner, RTO, RPO, restore evidence, and an executive escalation path.",
+    "Break-glass access must be time-bound, seed-admin approved, audited, and reviewed after the incident.",
+    "Continuity testing should include web, mobile, API, model routing, payments, support, and customer communications."
+  ]
+};
+
 const reliabilitySloOperations = {
   summary: { customerUptime: "99.94%", errorBudgetUsed: "38%", sloBreaches: 2, statusReadiness: "Green", regionalWatch: 3 },
   objectives: [
@@ -2119,6 +2161,10 @@ function adminInfrastructureOperations() {
   return infrastructureOperations;
 }
 
+function adminBusinessContinuityOperations() {
+  return businessContinuityOperations;
+}
+
 function adminReliabilitySloOperations() {
   return reliabilitySloOperations;
 }
@@ -2300,6 +2346,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "analytics:read",
       "lifecycle:manage",
       "infrastructure:operate",
+      "continuity:manage",
       "slo:manage",
       "observability:operate",
       "capacity:plan",
@@ -2539,6 +2586,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("infrastructure_reliability_viewed", "Infrastructure", "Info", "Developer");
       return sendJson(response, 200, adminInfrastructureOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/business-continuity") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("business_continuity_viewed", "Continuity", "Info", "SRE");
+      return sendJson(response, 200, adminBusinessContinuityOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/reliability-slos") {
@@ -2861,4 +2916,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

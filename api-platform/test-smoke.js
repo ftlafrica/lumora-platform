@@ -25,6 +25,7 @@ const {
   adminAnalyticsOperations,
   adminLifecycleRetentionOperations,
   adminInfrastructureOperations,
+  adminBusinessContinuityOperations,
   adminReliabilitySloOperations,
   adminObservabilityLogOperations,
   adminCapacityPlanningOperations,
@@ -102,6 +103,7 @@ assert.ok(accessSession.scopes.includes("unit:economics"));
 assert.ok(accessSession.scopes.includes("analytics:read"));
 assert.ok(accessSession.scopes.includes("lifecycle:manage"));
 assert.ok(accessSession.scopes.includes("infrastructure:operate"));
+assert.ok(accessSession.scopes.includes("continuity:manage"));
 assert.ok(accessSession.scopes.includes("slo:manage"));
 assert.ok(accessSession.scopes.includes("observability:operate"));
 assert.ok(accessSession.scopes.includes("capacity:plan"));
@@ -163,6 +165,7 @@ const adminContracts = [
   ["analytics", adminAnalyticsOperations(), data => data.summary && Array.isArray(data.retention) && Array.isArray(data.featureUsage) && Array.isArray(data.languageAdoption)],
   ["lifecycle retention", adminLifecycleRetentionOperations(), data => data.summary && Array.isArray(data.journeys) && Array.isArray(data.churnRisks) && Array.isArray(data.winback)],
   ["infrastructure", adminInfrastructureOperations(), data => data.summary && Array.isArray(data.services) && Array.isArray(data.clusters) && Array.isArray(data.queues)],
+  ["business continuity", adminBusinessContinuityOperations(), data => data.summary && Array.isArray(data.recoveryObjectives) && Array.isArray(data.backups) && Array.isArray(data.continuityRisks)],
   ["reliability slos", adminReliabilitySloOperations(), data => data.summary && Array.isArray(data.objectives) && Array.isArray(data.errorBudgets) && Array.isArray(data.regions)],
   ["observability logs", adminObservabilityLogOperations(), data => data.summary && Array.isArray(data.logStreams) && Array.isArray(data.traces) && Array.isArray(data.alertRoutes)],
   ["capacity planning", adminCapacityPlanningOperations(), data => data.summary && Array.isArray(data.forecasts) && Array.isArray(data.computePools) && Array.isArray(data.storage)],

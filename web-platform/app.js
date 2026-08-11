@@ -114,6 +114,7 @@ const ADMIN_SECTIONS = [
   { id: "platform", label: "Platform", desc: "Web, mobile, API, infrastructure, incidents, releases, and feature flags." },
   { id: "devex", label: "DevEx", desc: "Build pipelines, deploy automation, environments, quality gates, developer tooling, and delivery guardrails." },
   { id: "infrastructure", label: "Infrastructure", desc: "Services, queues, GPU clusters, databases, incidents, uptime, and reliability guardrails." },
+  { id: "continuity", label: "Continuity", desc: "Disaster recovery, backups, RTO/RPO, restore drills, incident command, and continuity guardrails." },
   { id: "slos", label: "SLOs", desc: "Customer-facing uptime, error budgets, regional reliability, status page, and SLA guardrails." },
   { id: "observability", label: "Observe", desc: "Logs, traces, alert routes, debugging signals, dashboards, redaction, and observability guardrails." },
   { id: "capacity", label: "Capacity", desc: "Demand forecasts, GPU headroom, storage growth, scaling plans, and capacity guardrails." },
@@ -281,6 +282,8 @@ const DEFAULT_STATE = {
   adminSalesLoadedAt: null,
   adminInfrastructure: null,
   adminInfrastructureLoadedAt: null,
+  adminBusinessContinuity: null,
+  adminBusinessContinuityLoadedAt: null,
   adminReliabilitySlos: null,
   adminReliabilitySlosLoadedAt: null,
   adminObservabilityLogs: null,
@@ -466,6 +469,26 @@ async function loadAdminInfrastructure(force = false) {
     state.adminInfrastructureLoadedAt = Date.now();
   } catch {
     state.adminInfrastructureLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminBusinessContinuity(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminBusinessContinuityLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/business-continuity`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Business continuity operations unavailable.");
+    state.adminBusinessContinuity = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminBusinessContinuityLoadedAt = Date.now();
+  } catch {
+    state.adminBusinessContinuityLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -1539,7 +1562,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "identity:operate", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "identity:operate", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1739,6 +1762,50 @@ function adminInfrastructureData() {
       "Escalate when API errors exceed 1% for 10 minutes or model route p95 exceeds 900ms.",
       "Protect audit logging and billing events as durable, never-loss queues.",
       "Keep GPU fallback capacity ready for high-traffic language launches."
+    ]
+  };
+}
+
+function adminBusinessContinuityData() {
+  return state.adminBusinessContinuity || {
+    summary: { recoveryReadiness: "88%", backupFreshness: "12 min", openContinuityRisks: 4, restoreDrills: 3, rtoCoverage: "92%" },
+    recoveryObjectives: [
+      { service: "Chat API", rto: "15 min", rpo: "5 min", owner: "Platform", status: "Ready" },
+      { service: "User profiles", rto: "30 min", rpo: "10 min", owner: "Identity", status: "Ready" },
+      { service: "Payments ledger", rto: "20 min", rpo: "0 min", owner: "Finance/SRE", status: "Strict" },
+      { service: "Model routing", rto: "10 min", rpo: "15 min", owner: "AI Ops", status: "Fallback ready" },
+      { service: "Knowledge indexes", rto: "2 hr", rpo: "30 min", owner: "Knowledge Ops", status: "Watch" }
+    ],
+    backups: [
+      { asset: "Primary relational database", cadence: "Continuous WAL + hourly snapshot", lastRestore: "2026-08-05", owner: "SRE", status: "Verified" },
+      { asset: "Object storage", cadence: "Versioned daily snapshots", lastRestore: "2026-08-03", owner: "Infrastructure", status: "Verified" },
+      { asset: "Vector indexes", cadence: "6-hour snapshot", lastRestore: "2026-07-31", owner: "Knowledge Ops", status: "Drill due" },
+      { asset: "Audit logs", cadence: "Immutable stream", lastRestore: "2026-08-07", owner: "Security", status: "Protected" },
+      { asset: "Mobile release artifacts", cadence: "Per approved build", lastRestore: "2026-08-01", owner: "Mobile", status: "Archived" }
+    ],
+    continuityRisks: [
+      { risk: "Knowledge index restore time", impact: "Medium", owner: "Knowledge Ops", mitigation: "Warm standby index", status: "In progress" },
+      { risk: "Regional payment provider outage", impact: "High", owner: "Revenue Ops", mitigation: "Secondary provider runbook", status: "Design" },
+      { risk: "Seed admin unavailability", impact: "High", owner: "Security", mitigation: "Break-glass approval chain", status: "Review" },
+      { risk: "Mobile store release delay", impact: "Medium", owner: "Mobile", mitigation: "Remote config and force-update policy", status: "Ready" }
+    ],
+    incidentCommand: [
+      { role: "Incident commander", primary: "SRE Lead", backup: "Platform Lead", status: "Assigned" },
+      { role: "Customer communications", primary: "Comms Lead", backup: "Support Lead", status: "Assigned" },
+      { role: "Revenue protection", primary: "Finance Ops", backup: "Success Ops", status: "Assigned" },
+      { role: "Security/privacy", primary: "Security Lead", backup: "Legal Counsel", status: "Assigned" }
+    ],
+    regionalFallback: [
+      { region: "West Africa edge", fallback: "EU fallback", dependency: "API + model route", status: "Ready" },
+      { region: "East Africa edge", fallback: "West Africa edge", dependency: "Chat + translation", status: "Watch latency" },
+      { region: "Southern Africa edge", fallback: "EU fallback", dependency: "Auth + chat", status: "Ready" },
+      { region: "Global API partners", fallback: "Rate-limited safe mode", dependency: "API keys + webhooks", status: "Designed" }
+    ],
+    guardrails: [
+      "Recovery plans must protect user trust first: private chats, payments, identity, and audit logs have the strictest restore controls.",
+      "Every critical service needs a named owner, RTO, RPO, restore evidence, and an executive escalation path.",
+      "Break-glass access must be time-bound, seed-admin approved, audited, and reviewed after the incident.",
+      "Continuity testing should include web, mobile, API, model routing, payments, support, and customer communications."
     ]
   };
 }
@@ -3685,6 +3752,26 @@ function infrastructureIncidentRow(item) {
   return `<div class="table-row"><strong>${item.id}</strong><span>${item.title}</span><span>${item.severity} / ${item.status}</span></div>`;
 }
 
+function recoveryObjectiveRow(item) {
+  return `<div class="table-row"><strong>${item.service}</strong><span>RTO ${item.rto}</span><span>RPO ${item.rpo}</span><span>${item.status}</span></div>`;
+}
+
+function backupAssetRow(item) {
+  return `<div class="table-row"><strong>${item.asset}</strong><span>${item.cadence}</span><span>${item.lastRestore}</span><span>${item.status}</span></div>`;
+}
+
+function continuityRiskRow(item) {
+  return `<div class="table-row"><strong>${item.risk}</strong><span>${item.impact}</span><span>${item.mitigation}</span><span>${item.status}</span></div>`;
+}
+
+function incidentCommandRow(item) {
+  return `<div class="table-row"><strong>${item.role}</strong><span>${item.primary}</span><span>${item.backup}</span><span>${item.status}</span></div>`;
+}
+
+function regionalFallbackRow(item) {
+  return `<div class="table-row"><strong>${item.region}</strong><span>${item.fallback}</span><span>${item.dependency}</span><span>${item.status}</span></div>`;
+}
+
 function sloObjectiveRow(item) {
   return `<div class="table-row"><strong>${item.objective}</strong><span>${item.current} / ${item.target}</span><span>${item.window}</span><span>${item.status}</span></div>`;
 }
@@ -4933,6 +5020,7 @@ function adminView() {
   if (state.adminSection === "fraud") loadAdminFraudAbuse();
   if (state.adminSection === "security") loadAdminSecurity();
   if (state.adminSection === "infrastructure") loadAdminInfrastructure();
+  if (state.adminSection === "continuity") loadAdminBusinessContinuity();
   if (state.adminSection === "slos") loadAdminReliabilitySlos();
   if (state.adminSection === "observability") loadAdminObservabilityLogs();
   if (state.adminSection === "capacity") loadAdminCapacityPlanning();
@@ -5109,6 +5197,7 @@ function adminSectionView(section, readiness) {
     platform: adminPlatform,
     devex: adminDevexCicd,
     infrastructure: adminInfrastructure,
+    continuity: adminBusinessContinuity,
     slos: adminReliabilitySlos,
     observability: adminObservabilityLogs,
     capacity: adminCapacityPlanning,
@@ -7284,6 +7373,55 @@ function adminInfrastructure() {
   `;
 }
 
+function adminBusinessContinuity() {
+  const continuity = adminBusinessContinuityData();
+  const summary = continuity.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Recovery readiness", summary.recoveryReadiness || "88%")}
+      ${metric("Backup freshness", summary.backupFreshness || "12 min")}
+      ${metric("Open risks", summary.openContinuityRisks || "4")}
+      ${metric("RTO coverage", summary.rtoCoverage || "92%")}
+      <section class="admin-card full-admin">
+        <h2>Recovery objectives</h2>
+        <div class="table admin-table-4">
+          ${continuity.recoveryObjectives.map(recoveryObjectiveRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Backup and restore evidence</h2>
+        <div class="table admin-table-4">
+          ${continuity.backups.map(backupAssetRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Continuity risks</h2>
+        <div class="table admin-table-4">
+          ${continuity.continuityRisks.map(continuityRiskRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Incident command</h2>
+        <div class="table admin-table-4">
+          ${continuity.incidentCommand.map(incidentCommandRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Regional fallback</h2>
+        <div class="table admin-table-4">
+          ${continuity.regionalFallback.map(regionalFallbackRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Continuity guardrails</h2>
+        <div class="admin-checklist">
+          ${continuity.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminReliabilitySlos() {
   const slos = adminReliabilitySlosData();
   const summary = slos.summary || {};
@@ -7862,6 +8000,7 @@ function bindEvents() {
       loadAdminFraudAbuse(true);
       loadAdminSecurity(true);
       loadAdminInfrastructure(true);
+      loadAdminBusinessContinuity(true);
       loadAdminReliabilitySlos(true);
       loadAdminObservabilityLogs(true);
       loadAdminCapacityPlanning(true);
