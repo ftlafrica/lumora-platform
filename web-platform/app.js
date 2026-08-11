@@ -95,6 +95,7 @@ const ADMIN_SECTIONS = [
   { id: "roadmap", label: "Roadmap", desc: "Initiatives, release candidates, dependencies, customer requests, and product guardrails." },
   { id: "community", label: "Community", desc: "Contributors, corrections, ambassadors, events, ecosystem programs, and trust guardrails." },
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
+  { id: "entitlements", label: "Entitlements", desc: "Plan limits, usage metering, overages, voice minutes, API quotas, upgrade gates, and quota guardrails." },
   { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
   { id: "unitEconomics", label: "Unit Econ", desc: "Cost per message, plan margins, route economics, margin leaks, and pricing actions." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
@@ -199,6 +200,8 @@ const DEFAULT_STATE = {
   adminDevexCicdLoadedAt: null,
   adminPayments: null,
   adminPaymentsLoadedAt: null,
+  adminEntitlements: null,
+  adminEntitlementsLoadedAt: null,
   adminFinance: null,
   adminFinanceLoadedAt: null,
   adminUnitEconomics: null,
@@ -1263,6 +1266,26 @@ async function loadAdminPayments(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminEntitlements(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminEntitlementsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/entitlements`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Entitlement operations unavailable.");
+    state.adminEntitlements = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminEntitlementsLoadedAt = Date.now();
+  } catch {
+    state.adminEntitlementsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminFinance(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminFinanceLoadedAt || 0;
@@ -1631,7 +1654,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "licensing:review", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "users:read", "models:operate", "licensing:review", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -3261,6 +3284,48 @@ function adminPaymentData() {
   };
 }
 
+function adminEntitlementData() {
+  return state.adminEntitlements || {
+    summary: { activePlans: 4, quotaBreaches: 73, overageReviews: 18, meteringLag: "42s", entitlementHealth: "96%" },
+    planEntitlements: [
+      { plan: "Free", messages: "20/day", voice: "5 min/day", api: "No API", status: "Acquisition" },
+      { plan: "Plus", messages: "200/day", voice: "60 min/mo", api: "Sandbox only", status: "Healthy" },
+      { plan: "Pro", messages: "1,000/day", voice: "300 min/mo", api: "Builder quota", status: "Best value" },
+      { plan: "Teams", messages: "5,000/day", voice: "1,500 min/mo", api: "Enterprise quota", status: "Contracted" }
+    ],
+    quotaMeters: [
+      { meter: "Chat messages", surface: "Web/Mobile", lag: "18s", owner: "Platform", status: "Healthy" },
+      { meter: "Voice minutes", surface: "Mobile/Voice Circle", lag: "42s", owner: "Voice Ops", status: "Watch" },
+      { meter: "API calls", surface: "Developer API", lag: "11s", owner: "API Platform", status: "Healthy" },
+      { meter: "RAG storage", surface: "Teams workspaces", lag: "4m", owner: "Knowledge Ops", status: "Review" }
+    ],
+    breachQueues: [
+      { queue: "Free plan hard limit", count: 38, owner: "Growth", action: "Upgrade prompt", status: "Active" },
+      { queue: "Voice minute overage", count: 21, owner: "Voice Ops", action: "Throttle + notify", status: "Watch" },
+      { queue: "API burst over quota", count: 9, owner: "Developer Support", action: "Rate-limit review", status: "Queued" },
+      { queue: "Teams contract exception", count: 5, owner: "Success/Finance", action: "Manual approval", status: "Review" }
+    ],
+    upgradeGates: [
+      { gate: "Free to Plus", trigger: "2 quota hits in 7 days", message: "More daily chats and voice", owner: "Growth", status: "Live" },
+      { gate: "Plus to Pro", trigger: "Creator/market mode heavy use", message: "Advanced workflows", owner: "Product", status: "Testing" },
+      { gate: "Pro to Teams", trigger: "Multiple seats or API need", message: "Workspace + admin controls", owner: "Sales", status: "Ready" },
+      { gate: "Teams contract expansion", trigger: "80% seat or API utilization", message: "Success-led expansion", owner: "Customer Success", status: "Ready" }
+    ],
+    exceptions: [
+      { account: "EduBridge Africa", exception: "Temporary seat overage", approval: "Success Lead", expires: "Aug 18", status: "Approved" },
+      { account: "MarketUnion NG", exception: "API burst window", approval: "Developer Support", expires: "Aug 14", status: "Pending" },
+      { account: "Creator Desk", exception: "Voice beta allowance", approval: "Mobile Growth", expires: "Aug 21", status: "Approved" },
+      { account: "Free community reviewers", exception: "Correction review credits", approval: "Language QA", expires: "Rolling", status: "Scoped" }
+    ],
+    guardrails: [
+      "Quota enforcement should be clear, fair, and localized so users understand limits before they hit frustration.",
+      "Paid entitlements must be enforced consistently across web, mobile, API, and workspace surfaces.",
+      "Manual exceptions require owner, expiry, audit event, and finance/customer-success review for paid plans.",
+      "Usage meters should protect cost and abuse controls without exposing raw private prompts or payment secrets."
+    ]
+  };
+}
+
 function adminFinanceData() {
   return state.adminFinance || {
     summary: { mrr: "$184K", arr: "$2.2M", grossMargin: "74%", gpuToday: "$9.8K", savingsIdentified: "14%" },
@@ -4598,6 +4663,26 @@ function invoiceRow(item) {
   return `<div class="table-row"><strong>${item.id}</strong><span>${item.account}</span><span>${item.amount} / ${item.status}</span></div>`;
 }
 
+function entitlementPlanRow(item) {
+  return `<div class="table-row"><strong>${item.plan}</strong><span>${item.messages}</span><span>${item.voice}</span><span>${item.status}</span></div>`;
+}
+
+function quotaMeterRow(item) {
+  return `<div class="table-row"><strong>${item.meter}</strong><span>${item.surface}</span><span>${item.lag}</span><span>${item.status}</span></div>`;
+}
+
+function breachQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} accounts</span><span>${item.action}</span><span>${item.status}</span></div>`;
+}
+
+function upgradeGateRow(item) {
+  return `<div class="table-row"><strong>${item.gate}</strong><span>${item.trigger}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
+function entitlementExceptionRow(item) {
+  return `<div class="table-row"><strong>${item.account}</strong><span>${item.exception}</span><span>${item.expires}</span><span>${item.status}</span></div>`;
+}
+
 function financeCostRow(item) {
   return `<div class="table-row"><strong>${item.center}</strong><span>${item.spend}</span><span>${item.driver}</span><span>${item.status}</span></div>`;
 }
@@ -5268,6 +5353,7 @@ function adminView() {
   if (state.adminSection === "platform") loadAdminPlatform();
   if (state.adminSection === "devex") loadAdminDevexCicd();
   if (state.adminSection === "payments") loadAdminPayments();
+  if (state.adminSection === "entitlements") loadAdminEntitlements();
   if (state.adminSection === "finance") loadAdminFinance();
   if (state.adminSection === "unitEconomics") loadAdminUnitEconomics();
   if (state.adminSection === "users") loadAdminUsers();
@@ -5443,6 +5529,7 @@ function adminSectionView(section, readiness) {
     communications: adminCommunications,
     notifications: adminNotificationDelivery,
     payments: adminPayments,
+    entitlements: adminEntitlements,
     finance: adminFinance,
     unitEconomics: adminUnitEconomics,
     users: adminUsers,
@@ -5677,6 +5764,55 @@ function adminPayments() {
       <section class="admin-card wide">
         <h2>Finance actions</h2>
         <div class="admin-checklist"><span>Retry failed payments with smart dunning.</span><span>Review refund requests over $250.</span><span>Prepare Teams invoices and tax exports.</span><span>Projected dunning recovery: ${mix.dunningRecovery || "$11.4K"}</span></div>
+      </section>
+    </div>
+  `;
+}
+
+function adminEntitlements() {
+  const entitlements = adminEntitlementData();
+  const summary = entitlements.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active plans", summary.activePlans || "4")}
+      ${metric("Quota breaches", summary.quotaBreaches || "73")}
+      ${metric("Overage reviews", summary.overageReviews || "18")}
+      ${metric("Metering lag", summary.meteringLag || "42s")}
+      <section class="admin-card full-admin">
+        <h2>Plan entitlements</h2>
+        <div class="table admin-table-4">
+          ${entitlements.planEntitlements.map(entitlementPlanRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Usage meters</h2>
+        <div class="table admin-table-4">
+          ${entitlements.quotaMeters.map(quotaMeterRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Breach queues</h2>
+        <div class="table admin-table-4">
+          ${entitlements.breachQueues.map(breachQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Upgrade gates</h2>
+        <div class="table admin-table-4">
+          ${entitlements.upgradeGates.map(upgradeGateRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Manual exceptions</h2>
+        <div class="table admin-table-4">
+          ${entitlements.exceptions.map(entitlementExceptionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Entitlement guardrails</h2>
+        <div class="admin-checklist">
+          ${entitlements.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
       </section>
     </div>
   `;
@@ -8401,6 +8537,7 @@ function bindEvents() {
       loadAdminPlatform(true);
       loadAdminDevexCicd(true);
       loadAdminPayments(true);
+      loadAdminEntitlements(true);
       loadAdminFinance(true);
       loadAdminUnitEconomics(true);
       loadAdminUsers(true);

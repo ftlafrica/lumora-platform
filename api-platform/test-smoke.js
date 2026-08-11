@@ -10,6 +10,7 @@ const {
   adminPlatformControls,
   adminDevexCicdOperations,
   adminPaymentOperations,
+  adminEntitlementOperations,
   adminUserOperations,
   adminModelOperations,
   adminModelLicensingOperations,
@@ -103,6 +104,7 @@ assert.ok(accessSession.scopes.includes("api:manage"));
 assert.ok(accessSession.scopes.includes("knowledge:operate"));
 assert.ok(accessSession.scopes.includes("support:review"));
 assert.ok(accessSession.scopes.includes("cx:review"));
+assert.ok(accessSession.scopes.includes("entitlements:manage"));
 assert.ok(accessSession.scopes.includes("licensing:review"));
 assert.ok(accessSession.scopes.includes("finance:read"));
 assert.ok(accessSession.scopes.includes("unit:economics"));
@@ -156,6 +158,7 @@ const adminContracts = [
   ["platform", adminPlatformControls(), data => Array.isArray(data.releases) && Array.isArray(data.featureFlags) && data.guardrails],
   ["devex cicd", adminDevexCicdOperations(), data => data.summary && Array.isArray(data.pipelines) && Array.isArray(data.environments) && Array.isArray(data.qualityGates)],
   ["payments", adminPaymentOperations(), data => Array.isArray(data.plans) && Array.isArray(data.queues) && Array.isArray(data.invoices)],
+  ["entitlements", adminEntitlementOperations(), data => data.summary && Array.isArray(data.planEntitlements) && Array.isArray(data.quotaMeters) && Array.isArray(data.breachQueues)],
   ["users", adminUserOperations(), data => data.summary && Array.isArray(data.accountQueues) && Array.isArray(data.organizations)],
   ["models", adminModelOperations(), data => Array.isArray(data.registry) && Array.isArray(data.health) && data.summary.modelSources >= modelRegistry.length],
   ["model licensing", adminModelLicensingOperations(), data => data.summary && Array.isArray(data.modelLicenses) && Array.isArray(data.datasetSources) && Array.isArray(data.rightsRisks)],
