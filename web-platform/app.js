@@ -114,6 +114,7 @@ const ADMIN_SECTIONS = [
   { id: "platform", label: "Platform", desc: "Web, mobile, API, infrastructure, incidents, releases, and feature flags." },
   { id: "infrastructure", label: "Infrastructure", desc: "Services, queues, GPU clusters, databases, incidents, uptime, and reliability guardrails." },
   { id: "slos", label: "SLOs", desc: "Customer-facing uptime, error budgets, regional reliability, status page, and SLA guardrails." },
+  { id: "observability", label: "Observe", desc: "Logs, traces, alert routes, debugging signals, dashboards, redaction, and observability guardrails." },
   { id: "capacity", label: "Capacity", desc: "Demand forecasts, GPU headroom, storage growth, scaling plans, and capacity guardrails." },
   { id: "api", label: "API", desc: "Keys, quotas, SDKs, webhooks, rate limits, errors, and partner integration health." },
   { id: "integrations", label: "Integrations", desc: "Connected services, partner systems, webhook retries, secrets, and vendor health." },
@@ -279,6 +280,8 @@ const DEFAULT_STATE = {
   adminInfrastructureLoadedAt: null,
   adminReliabilitySlos: null,
   adminReliabilitySlosLoadedAt: null,
+  adminObservabilityLogs: null,
+  adminObservabilityLogsLoadedAt: null,
   adminCapacityPlanning: null,
   adminCapacityPlanningLoadedAt: null,
   adminAccess: null,
@@ -460,6 +463,26 @@ async function loadAdminReliabilitySlos(force = false) {
     state.adminReliabilitySlosLoadedAt = Date.now();
   } catch {
     state.adminReliabilitySlosLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminObservabilityLogs(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminObservabilityLogsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/observability-logs`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Observability logs unavailable.");
+    state.adminObservabilityLogs = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminObservabilityLogsLoadedAt = Date.now();
+  } catch {
+    state.adminObservabilityLogsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -1493,7 +1516,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "identity:operate", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "slo:manage", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "identity:operate", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1685,6 +1708,47 @@ function adminReliabilitySlosData() {
       "High burn-rate services need rollback, capacity, or feature-throttle decisions before budget exhaustion.",
       "Status-page messaging should be fast, accurate, region-aware, and coordinated with support macros.",
       "Enterprise SLA reporting must use aggregated reliability data without exposing internal secrets or raw user events."
+    ]
+  };
+}
+
+function adminObservabilityLogsData() {
+  return state.adminObservabilityLogs || {
+    summary: { logsIngested: "184M", tracesSampled: "12%", activeAlerts: 7, noisyAlerts: 3, redactionCoverage: "99.4%" },
+    logStreams: [
+      { stream: "API gateway", volume: "82M/day", retention: "30 days", redaction: "99.6%", status: "Healthy" },
+      { stream: "Model router", volume: "48M/day", retention: "30 days", redaction: "99.2%", status: "Watch" },
+      { stream: "Billing webhooks", volume: "1.2M/day", retention: "90 days", redaction: "99.9%", status: "Healthy" },
+      { stream: "Admin audit events", volume: "18K/day", retention: "7 years", redaction: "Immutable", status: "Protected" }
+    ],
+    traces: [
+      { service: "Chat completion", p95: "620ms", sampleRate: "12%", bottleneck: "Model route", status: "Watch" },
+      { service: "Translation", p95: "710ms", sampleRate: "15%", bottleneck: "Fallback route", status: "Healthy" },
+      { service: "Voice transcription", p95: "1.8s", sampleRate: "20%", bottleneck: "ASR queue", status: "Investigating" },
+      { service: "Admin dashboard", p95: "240ms", sampleRate: "10%", bottleneck: "Metrics fetch", status: "Healthy" }
+    ],
+    alertRoutes: [
+      { alert: "API p95 latency breach", route: "Platform on-call", threshold: "900ms 10m", severity: "High", status: "Armed" },
+      { alert: "Model fallback spike", route: "AI Ops", threshold: "+20% 15m", severity: "Medium", status: "Armed" },
+      { alert: "Payment webhook retry surge", route: "Revenue Ops", threshold: "100 retries", severity: "Medium", status: "Armed" },
+      { alert: "PII redaction miss", route: "Security + Privacy", threshold: "Any confirmed", severity: "Critical", status: "Armed" }
+    ],
+    incidents: [
+      { incident: "Voice p95 above target", signal: "ASR queue", owner: "Voice Ops", eta: "2h", status: "Investigating" },
+      { incident: "Noisy mobile crash alert", signal: "Duplicate stack", owner: "Mobile", eta: "Today", status: "Tuning" },
+      { incident: "Model route trace gaps", signal: "Sampler config", owner: "AI Ops", eta: "4h", status: "Fixing" }
+    ],
+    dashboards: [
+      { dashboard: "Executive reliability pulse", audience: "Leadership", freshness: "Realtime", owner: "SRE", status: "Live" },
+      { dashboard: "AI route observability", audience: "AI Ops", freshness: "2 min", owner: "AI Platform", status: "Live" },
+      { dashboard: "Mobile release health", audience: "Mobile", freshness: "5 min", owner: "Mobile", status: "Beta" },
+      { dashboard: "Billing webhook health", audience: "Finance", freshness: "Realtime", owner: "Revenue Ops", status: "Live" }
+    ],
+    guardrails: [
+      "Logs and traces must redact prompts, private chats, payment data, tokens, and sensitive identifiers before storage.",
+      "Alert routes need owner, threshold, escalation policy, quiet-hour behavior, and customer-impact labeling.",
+      "Debugging views should show correlation IDs and aggregates, not raw private user content.",
+      "Observability retention should match compliance needs while minimizing sensitive operational data."
     ]
   };
 }
@@ -3550,6 +3614,26 @@ function statusPageRow(item) {
   return `<div class="table-row"><strong>${item.item}</strong><span>${item.audience}</span><span>${item.readiness}</span><span>${item.status}</span></div>`;
 }
 
+function logStreamRow(item) {
+  return `<div class="table-row"><strong>${item.stream}</strong><span>${item.volume}</span><span>${item.redaction}</span><span>${item.status}</span></div>`;
+}
+
+function traceServiceRow(item) {
+  return `<div class="table-row"><strong>${item.service}</strong><span>${item.p95}</span><span>${item.sampleRate}</span><span>${item.status}</span></div>`;
+}
+
+function alertRouteRow(item) {
+  return `<div class="table-row"><strong>${item.alert}</strong><span>${item.route}</span><span>${item.threshold}</span><span>${item.status}</span></div>`;
+}
+
+function observabilityIncidentRow(item) {
+  return `<div class="table-row"><strong>${item.incident}</strong><span>${item.signal}</span><span>${item.eta}</span><span>${item.status}</span></div>`;
+}
+
+function observabilityDashboardRow(item) {
+  return `<div class="table-row"><strong>${item.dashboard}</strong><span>${item.audience}</span><span>${item.freshness}</span><span>${item.status}</span></div>`;
+}
+
 function capacityForecastRow(item) {
   return `<div class="table-row"><strong>${item.forecast}</strong><span>${item.surface}</span><span>${item.expectedLift}</span><span>${item.status}</span></div>`;
 }
@@ -4762,6 +4846,7 @@ function adminView() {
   if (state.adminSection === "security") loadAdminSecurity();
   if (state.adminSection === "infrastructure") loadAdminInfrastructure();
   if (state.adminSection === "slos") loadAdminReliabilitySlos();
+  if (state.adminSection === "observability") loadAdminObservabilityLogs();
   if (state.adminSection === "capacity") loadAdminCapacityPlanning();
   if (state.adminSection === "growth") loadAdminGrowth();
   if (state.adminSection === "analytics") loadAdminAnalytics();
@@ -4936,6 +5021,7 @@ function adminSectionView(section, readiness) {
     platform: adminPlatform,
     infrastructure: adminInfrastructure,
     slos: adminReliabilitySlos,
+    observability: adminObservabilityLogs,
     capacity: adminCapacityPlanning,
     api: adminApiManagement,
     integrations: adminIntegrations,
@@ -7103,6 +7189,55 @@ function adminReliabilitySlos() {
   `;
 }
 
+function adminObservabilityLogs() {
+  const observability = adminObservabilityLogsData();
+  const summary = observability.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Logs ingested", summary.logsIngested || "184M")}
+      ${metric("Traces sampled", summary.tracesSampled || "12%")}
+      ${metric("Active alerts", summary.activeAlerts || "7")}
+      ${metric("Redaction", summary.redactionCoverage || "99.4%")}
+      <section class="admin-card full-admin">
+        <h2>Log streams</h2>
+        <div class="table admin-table-4">
+          ${observability.logStreams.map(logStreamRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Trace coverage</h2>
+        <div class="table admin-table-4">
+          ${observability.traces.map(traceServiceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Alert routes</h2>
+        <div class="table admin-table-4">
+          ${observability.alertRoutes.map(alertRouteRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Debugging incidents</h2>
+        <div class="table admin-table-4">
+          ${observability.incidents.map(observabilityIncidentRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Observability dashboards</h2>
+        <div class="table admin-table-4">
+          ${observability.dashboards.map(observabilityDashboardRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Observability guardrails</h2>
+        <div class="admin-checklist">
+          ${observability.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminCapacityPlanning() {
   const capacity = adminCapacityPlanningData();
   const summary = capacity.summary || {};
@@ -7589,6 +7724,7 @@ function bindEvents() {
       loadAdminSecurity(true);
       loadAdminInfrastructure(true);
       loadAdminReliabilitySlos(true);
+      loadAdminObservabilityLogs(true);
       loadAdminCapacityPlanning(true);
       loadAdminGrowth(true);
       loadAdminAnalytics(true);

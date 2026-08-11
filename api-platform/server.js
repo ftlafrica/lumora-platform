@@ -570,6 +570,45 @@ const reliabilitySloOperations = {
   ]
 };
 
+const observabilityLogOperations = {
+  summary: { logsIngested: "184M", tracesSampled: "12%", activeAlerts: 7, noisyAlerts: 3, redactionCoverage: "99.4%" },
+  logStreams: [
+    { stream: "API gateway", volume: "82M/day", retention: "30 days", redaction: "99.6%", status: "Healthy" },
+    { stream: "Model router", volume: "48M/day", retention: "30 days", redaction: "99.2%", status: "Watch" },
+    { stream: "Billing webhooks", volume: "1.2M/day", retention: "90 days", redaction: "99.9%", status: "Healthy" },
+    { stream: "Admin audit events", volume: "18K/day", retention: "7 years", redaction: "Immutable", status: "Protected" }
+  ],
+  traces: [
+    { service: "Chat completion", p95: "620ms", sampleRate: "12%", bottleneck: "Model route", status: "Watch" },
+    { service: "Translation", p95: "710ms", sampleRate: "15%", bottleneck: "Fallback route", status: "Healthy" },
+    { service: "Voice transcription", p95: "1.8s", sampleRate: "20%", bottleneck: "ASR queue", status: "Investigating" },
+    { service: "Admin dashboard", p95: "240ms", sampleRate: "10%", bottleneck: "Metrics fetch", status: "Healthy" }
+  ],
+  alertRoutes: [
+    { alert: "API p95 latency breach", route: "Platform on-call", threshold: "900ms 10m", severity: "High", status: "Armed" },
+    { alert: "Model fallback spike", route: "AI Ops", threshold: "+20% 15m", severity: "Medium", status: "Armed" },
+    { alert: "Payment webhook retry surge", route: "Revenue Ops", threshold: "100 retries", severity: "Medium", status: "Armed" },
+    { alert: "PII redaction miss", route: "Security + Privacy", threshold: "Any confirmed", severity: "Critical", status: "Armed" }
+  ],
+  incidents: [
+    { incident: "Voice p95 above target", signal: "ASR queue", owner: "Voice Ops", eta: "2h", status: "Investigating" },
+    { incident: "Noisy mobile crash alert", signal: "Duplicate stack", owner: "Mobile", eta: "Today", status: "Tuning" },
+    { incident: "Model route trace gaps", signal: "Sampler config", owner: "AI Ops", eta: "4h", status: "Fixing" }
+  ],
+  dashboards: [
+    { dashboard: "Executive reliability pulse", audience: "Leadership", freshness: "Realtime", owner: "SRE", status: "Live" },
+    { dashboard: "AI route observability", audience: "AI Ops", freshness: "2 min", owner: "AI Platform", status: "Live" },
+    { dashboard: "Mobile release health", audience: "Mobile", freshness: "5 min", owner: "Mobile", status: "Beta" },
+    { dashboard: "Billing webhook health", audience: "Finance", freshness: "Realtime", owner: "Revenue Ops", status: "Live" }
+  ],
+  guardrails: [
+    "Logs and traces must redact prompts, private chats, payment data, tokens, and sensitive identifiers before storage.",
+    "Alert routes need owner, threshold, escalation policy, quiet-hour behavior, and customer-impact labeling.",
+    "Debugging views should show correlation IDs and aggregates, not raw private user content.",
+    "Observability retention should match compliance needs while minimizing sensitive operational data."
+  ]
+};
+
 const capacityPlanningOperations = {
   summary: { forecastWindow: "90 days", demandGrowth: "+42%", gpuHeadroom: "31%", dbHeadroom: "44%", capacityRisks: 4 },
   forecasts: [
@@ -2038,6 +2077,10 @@ function adminReliabilitySloOperations() {
   return reliabilitySloOperations;
 }
 
+function adminObservabilityLogOperations() {
+  return observabilityLogOperations;
+}
+
 function adminCapacityPlanningOperations() {
   return capacityPlanningOperations;
 }
@@ -2211,6 +2254,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "lifecycle:manage",
       "infrastructure:operate",
       "slo:manage",
+      "observability:operate",
       "capacity:plan",
       "security:operate",
       "reporting:export",
@@ -2448,6 +2492,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("reliability_slos_viewed", "Reliability", "Info", "SLOs");
       return sendJson(response, 200, adminReliabilitySloOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/observability-logs") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("observability_logs_viewed", "Observability", "Info", "SRE");
+      return sendJson(response, 200, adminObservabilityLogOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/capacity-planning") {
@@ -2754,4 +2806,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
