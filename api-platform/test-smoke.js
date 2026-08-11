@@ -8,6 +8,7 @@ const {
   adminAccessSession,
   adminAuditTrail,
   adminPlatformControls,
+  adminDevexCicdOperations,
   adminPaymentOperations,
   adminUserOperations,
   adminModelOperations,
@@ -139,11 +140,13 @@ assert.ok(accessSession.scopes.includes("data:room"));
 assert.ok(accessSession.scopes.includes("ai:governance"));
 assert.ok(accessSession.scopes.includes("mobile:operate"));
 assert.ok(accessSession.scopes.includes("fraud:review"));
+assert.ok(accessSession.scopes.includes("devex:operate"));
 assert.ok(accessSession.audit.length >= 2);
 
 const adminContracts = [
   ["audit", adminAuditTrail(), data => Array.isArray(data.events) && data.summary.total >= data.events.length],
   ["platform", adminPlatformControls(), data => Array.isArray(data.releases) && Array.isArray(data.featureFlags) && data.guardrails],
+  ["devex cicd", adminDevexCicdOperations(), data => data.summary && Array.isArray(data.pipelines) && Array.isArray(data.environments) && Array.isArray(data.qualityGates)],
   ["payments", adminPaymentOperations(), data => Array.isArray(data.plans) && Array.isArray(data.queues) && Array.isArray(data.invoices)],
   ["users", adminUserOperations(), data => data.summary && Array.isArray(data.accountQueues) && Array.isArray(data.organizations)],
   ["models", adminModelOperations(), data => Array.isArray(data.registry) && Array.isArray(data.health) && data.summary.modelSources >= modelRegistry.length],

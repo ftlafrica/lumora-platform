@@ -41,6 +41,48 @@ const platformControls = {
   }
 };
 
+const devexCicdOperations = {
+  summary: { buildSuccess: "96.8%", deploysToday: 14, openBuildBreaks: 2, qualityGatePass: "91%", environments: 5 },
+  pipelines: [
+    { pipeline: "Web platform CI", repo: "lumora-platform", duration: "6m 12s", owner: "Frontend", status: "Healthy" },
+    { pipeline: "API platform CI", repo: "lumora-platform", duration: "4m 48s", owner: "Backend", status: "Healthy" },
+    { pipeline: "Admin dashboard checks", repo: "lumora-platform", duration: "5m 30s", owner: "Platform", status: "Watch" },
+    { pipeline: "Mobile build preview", repo: "lumora-mobile", duration: "12m 10s", owner: "Mobile", status: "Preparing" }
+  ],
+  environments: [
+    { environment: "Local prototype", branch: "main", freshness: "Current", owner: "Product/Design", status: "Active" },
+    { environment: "Preview web", branch: "main", freshness: "On push", owner: "Frontend", status: "Ready" },
+    { environment: "Staging API", branch: "main", freshness: "15 min", owner: "Backend", status: "Ready" },
+    { environment: "Mobile beta", branch: "release/mobile", freshness: "Nightly", owner: "Mobile", status: "Preparing" },
+    { environment: "Production", branch: "release", freshness: "Manual approval", owner: "Platform", status: "Locked" }
+  ],
+  qualityGates: [
+    { gate: "API smoke harness", coverage: "Admin contracts", owner: "Backend", status: "Passing" },
+    { gate: "Web syntax harness", coverage: "App shell", owner: "Frontend", status: "Passing" },
+    { gate: "Responsive visual QA", coverage: "Web/mobile/admin", owner: "Design QA", status: "Manual" },
+    { gate: "Security dependency scan", coverage: "Runtime packages", owner: "Security", status: "Queued" },
+    { gate: "Release approval", coverage: "Production deploy", owner: "Seed Admin", status: "Required" }
+  ],
+  deployAutomation: [
+    { automation: "Version tagging", trigger: "Approved release", owner: "Platform", status: "Design" },
+    { automation: "Rollback bundle", trigger: "SLO breach", owner: "SRE", status: "Ready" },
+    { automation: "Environment smoke", trigger: "Deploy complete", owner: "QA", status: "Ready" },
+    { automation: "Changelog generation", trigger: "Merged release PR", owner: "Developer Experience", status: "Queued" }
+  ],
+  developerTooling: [
+    { tool: "Local API smoke command", audience: "Backend", adoption: "100%", status: "Active" },
+    { tool: "Admin module generator pattern", audience: "Full stack", adoption: "Draft", status: "Documenting" },
+    { tool: "Design screenshot checklist", audience: "Design/QA", adoption: "Manual", status: "Active" },
+    { tool: "Mobile release checklist", audience: "Mobile", adoption: "Beta", status: "Preparing" }
+  ],
+  guardrails: [
+    "Production deploys require approval, rollback notes, smoke tests, and customer-impact review.",
+    "Secrets and tokens must never be embedded in browser code, logs, screenshots, or generated reports.",
+    "CI/CD gates should block release when admin, chat, auth, payments, privacy, or mobile smoke checks fail.",
+    "Developer tooling should make the safe path easy without hiding risk from leadership or release owners."
+  ]
+};
+
 const paymentOperations = {
   plans: [
     { plan: "Free", users: "14.2K", mrr: "$0", status: "Acquisition" },
@@ -1993,6 +2035,10 @@ function adminPlatformControls() {
   return platformControls;
 }
 
+function adminDevexCicdOperations() {
+  return devexCicdOperations;
+}
+
 function adminPaymentOperations() {
   return paymentOperations;
 }
@@ -2243,6 +2289,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "models:operate",
       "safety:review",
       "platform:operate",
+      "devex:operate",
       "access:grant",
       "identity:operate",
       "api:manage",
@@ -2356,6 +2403,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("platform_controls_viewed", "Platform", "Info", "Developer");
       return sendJson(response, 200, adminPlatformControls());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/devex-cicd") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("devex_cicd_viewed", "DevEx", "Info", "Developer Experience");
+      return sendJson(response, 200, adminDevexCicdOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/payments") {
@@ -2806,4 +2861,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminUserOperations, adminModelOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

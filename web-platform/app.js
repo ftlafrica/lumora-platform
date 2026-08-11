@@ -112,6 +112,7 @@ const ADMIN_SECTIONS = [
   { id: "fraud", label: "Fraud", desc: "Bot defense, account abuse, payment risk, API misuse, enforcement, and appeals." },
   { id: "security", label: "Security", desc: "Threats, MFA/SSO, device trust, audit integrity, data requests, and compliance readiness." },
   { id: "platform", label: "Platform", desc: "Web, mobile, API, infrastructure, incidents, releases, and feature flags." },
+  { id: "devex", label: "DevEx", desc: "Build pipelines, deploy automation, environments, quality gates, developer tooling, and delivery guardrails." },
   { id: "infrastructure", label: "Infrastructure", desc: "Services, queues, GPU clusters, databases, incidents, uptime, and reliability guardrails." },
   { id: "slos", label: "SLOs", desc: "Customer-facing uptime, error budgets, regional reliability, status page, and SLA guardrails." },
   { id: "observability", label: "Observe", desc: "Logs, traces, alert routes, debugging signals, dashboards, redaction, and observability guardrails." },
@@ -190,6 +191,8 @@ const DEFAULT_STATE = {
   adminAuditLoadedAt: null,
   adminPlatform: null,
   adminPlatformLoadedAt: null,
+  adminDevexCicd: null,
+  adminDevexCicdLoadedAt: null,
   adminPayments: null,
   adminPaymentsLoadedAt: null,
   adminFinance: null,
@@ -423,6 +426,26 @@ async function loadAdminPlatform(force = false) {
     state.adminPlatformLoadedAt = Date.now();
   } catch {
     state.adminPlatformLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminDevexCicd(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminDevexCicdLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/devex-cicd`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("DevEx CI/CD operations unavailable.");
+    state.adminDevexCicd = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminDevexCicdLoadedAt = Date.now();
+  } catch {
+    state.adminDevexCicdLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -1516,7 +1539,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "access:grant", "identity:operate", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "users:read", "models:operate", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "identity:operate", "api:manage", "knowledge:operate", "support:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -1637,6 +1660,50 @@ function adminPlatformData() {
       { key: "force_mobile_update", surface: "Mobile", state: "armed", rollout: 0, owner: "Platform" }
     ],
     guardrails: { maintenanceMode: false, rollbackReady: true, forceUpdateArmed: true, killSwitches: 1 }
+  };
+}
+
+function adminDevexCicdData() {
+  return state.adminDevexCicd || {
+    summary: { buildSuccess: "96.8%", deploysToday: 14, openBuildBreaks: 2, qualityGatePass: "91%", environments: 5 },
+    pipelines: [
+      { pipeline: "Web platform CI", repo: "lumora-platform", duration: "6m 12s", owner: "Frontend", status: "Healthy" },
+      { pipeline: "API platform CI", repo: "lumora-platform", duration: "4m 48s", owner: "Backend", status: "Healthy" },
+      { pipeline: "Admin dashboard checks", repo: "lumora-platform", duration: "5m 30s", owner: "Platform", status: "Watch" },
+      { pipeline: "Mobile build preview", repo: "lumora-mobile", duration: "12m 10s", owner: "Mobile", status: "Preparing" }
+    ],
+    environments: [
+      { environment: "Local prototype", branch: "main", freshness: "Current", owner: "Product/Design", status: "Active" },
+      { environment: "Preview web", branch: "main", freshness: "On push", owner: "Frontend", status: "Ready" },
+      { environment: "Staging API", branch: "main", freshness: "15 min", owner: "Backend", status: "Ready" },
+      { environment: "Mobile beta", branch: "release/mobile", freshness: "Nightly", owner: "Mobile", status: "Preparing" },
+      { environment: "Production", branch: "release", freshness: "Manual approval", owner: "Platform", status: "Locked" }
+    ],
+    qualityGates: [
+      { gate: "API smoke harness", coverage: "Admin contracts", owner: "Backend", status: "Passing" },
+      { gate: "Web syntax harness", coverage: "App shell", owner: "Frontend", status: "Passing" },
+      { gate: "Responsive visual QA", coverage: "Web/mobile/admin", owner: "Design QA", status: "Manual" },
+      { gate: "Security dependency scan", coverage: "Runtime packages", owner: "Security", status: "Queued" },
+      { gate: "Release approval", coverage: "Production deploy", owner: "Seed Admin", status: "Required" }
+    ],
+    deployAutomation: [
+      { automation: "Version tagging", trigger: "Approved release", owner: "Platform", status: "Design" },
+      { automation: "Rollback bundle", trigger: "SLO breach", owner: "SRE", status: "Ready" },
+      { automation: "Environment smoke", trigger: "Deploy complete", owner: "QA", status: "Ready" },
+      { automation: "Changelog generation", trigger: "Merged release PR", owner: "Developer Experience", status: "Queued" }
+    ],
+    developerTooling: [
+      { tool: "Local API smoke command", audience: "Backend", adoption: "100%", status: "Active" },
+      { tool: "Admin module generator pattern", audience: "Full stack", adoption: "Draft", status: "Documenting" },
+      { tool: "Design screenshot checklist", audience: "Design/QA", adoption: "Manual", status: "Active" },
+      { tool: "Mobile release checklist", audience: "Mobile", adoption: "Beta", status: "Preparing" }
+    ],
+    guardrails: [
+      "Production deploys require approval, rollback notes, smoke tests, and customer-impact review.",
+      "Secrets and tokens must never be embedded in browser code, logs, screenshots, or generated reports.",
+      "CI/CD gates should block release when admin, chat, auth, payments, privacy, or mobile smoke checks fail.",
+      "Developer tooling should make the safe path easy without hiding risk from leadership or release owners."
+    ]
   };
 }
 
@@ -3582,6 +3649,26 @@ function flagRow(flag) {
   return `<div class="table-row"><strong>${flag.key}</strong><span>${flag.surface} / ${flag.owner}</span><span>${flag.state} - ${flag.rollout}%</span></div>`;
 }
 
+function pipelineRow(item) {
+  return `<div class="table-row"><strong>${item.pipeline}</strong><span>${item.repo}</span><span>${item.duration}</span><span>${item.status}</span></div>`;
+}
+
+function environmentRow(item) {
+  return `<div class="table-row"><strong>${item.environment}</strong><span>${item.branch}</span><span>${item.freshness}</span><span>${item.status}</span></div>`;
+}
+
+function qualityGateRow(item) {
+  return `<div class="table-row"><strong>${item.gate}</strong><span>${item.coverage}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
+function deployAutomationRow(item) {
+  return `<div class="table-row"><strong>${item.automation}</strong><span>${item.trigger}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
+function developerToolRow(item) {
+  return `<div class="table-row"><strong>${item.tool}</strong><span>${item.audience}</span><span>${item.adoption}</span><span>${item.status}</span></div>`;
+}
+
 function infrastructureServiceRow(item) {
   return `<div class="table-row"><strong>${item.service}</strong><span>${item.latency}</span><span>${item.status}</span></div>`;
 }
@@ -4830,6 +4917,7 @@ function adminView() {
   loadAdminMetrics();
   loadAdminAudit();
   if (state.adminSection === "platform") loadAdminPlatform();
+  if (state.adminSection === "devex") loadAdminDevexCicd();
   if (state.adminSection === "payments") loadAdminPayments();
   if (state.adminSection === "finance") loadAdminFinance();
   if (state.adminSection === "unitEconomics") loadAdminUnitEconomics();
@@ -5019,6 +5107,7 @@ function adminSectionView(section, readiness) {
     fraud: adminFraudAbuse,
     security: adminSecurity,
     platform: adminPlatform,
+    devex: adminDevexCicd,
     infrastructure: adminInfrastructure,
     slos: adminReliabilitySlos,
     observability: adminObservabilityLogs,
@@ -7103,6 +7192,55 @@ function adminPlatform() {
   `;
 }
 
+function adminDevexCicd() {
+  const devex = adminDevexCicdData();
+  const summary = devex.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Build success", summary.buildSuccess || "96.8%")}
+      ${metric("Deploys today", summary.deploysToday || "14")}
+      ${metric("Build breaks", summary.openBuildBreaks || "2")}
+      ${metric("Quality gates", summary.qualityGatePass || "91%")}
+      <section class="admin-card full-admin">
+        <h2>Build pipelines</h2>
+        <div class="table admin-table-4">
+          ${devex.pipelines.map(pipelineRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Environments</h2>
+        <div class="table admin-table-4">
+          ${devex.environments.map(environmentRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Quality gates</h2>
+        <div class="table admin-table-4">
+          ${devex.qualityGates.map(qualityGateRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Deploy automation</h2>
+        <div class="table admin-table-4">
+          ${devex.deployAutomation.map(deployAutomationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Developer tooling</h2>
+        <div class="table admin-table-4">
+          ${devex.developerTooling.map(developerToolRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>DevEx guardrails</h2>
+        <div class="admin-checklist">
+          ${devex.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminInfrastructure() {
   const infrastructure = adminInfrastructureData();
   const summary = infrastructure.summary || {};
@@ -7708,6 +7846,7 @@ function bindEvents() {
       loadAdminMetrics(true);
       loadAdminAudit(true);
       loadAdminPlatform(true);
+      loadAdminDevexCicd(true);
       loadAdminPayments(true);
       loadAdminFinance(true);
       loadAdminUnitEconomics(true);
