@@ -1392,6 +1392,46 @@ const languageOperations = {
   ]
 };
 
+const culturalQualityOperations = {
+  summary: { toneReports: 284, culturalReviews: 44, dialectParity: "87%", proverbChecks: 31, reviewerCapacity: "72%" },
+  toneSegments: [
+    { segment: "Respectful teacher", languages: "Yoruba, Swahili, Hausa", score: "92%", issue: "Too formal in youth contexts", status: "Healthy" },
+    { segment: "Market/business", languages: "Pidgin, Twi, English", score: "88%", issue: "Price negotiation nuance", status: "Watch" },
+    { segment: "Street/youth", languages: "Pidgin, Sheng, Arabic/French", score: "74%", issue: "Slang freshness", status: "Review" },
+    { segment: "Elder/respect", languages: "Yoruba, Igbo, Zulu", score: "90%", issue: "Honorific consistency", status: "Healthy" }
+  ],
+  dialectParity: [
+    { market: "Nigeria", dialects: "Yoruba, Hausa, Igbo, Pidgin", parity: "89%", gap: "Regional Pidgin", owner: "West Africa QA", status: "Improving" },
+    { market: "East Africa", dialects: "Swahili, Sheng, Amharic", parity: "84%", gap: "Youth Sheng", owner: "East Africa QA", status: "Watch" },
+    { market: "Southern Africa", dialects: "Zulu, Xhosa, Shona", parity: "82%", gap: "Code-switch samples", owner: "Southern QA", status: "Review" },
+    { market: "North Africa", dialects: "Arabic, French, Tamazight bridge", parity: "71%", gap: "Dialect coverage", owner: "North Africa QA", status: "Building" }
+  ],
+  culturalReviewQueues: [
+    { queue: "Proverb and idiom fit", count: 31, owner: "Cultural reviewers", sla: "72h", status: "Review" },
+    { queue: "Tone mismatch reports", count: 284, owner: "Language QA", sla: "48h", status: "Busy" },
+    { queue: "Sensitive cultural context", count: 18, owner: "Trust/Policy", sla: "5d", status: "Watch" },
+    { queue: "Bridge-language awkwardness", count: 41, owner: "Translation QA", sla: "48h", status: "Queued" }
+  ],
+  reviewerCalibration: [
+    { calibration: "West Africa tone panel", reviewers: 18, agreement: "91%", focus: "Respect + market tone", status: "Healthy" },
+    { calibration: "East Africa classroom panel", reviewers: 11, agreement: "86%", focus: "Teacher clarity", status: "Healthy" },
+    { calibration: "Southern Africa code-switch panel", reviewers: 9, agreement: "79%", focus: "Mixed language quality", status: "Watch" },
+    { calibration: "North Africa bridge panel", reviewers: 7, agreement: "74%", focus: "Arabic/French nuance", status: "Building" }
+  ],
+  culturalRiskSignals: [
+    { signal: "Over-generalized African phrasing", severity: "Medium", affected: "Welcome + chat", owner: "Content Design", status: "Mitigating" },
+    { signal: "Forced proverb use", severity: "Medium", affected: "Teacher tone", owner: "Language QA", status: "Review" },
+    { signal: "Religious/cultural sensitivity", severity: "High", affected: "Advice routes", owner: "Policy", status: "Guarded" },
+    { signal: "Youth slang staleness", severity: "Low", affected: "Creator Studio", owner: "Community QA", status: "Sampling" }
+  ],
+  guardrails: [
+    "Lumora should adapt tone without pretending every African user shares one culture, dialect, or style.",
+    "Proverbs, honorifics, slang, and local references should be optional, context-aware, and never forced.",
+    "Cultural quality reviews need native speakers, reviewer calibration, region-specific samples, and appeal paths.",
+    "Admin views should track tone and cultural quality as aggregate signals, not expose private user messages."
+  ]
+};
+
 const localizationContentOperations = {
   summary: { localesInProgress: 18, stringsReady: "84%", glossaryTerms: 420, reviewerBacklog: 96, releaseBlockers: 3 },
   localeReadiness: [
@@ -2813,6 +2853,10 @@ function adminLanguageOperations() {
   return languageOperations;
 }
 
+function adminCulturalQualityOperations() {
+  return culturalQualityOperations;
+}
+
 function adminLocalizationContentOperations() {
   return localizationContentOperations;
 }
@@ -2990,6 +3034,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "warehouse:operate",
       "communications:send",
       "language:review",
+      "culture:review",
       "localization:manage",
       "data:govern",
       "memory:govern",
@@ -3394,6 +3439,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminLanguageOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/cultural-quality") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("cultural_quality_viewed", "Cultural Quality", "Info", "Language QA");
+      return sendJson(response, 200, adminCulturalQualityOperations());
+    }
+
     if (request.method === "GET" && url.pathname === "/v1/admin/localization-content") {
       if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
         return sendJson(response, 403, { error: "Seed admin access required" });
@@ -3666,4 +3719,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

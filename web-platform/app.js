@@ -113,6 +113,7 @@ const ADMIN_SECTIONS = [
   { id: "datasets", label: "Datasets", desc: "Dataset provenance, consent, training/eval reuse, correction loops, quality coverage, and data governance guardrails." },
   { id: "evaluations", label: "Evals", desc: "Model eval suites, benchmark runs, regressions, human samples, and release gates." },
   { id: "languages", label: "Languages", desc: "Country coverage, dialect readiness, reviewer queues, benchmarks, and expansion quality." },
+  { id: "culture", label: "Culture", desc: "Tone quality, dialect parity, cultural review queues, reviewer calibration, and sensitive context guardrails." },
   { id: "localization", label: "Localize", desc: "UI copy localization, translation QA, glossary control, reviewer workflow, and release guardrails." },
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
   { id: "memory", label: "Memory", desc: "Personalization memory, language passport controls, consent, deletion/export, and safe remembered context." },
@@ -290,6 +291,8 @@ const DEFAULT_STATE = {
   adminNotificationDeliveryLoadedAt: null,
   adminLanguages: null,
   adminLanguagesLoadedAt: null,
+  adminCulturalQuality: null,
+  adminCulturalQualityLoadedAt: null,
   adminLocalizationContent: null,
   adminLocalizationContentLoadedAt: null,
   adminDataGovernance: null,
@@ -1136,6 +1139,26 @@ async function loadAdminLanguages(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminCulturalQuality(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminCulturalQualityLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/cultural-quality`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Cultural quality unavailable.");
+    state.adminCulturalQuality = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminCulturalQualityLoadedAt = Date.now();
+  } catch {
+    state.adminCulturalQualityLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminLocalizationContent(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminLocalizationContentLoadedAt || 0;
@@ -1884,7 +1907,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2470,6 +2493,48 @@ function adminLanguagesData() {
       "Dialect fixes must preserve meaning, tone, safety context, and user-selected bridge language.",
       "Low-confidence outputs should admit uncertainty and offer alternatives instead of guessing.",
       "Country expansion requires readiness, reviewer coverage, safety policy, and model route validation."
+    ]
+  };
+}
+
+function adminCulturalQualityData() {
+  return state.adminCulturalQuality || {
+    summary: { toneReports: 284, culturalReviews: 44, dialectParity: "87%", proverbChecks: 31, reviewerCapacity: "72%" },
+    toneSegments: [
+      { segment: "Respectful teacher", languages: "Yoruba, Swahili, Hausa", score: "92%", issue: "Too formal in youth contexts", status: "Healthy" },
+      { segment: "Market/business", languages: "Pidgin, Twi, English", score: "88%", issue: "Price negotiation nuance", status: "Watch" },
+      { segment: "Street/youth", languages: "Pidgin, Sheng, Arabic/French", score: "74%", issue: "Slang freshness", status: "Review" },
+      { segment: "Elder/respect", languages: "Yoruba, Igbo, Zulu", score: "90%", issue: "Honorific consistency", status: "Healthy" }
+    ],
+    dialectParity: [
+      { market: "Nigeria", dialects: "Yoruba, Hausa, Igbo, Pidgin", parity: "89%", gap: "Regional Pidgin", owner: "West Africa QA", status: "Improving" },
+      { market: "East Africa", dialects: "Swahili, Sheng, Amharic", parity: "84%", gap: "Youth Sheng", owner: "East Africa QA", status: "Watch" },
+      { market: "Southern Africa", dialects: "Zulu, Xhosa, Shona", parity: "82%", gap: "Code-switch samples", owner: "Southern QA", status: "Review" },
+      { market: "North Africa", dialects: "Arabic, French, Tamazight bridge", parity: "71%", gap: "Dialect coverage", owner: "North Africa QA", status: "Building" }
+    ],
+    culturalReviewQueues: [
+      { queue: "Proverb and idiom fit", count: 31, owner: "Cultural reviewers", sla: "72h", status: "Review" },
+      { queue: "Tone mismatch reports", count: 284, owner: "Language QA", sla: "48h", status: "Busy" },
+      { queue: "Sensitive cultural context", count: 18, owner: "Trust/Policy", sla: "5d", status: "Watch" },
+      { queue: "Bridge-language awkwardness", count: 41, owner: "Translation QA", sla: "48h", status: "Queued" }
+    ],
+    reviewerCalibration: [
+      { calibration: "West Africa tone panel", reviewers: 18, agreement: "91%", focus: "Respect + market tone", status: "Healthy" },
+      { calibration: "East Africa classroom panel", reviewers: 11, agreement: "86%", focus: "Teacher clarity", status: "Healthy" },
+      { calibration: "Southern Africa code-switch panel", reviewers: 9, agreement: "79%", focus: "Mixed language quality", status: "Watch" },
+      { calibration: "North Africa bridge panel", reviewers: 7, agreement: "74%", focus: "Arabic/French nuance", status: "Building" }
+    ],
+    culturalRiskSignals: [
+      { signal: "Over-generalized African phrasing", severity: "Medium", affected: "Welcome + chat", owner: "Content Design", status: "Mitigating" },
+      { signal: "Forced proverb use", severity: "Medium", affected: "Teacher tone", owner: "Language QA", status: "Review" },
+      { signal: "Religious/cultural sensitivity", severity: "High", affected: "Advice routes", owner: "Policy", status: "Guarded" },
+      { signal: "Youth slang staleness", severity: "Low", affected: "Creator Studio", owner: "Community QA", status: "Sampling" }
+    ],
+    guardrails: [
+      "Lumora should adapt tone without pretending every African user shares one culture, dialect, or style.",
+      "Proverbs, honorifics, slang, and local references should be optional, context-aware, and never forced.",
+      "Cultural quality reviews need native speakers, reviewer calibration, region-specific samples, and appeal paths.",
+      "Admin views should track tone and cultural quality as aggregate signals, not expose private user messages."
     ]
   };
 }
@@ -4846,6 +4911,26 @@ function languageBenchmarkRow(item) {
   return `<div class="table-row"><strong>${item.benchmark}</strong><span>${item.score}</span><span>${item.gap}</span><span>${item.owner}</span></div>`;
 }
 
+function toneSegmentRow(item) {
+  return `<div class="table-row"><strong>${item.segment}</strong><span>${item.languages}</span><span>${item.score}</span><span>${item.status}</span></div>`;
+}
+
+function dialectParityRow(item) {
+  return `<div class="table-row"><strong>${item.market}</strong><span>${item.dialects}</span><span>${item.parity}</span><span>${item.status}</span></div>`;
+}
+
+function culturalReviewQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.owner} / ${item.sla}</span><span>${item.status}</span></div>`;
+}
+
+function reviewerCalibrationRow(item) {
+  return `<div class="table-row"><strong>${item.calibration}</strong><span>${item.reviewers} reviewers</span><span>${item.agreement}</span><span>${item.status}</span></div>`;
+}
+
+function culturalRiskSignalRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.severity}</span><span>${item.affected}</span><span>${item.status}</span></div>`;
+}
+
 function localizationReadinessRow(item) {
   return `<div class="table-row"><strong>${item.locale}</strong><span>${item.surface}</span><span>${item.completion}</span><span>${item.status}</span></div>`;
 }
@@ -6211,6 +6296,7 @@ function adminView() {
   if (state.adminSection === "datasets") loadAdminDatasetGovernance();
   if (state.adminSection === "evaluations") loadAdminEvaluations();
   if (state.adminSection === "languages") loadAdminLanguages();
+  if (state.adminSection === "culture") loadAdminCulturalQuality();
   if (state.adminSection === "localization") loadAdminLocalizationContent();
   if (state.adminSection === "data") loadAdminDataGovernance();
   if (state.adminSection === "memory") loadAdminMemoryPersonalization();
@@ -6400,6 +6486,7 @@ function adminSectionView(section, readiness) {
     datasets: adminDatasetGovernance,
     evaluations: adminEvaluations,
     languages: adminLanguages,
+    culture: adminCulturalQuality,
     localization: adminLocalizationContent,
     data: adminDataGovernance,
     memory: adminMemoryPersonalization,
@@ -8594,6 +8681,55 @@ function adminLanguages() {
   `;
 }
 
+function adminCulturalQuality() {
+  const culture = adminCulturalQualityData();
+  const summary = culture.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Tone reports", summary.toneReports || "284")}
+      ${metric("Cultural reviews", summary.culturalReviews || "44")}
+      ${metric("Dialect parity", summary.dialectParity || "87%")}
+      ${metric("Reviewer capacity", summary.reviewerCapacity || "72%")}
+      <section class="admin-card full-admin">
+        <h2>Tone segments</h2>
+        <div class="table admin-table-4">
+          ${culture.toneSegments.map(toneSegmentRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Dialect parity</h2>
+        <div class="table admin-table-4">
+          ${culture.dialectParity.map(dialectParityRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Cultural review queues</h2>
+        <div class="table admin-table-4">
+          ${culture.culturalReviewQueues.map(culturalReviewQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Reviewer calibration</h2>
+        <div class="table admin-table-4">
+          ${culture.reviewerCalibration.map(reviewerCalibrationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Cultural risk signals</h2>
+        <div class="table admin-table-4">
+          ${culture.culturalRiskSignals.map(culturalRiskSignalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Cultural quality guardrails</h2>
+        <div class="admin-checklist">
+          ${culture.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminLocalizationContent() {
   const localization = adminLocalizationContentData();
   const summary = localization.summary || {};
@@ -9905,6 +10041,7 @@ function bindEvents() {
       loadAdminDatasetGovernance(true);
       loadAdminEvaluations(true);
       loadAdminLanguages(true);
+      loadAdminCulturalQuality(true);
       loadAdminLocalizationContent(true);
       loadAdminDataGovernance(true);
       loadAdminMemoryPersonalization(true);
