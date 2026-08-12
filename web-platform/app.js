@@ -106,6 +106,7 @@ const ADMIN_SECTIONS = [
   { id: "sales", label: "Sales", desc: "Enterprise pipeline, demos, procurement, partners, and expansion revenue motions." },
   { id: "support", label: "Support", desc: "Tickets, SLA, escalations, CSAT, macros, user-impact signals, and safe support boundaries." },
   { id: "conversations", label: "Conversations", desc: "Chat health, streaming, message queues, failed responses, attachments, replay controls, and UX signals." },
+  { id: "prompts", label: "Prompts", desc: "Prompt sets, mode workflows, template tests, rollback controls, review queues, and release guardrails." },
   { id: "customerExperience", label: "CX", desc: "NPS, CSAT, sentiment themes, product insights, app-store signals, and customer experience guardrails." },
   { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
   { id: "licensing", label: "Licensing", desc: "Model licenses, dataset provenance, rights risks, usage restrictions, attribution, and consent guardrails." },
@@ -339,6 +340,8 @@ const DEFAULT_STATE = {
   adminSupportLoadedAt: null,
   adminConversations: null,
   adminConversationsLoadedAt: null,
+  adminPromptWorkflows: null,
+  adminPromptWorkflowsLoadedAt: null,
   adminCustomerExperience: null,
   adminCustomerExperienceLoadedAt: null,
   adminFraudAbuse: null,
@@ -1833,6 +1836,26 @@ async function loadAdminConversations(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminPromptWorkflows(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminPromptWorkflowsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/prompt-workflows`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Prompt workflow governance unavailable.");
+    state.adminPromptWorkflows = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminPromptWorkflowsLoadedAt = Date.now();
+  } catch {
+    state.adminPromptWorkflowsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminCustomerExperience(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminCustomerExperienceLoadedAt || 0;
@@ -1861,7 +1884,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -4488,6 +4511,49 @@ function adminConversationsData() {
   };
 }
 
+function adminPromptWorkflowsData() {
+  return state.adminPromptWorkflows || {
+    summary: { promptSets: 22, liveWorkflows: 14, testsRunning: 6, rollbacksReady: 9, reviewBlockers: 3 },
+    promptSets: [
+      { set: "Core chat system", surface: "AI Chat", version: "v1.6", owner: "Product AI", status: "Live" },
+      { set: "Market reply style", surface: "Market Mode", version: "v1.2", owner: "Growth", status: "Testing" },
+      { set: "Classroom explanation", surface: "Classroom", version: "v0.9", owner: "Education", status: "Review" },
+      { set: "Creator captions", surface: "Creator Studio", version: "v1.1", owner: "Creator Ops", status: "Live" },
+      { set: "Voice Circle handoff", surface: "Voice", version: "v0.7", owner: "Voice Ops", status: "Beta" }
+    ],
+    workflowTemplates: [
+      { workflow: "Translate with tone", trigger: "Translate mode", steps: 4, owner: "Language QA", status: "Live" },
+      { workflow: "Market reply", trigger: "Prompt chip", steps: 5, owner: "Growth", status: "Live" },
+      { workflow: "Teach me simply", trigger: "Classroom mode", steps: 6, owner: "Education", status: "Review" },
+      { workflow: "Correct tone", trigger: "Message tool", steps: 3, owner: "Language QA", status: "Testing" }
+    ],
+    testResults: [
+      { test: "Yoruba/Pidgin market tone", segment: "Nigeria", passRate: "91%", regression: "Low", status: "Pass" },
+      { test: "Swahili classroom clarity", segment: "Kenya/Tanzania", passRate: "86%", regression: "Medium", status: "Watch" },
+      { test: "Arabic/French code-switch", segment: "North Africa", passRate: "74%", regression: "Medium", status: "Review" },
+      { test: "Creator caption safety", segment: "Creators", passRate: "89%", regression: "Low", status: "Pass" }
+    ],
+    rollbackControls: [
+      { control: "Prompt version rollback", coverage: "22 sets", owner: "Product AI", eta: "Instant", status: "Ready" },
+      { control: "Workflow kill switch", coverage: "14 workflows", owner: "Platform", eta: "Instant", status: "Ready" },
+      { control: "Country rollout throttle", coverage: "Priority markets", owner: "Growth", eta: "5 min", status: "Ready" },
+      { control: "Safety template freeze", coverage: "High-risk routes", owner: "Trust", eta: "Manual", status: "Review" }
+    ],
+    reviewQueues: [
+      { queue: "Native language review", count: 96, owner: "Language QA", sla: "48h", status: "Busy" },
+      { queue: "Safety and refusal copy", count: 31, owner: "Trust", sla: "5d", status: "Watch" },
+      { queue: "Localization fit", count: 52, owner: "Localization", sla: "Release gate", status: "Testing" },
+      { queue: "Enterprise prompt requests", count: 11, owner: "Success", sla: "QBR", status: "Scoping" }
+    ],
+    guardrails: [
+      "Every prompt and workflow template needs an owner, version, test evidence, rollback path, and release status.",
+      "Country, language, dialect, and tone changes should pass native review before broad rollout.",
+      "High-risk advice, safety refusals, and enterprise templates require Trust/Legal approval before production.",
+      "Prompt governance should show metadata, tests, and decisions without exposing raw private user prompts."
+    ]
+  };
+}
+
 function adminCustomerExperienceData() {
   return state.adminCustomerExperience || {
     summary: { nps: 48, csat: "4.6", feedbackItems: 1284, appRating: "4.7", productInsights: 36 },
@@ -5464,6 +5530,26 @@ function experienceSignalRow(item) {
   return `<div class="table-row"><strong>${item.signal}</strong><span>${item.segment}</span><span>${item.score} / ${item.trend}</span><span>${item.status}</span></div>`;
 }
 
+function promptSetRow(item) {
+  return `<div class="table-row"><strong>${item.set}</strong><span>${item.surface}</span><span>${item.version}</span><span>${item.status}</span></div>`;
+}
+
+function workflowTemplateRow(item) {
+  return `<div class="table-row"><strong>${item.workflow}</strong><span>${item.trigger}</span><span>${item.steps} steps</span><span>${item.status}</span></div>`;
+}
+
+function promptTestResultRow(item) {
+  return `<div class="table-row"><strong>${item.test}</strong><span>${item.segment}</span><span>${item.passRate}</span><span>${item.status}</span></div>`;
+}
+
+function rollbackControlRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.coverage}</span><span>${item.eta}</span><span>${item.status}</span></div>`;
+}
+
+function promptReviewQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.owner} / ${item.sla}</span><span>${item.status}</span></div>`;
+}
+
 function sentimentThemeRow(item) {
   return `<div class="table-row"><strong>${item.theme}</strong><span>${item.volume} mentions</span><span>${item.sentiment}</span><span>${item.status}</span></div>`;
 }
@@ -6118,6 +6204,7 @@ function adminView() {
   if (state.adminSection === "users") loadAdminUsers();
   if (state.adminSection === "support") loadAdminSupport();
   if (state.adminSection === "conversations") loadAdminConversations();
+  if (state.adminSection === "prompts") loadAdminPromptWorkflows();
   if (state.adminSection === "customerExperience") loadAdminCustomerExperience();
   if (state.adminSection === "models") loadAdminModels();
   if (state.adminSection === "licensing") loadAdminModelLicensing();
@@ -6306,6 +6393,7 @@ function adminSectionView(section, readiness) {
     sales: adminSales,
     support: adminSupport,
     conversations: adminConversations,
+    prompts: adminPromptWorkflows,
     customerExperience: adminCustomerExperience,
     models: () => adminModels(readiness),
     licensing: adminModelLicensing,
@@ -6898,6 +6986,55 @@ function adminConversations() {
         <h2>Conversation guardrails</h2>
         <div class="admin-checklist">
           ${conversations.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminPromptWorkflows() {
+  const prompts = adminPromptWorkflowsData();
+  const summary = prompts.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Prompt sets", summary.promptSets || "22")}
+      ${metric("Live workflows", summary.liveWorkflows || "14")}
+      ${metric("Tests running", summary.testsRunning || "6")}
+      ${metric("Rollbacks ready", summary.rollbacksReady || "9")}
+      <section class="admin-card full-admin">
+        <h2>Prompt sets</h2>
+        <div class="table admin-table-4">
+          ${prompts.promptSets.map(promptSetRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Workflow templates</h2>
+        <div class="table admin-table-4">
+          ${prompts.workflowTemplates.map(workflowTemplateRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Template tests</h2>
+        <div class="table admin-table-4">
+          ${prompts.testResults.map(promptTestResultRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Rollback controls</h2>
+        <div class="table admin-table-4">
+          ${prompts.rollbackControls.map(rollbackControlRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Review queues</h2>
+        <div class="table admin-table-4">
+          ${prompts.reviewQueues.map(promptReviewQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Prompt guardrails</h2>
+        <div class="admin-checklist">
+          ${prompts.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -9761,6 +9898,7 @@ function bindEvents() {
       loadAdminUsers(true);
       loadAdminSupport(true);
       loadAdminConversations(true);
+      loadAdminPromptWorkflows(true);
       loadAdminCustomerExperience(true);
       loadAdminModels(true);
       loadAdminModelLicensing(true);

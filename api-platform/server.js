@@ -771,6 +771,47 @@ const conversationOperations = {
   ]
 };
 
+const promptWorkflowOperations = {
+  summary: { promptSets: 22, liveWorkflows: 14, testsRunning: 6, rollbacksReady: 9, reviewBlockers: 3 },
+  promptSets: [
+    { set: "Core chat system", surface: "AI Chat", version: "v1.6", owner: "Product AI", status: "Live" },
+    { set: "Market reply style", surface: "Market Mode", version: "v1.2", owner: "Growth", status: "Testing" },
+    { set: "Classroom explanation", surface: "Classroom", version: "v0.9", owner: "Education", status: "Review" },
+    { set: "Creator captions", surface: "Creator Studio", version: "v1.1", owner: "Creator Ops", status: "Live" },
+    { set: "Voice Circle handoff", surface: "Voice", version: "v0.7", owner: "Voice Ops", status: "Beta" }
+  ],
+  workflowTemplates: [
+    { workflow: "Translate with tone", trigger: "Translate mode", steps: 4, owner: "Language QA", status: "Live" },
+    { workflow: "Market reply", trigger: "Prompt chip", steps: 5, owner: "Growth", status: "Live" },
+    { workflow: "Teach me simply", trigger: "Classroom mode", steps: 6, owner: "Education", status: "Review" },
+    { workflow: "Correct tone", trigger: "Message tool", steps: 3, owner: "Language QA", status: "Testing" }
+  ],
+  testResults: [
+    { test: "Yoruba/Pidgin market tone", segment: "Nigeria", passRate: "91%", regression: "Low", status: "Pass" },
+    { test: "Swahili classroom clarity", segment: "Kenya/Tanzania", passRate: "86%", regression: "Medium", status: "Watch" },
+    { test: "Arabic/French code-switch", segment: "North Africa", passRate: "74%", regression: "Medium", status: "Review" },
+    { test: "Creator caption safety", segment: "Creators", passRate: "89%", regression: "Low", status: "Pass" }
+  ],
+  rollbackControls: [
+    { control: "Prompt version rollback", coverage: "22 sets", owner: "Product AI", eta: "Instant", status: "Ready" },
+    { control: "Workflow kill switch", coverage: "14 workflows", owner: "Platform", eta: "Instant", status: "Ready" },
+    { control: "Country rollout throttle", coverage: "Priority markets", owner: "Growth", eta: "5 min", status: "Ready" },
+    { control: "Safety template freeze", coverage: "High-risk routes", owner: "Trust", eta: "Manual", status: "Review" }
+  ],
+  reviewQueues: [
+    { queue: "Native language review", count: 96, owner: "Language QA", sla: "48h", status: "Busy" },
+    { queue: "Safety and refusal copy", count: 31, owner: "Trust", sla: "5d", status: "Watch" },
+    { queue: "Localization fit", count: 52, owner: "Localization", sla: "Release gate", status: "Testing" },
+    { queue: "Enterprise prompt requests", count: 11, owner: "Success", sla: "QBR", status: "Scoping" }
+  ],
+  guardrails: [
+    "Every prompt and workflow template needs an owner, version, test evidence, rollback path, and release status.",
+    "Country, language, dialect, and tone changes should pass native review before broad rollout.",
+    "High-risk advice, safety refusals, and enterprise templates require Trust/Legal approval before production.",
+    "Prompt governance should show metadata, tests, and decisions without exposing raw private user prompts."
+  ]
+};
+
 const customerExperienceOperations = {
   summary: { nps: 48, csat: "4.6", feedbackItems: 1284, appRating: "4.7", productInsights: 36 },
   sentimentThemes: [
@@ -2704,6 +2745,10 @@ function adminConversationOperations() {
   return conversationOperations;
 }
 
+function adminPromptWorkflowOperations() {
+  return promptWorkflowOperations;
+}
+
 function adminCustomerExperienceOperations() {
   return customerExperienceOperations;
 }
@@ -2929,6 +2974,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "knowledge:operate",
       "support:review",
       "conversations:operate",
+      "prompts:govern",
       "cx:review",
       "finance:read",
       "unit:economics",
@@ -3210,6 +3256,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("conversation_operations_viewed", "Conversations", "Info", "Platform");
       return sendJson(response, 200, adminConversationOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/prompt-workflows") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("prompt_workflows_viewed", "Prompts", "Info", "Product AI");
+      return sendJson(response, 200, adminPromptWorkflowOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/customer-experience") {
@@ -3612,4 +3666,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
