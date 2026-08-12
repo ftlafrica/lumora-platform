@@ -1386,6 +1386,46 @@ const dataGovernanceOperations = {
   ]
 };
 
+const memoryPersonalizationOperations = {
+  summary: { memoryProfiles: "12.8K", optInRate: "88%", deletionQueue: 4, personalizationIncidents: 2, exportReadiness: "92%" },
+  memorySurfaces: [
+    { surface: "Language Passport", data: "Country, city, main language, bridge language", control: "User editable", owner: "Product", status: "Live" },
+    { surface: "Tone Dial", data: "Preferred tone, dialect style, formality", control: "Per-chat override", owner: "Experience", status: "Live" },
+    { surface: "Conversation memory", data: "Saved context and preferences", control: "Opt-in + delete", owner: "Privacy", status: "Beta" },
+    { surface: "Mobile continuity", data: "Device handoff and recent prompts", control: "Session scoped", owner: "Mobile", status: "Design" }
+  ],
+  consentControls: [
+    { control: "Memory opt-in", coverage: "88%", surface: "Web/Mobile", owner: "Privacy", status: "Healthy" },
+    { control: "Sensitive memory exclusion", coverage: "96%", surface: "Chat", owner: "Safety", status: "Watch" },
+    { control: "Per-chat temporary mode", coverage: "Web beta", surface: "Chat composer", owner: "Product", status: "Building" },
+    { control: "Enterprise memory policy", coverage: "Teams beta", surface: "Workspace admin", owner: "Enterprise", status: "Review" }
+  ],
+  userControls: [
+    { control: "View remembered details", availability: "Profile dashboard", friction: "Low", owner: "Product", status: "Designed" },
+    { control: "Delete individual memory", availability: "Profile dashboard", friction: "Low", owner: "Privacy", status: "Queued" },
+    { control: "Export memory profile", availability: "Privacy request", friction: "Medium", owner: "Privacy Ops", status: "Ready" },
+    { control: "Pause personalization", availability: "Settings", friction: "Low", owner: "Experience", status: "Live" }
+  ],
+  personalizationQuality: [
+    { signal: "Language preference accuracy", segment: "Yoruba + Pidgin", score: "93%", trend: "+4%", status: "Healthy" },
+    { signal: "Tone match", segment: "Respectful/teacher", score: "89%", trend: "+2%", status: "Healthy" },
+    { signal: "Code-switch continuity", segment: "Arabic/French", score: "74%", trend: "-1%", status: "Watch" },
+    { signal: "Mobile handoff success", segment: "Android beta", score: "81%", trend: "+6%", status: "Improving" }
+  ],
+  riskReviews: [
+    { review: "Sensitive inference prevention", risk: "High", reviewer: "Privacy/Safety", mitigation: "Classifier + exclusion list", status: "Mitigating" },
+    { review: "Children and education use", risk: "Medium", reviewer: "Policy", mitigation: "Age-aware defaults", status: "Review" },
+    { review: "Enterprise workspace memory", risk: "Medium", reviewer: "Security", mitigation: "Tenant policy controls", status: "Design" },
+    { review: "Cross-device continuity", risk: "Low", reviewer: "Mobile", mitigation: "Session expiry", status: "Queued" }
+  ],
+  guardrails: [
+    "Personalization must be explainable: users should know what Lumora remembers and why it affects replies.",
+    "Sensitive traits, protected attributes, payment data, secrets, and health/legal/financial details should not be stored as reusable memory by default.",
+    "Users must be able to pause, export, edit, and delete memory without losing basic access to chat.",
+    "Enterprise memory requires workspace policy controls, tenant isolation, audit logs, and admin-approved defaults."
+  ]
+};
+
 const privacyRequestOperations = {
   summary: { openRequests: 31, exportQueue: 9, deletionQueue: 4, slaAtRisk: 3, legalHolds: 2 },
   requests: [
@@ -2692,6 +2732,10 @@ function adminDataGovernanceOperations() {
   return dataGovernanceOperations;
 }
 
+function adminMemoryPersonalizationOperations() {
+  return memoryPersonalizationOperations;
+}
+
 function adminPrivacyRequestOperations() {
   return privacyRequestOperations;
 }
@@ -2857,6 +2901,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "language:review",
       "localization:manage",
       "data:govern",
+      "memory:govern",
       "privacy:operate",
       "dpia:review",
       "integrations:manage",
@@ -3258,6 +3303,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminDataGovernanceOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/memory-personalization") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("memory_personalization_viewed", "Memory", "Info", "Privacy");
+      return sendJson(response, 200, adminMemoryPersonalizationOperations());
+    }
+
     if (request.method === "GET" && url.pathname === "/v1/admin/privacy-requests") {
       if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
         return sendJson(response, 403, { error: "Seed admin access required" });
@@ -3506,4 +3559,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

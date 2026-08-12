@@ -113,6 +113,7 @@ const ADMIN_SECTIONS = [
   { id: "languages", label: "Languages", desc: "Country coverage, dialect readiness, reviewer queues, benchmarks, and expansion quality." },
   { id: "localization", label: "Localize", desc: "UI copy localization, translation QA, glossary control, reviewer workflow, and release guardrails." },
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
+  { id: "memory", label: "Memory", desc: "Personalization memory, language passport controls, consent, deletion/export, and safe remembered context." },
   { id: "residency", label: "Residency", desc: "Country residency, storage regions, cross-border transfers, key custody, retention, and sovereignty guardrails." },
   { id: "privacy", label: "Privacy Ops", desc: "DSAR exports, deletion queues, correction requests, legal holds, residency reviews, and privacy guardrails." },
   { id: "dpia", label: "DPIA", desc: "High-risk processing, impact assessments, mitigations, launch approvals, residual risks, and DPIA guardrails." },
@@ -291,6 +292,8 @@ const DEFAULT_STATE = {
   adminLocalizationContentLoadedAt: null,
   adminDataGovernance: null,
   adminDataGovernanceLoadedAt: null,
+  adminMemoryPersonalization: null,
+  adminMemoryPersonalizationLoadedAt: null,
   adminResidencySovereignty: null,
   adminResidencySovereigntyLoadedAt: null,
   adminPrivacyRequests: null,
@@ -1167,6 +1170,26 @@ async function loadAdminDataGovernance(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminMemoryPersonalization(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminMemoryPersonalizationLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/memory-personalization`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Memory personalization unavailable.");
+    state.adminMemoryPersonalization = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminMemoryPersonalizationLoadedAt = Date.now();
+  } catch {
+    state.adminMemoryPersonalizationLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminResidencySovereignty(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminResidencySovereigntyLoadedAt || 0;
@@ -1815,7 +1838,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2480,6 +2503,48 @@ function adminDataGovernanceData() {
       "Memory, voice, and reviewer access must honor user consent, country rules, and tenant boundaries.",
       "Model training or evaluation datasets must remove PII and track source license, reviewer, and retention.",
       "Consumer dashboards can show personal privacy status but never expose admin data governance controls."
+    ]
+  };
+}
+
+function adminMemoryPersonalizationData() {
+  return state.adminMemoryPersonalization || {
+    summary: { memoryProfiles: "12.8K", optInRate: "88%", deletionQueue: 4, personalizationIncidents: 2, exportReadiness: "92%" },
+    memorySurfaces: [
+      { surface: "Language Passport", data: "Country, city, main language, bridge language", control: "User editable", owner: "Product", status: "Live" },
+      { surface: "Tone Dial", data: "Preferred tone, dialect style, formality", control: "Per-chat override", owner: "Experience", status: "Live" },
+      { surface: "Conversation memory", data: "Saved context and preferences", control: "Opt-in + delete", owner: "Privacy", status: "Beta" },
+      { surface: "Mobile continuity", data: "Device handoff and recent prompts", control: "Session scoped", owner: "Mobile", status: "Design" }
+    ],
+    consentControls: [
+      { control: "Memory opt-in", coverage: "88%", surface: "Web/Mobile", owner: "Privacy", status: "Healthy" },
+      { control: "Sensitive memory exclusion", coverage: "96%", surface: "Chat", owner: "Safety", status: "Watch" },
+      { control: "Per-chat temporary mode", coverage: "Web beta", surface: "Chat composer", owner: "Product", status: "Building" },
+      { control: "Enterprise memory policy", coverage: "Teams beta", surface: "Workspace admin", owner: "Enterprise", status: "Review" }
+    ],
+    userControls: [
+      { control: "View remembered details", availability: "Profile dashboard", friction: "Low", owner: "Product", status: "Designed" },
+      { control: "Delete individual memory", availability: "Profile dashboard", friction: "Low", owner: "Privacy", status: "Queued" },
+      { control: "Export memory profile", availability: "Privacy request", friction: "Medium", owner: "Privacy Ops", status: "Ready" },
+      { control: "Pause personalization", availability: "Settings", friction: "Low", owner: "Experience", status: "Live" }
+    ],
+    personalizationQuality: [
+      { signal: "Language preference accuracy", segment: "Yoruba + Pidgin", score: "93%", trend: "+4%", status: "Healthy" },
+      { signal: "Tone match", segment: "Respectful/teacher", score: "89%", trend: "+2%", status: "Healthy" },
+      { signal: "Code-switch continuity", segment: "Arabic/French", score: "74%", trend: "-1%", status: "Watch" },
+      { signal: "Mobile handoff success", segment: "Android beta", score: "81%", trend: "+6%", status: "Improving" }
+    ],
+    riskReviews: [
+      { review: "Sensitive inference prevention", risk: "High", reviewer: "Privacy/Safety", mitigation: "Classifier + exclusion list", status: "Mitigating" },
+      { review: "Children and education use", risk: "Medium", reviewer: "Policy", mitigation: "Age-aware defaults", status: "Review" },
+      { review: "Enterprise workspace memory", risk: "Medium", reviewer: "Security", mitigation: "Tenant policy controls", status: "Design" },
+      { review: "Cross-device continuity", risk: "Low", reviewer: "Mobile", mitigation: "Session expiry", status: "Queued" }
+    ],
+    guardrails: [
+      "Personalization must be explainable: users should know what Lumora remembers and why it affects replies.",
+      "Sensitive traits, protected attributes, payment data, secrets, and health/legal/financial details should not be stored as reusable memory by default.",
+      "Users must be able to pause, export, edit, and delete memory without losing basic access to chat.",
+      "Enterprise memory requires workspace policy controls, tenant isolation, audit logs, and admin-approved defaults."
     ]
   };
 }
@@ -4686,6 +4751,22 @@ function privacyRequestRow(item) {
   return `<div class="table-row"><strong>${item.request}</strong><span>${item.count} open</span><span>${item.sla}</span><span>${item.status}</span></div>`;
 }
 
+function memorySurfaceRow(item) {
+  return `<div class="table-row"><strong>${item.surface}</strong><span>${item.data}</span><span>${item.control}</span><span>${item.status}</span></div>`;
+}
+
+function memoryUserControlRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.availability}</span><span>${item.friction}</span><span>${item.status}</span></div>`;
+}
+
+function personalizationQualityRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.segment}</span><span>${item.score} / ${item.trend}</span><span>${item.status}</span></div>`;
+}
+
+function memoryRiskReviewRow(item) {
+  return `<div class="table-row"><strong>${item.review}</strong><span>${item.risk}</span><span>${item.mitigation}</span><span>${item.status}</span></div>`;
+}
+
 function privacyOpsRequestRow(item) {
   return `<div class="table-row"><strong>${item.type}</strong><span>${item.region}</span><span>${item.count} open</span><span>${item.status}</span></div>`;
 }
@@ -5959,6 +6040,7 @@ function adminView() {
   if (state.adminSection === "languages") loadAdminLanguages();
   if (state.adminSection === "localization") loadAdminLocalizationContent();
   if (state.adminSection === "data") loadAdminDataGovernance();
+  if (state.adminSection === "memory") loadAdminMemoryPersonalization();
   if (state.adminSection === "residency") loadAdminResidencySovereignty();
   if (state.adminSection === "privacy") loadAdminPrivacyRequests();
   if (state.adminSection === "dpia") loadAdminDpia();
@@ -6145,6 +6227,7 @@ function adminSectionView(section, readiness) {
     languages: adminLanguages,
     localization: adminLocalizationContent,
     data: adminDataGovernance,
+    memory: adminMemoryPersonalization,
     residency: adminResidencySovereignty,
     privacy: adminPrivacyRequests,
     dpia: adminDpia,
@@ -8330,6 +8413,55 @@ function adminDataGovernance() {
   `;
 }
 
+function adminMemoryPersonalization() {
+  const memory = adminMemoryPersonalizationData();
+  const summary = memory.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Memory profiles", summary.memoryProfiles || "12.8K")}
+      ${metric("Opt-in rate", summary.optInRate || "88%")}
+      ${metric("Deletion queue", summary.deletionQueue || "4")}
+      ${metric("Export readiness", summary.exportReadiness || "92%")}
+      <section class="admin-card full-admin">
+        <h2>Memory surfaces</h2>
+        <div class="table admin-table-4">
+          ${memory.memorySurfaces.map(memorySurfaceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Consent controls</h2>
+        <div class="table admin-table-4">
+          ${memory.consentControls.map(consentControlRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>User controls</h2>
+        <div class="table admin-table-4">
+          ${memory.userControls.map(memoryUserControlRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Personalization quality</h2>
+        <div class="table admin-table-4">
+          ${memory.personalizationQuality.map(personalizationQualityRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Risk reviews</h2>
+        <div class="table admin-table-4">
+          ${memory.riskReviews.map(memoryRiskReviewRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Memory guardrails</h2>
+        <div class="admin-checklist">
+          ${memory.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminResidencySovereignty() {
   const residency = adminResidencySovereigntyData();
   const summary = residency.summary || {};
@@ -9500,6 +9632,7 @@ function bindEvents() {
       loadAdminLanguages(true);
       loadAdminLocalizationContent(true);
       loadAdminDataGovernance(true);
+      loadAdminMemoryPersonalization(true);
       loadAdminResidencySovereignty(true);
       loadAdminPrivacyRequests(true);
       loadAdminDpia(true);
