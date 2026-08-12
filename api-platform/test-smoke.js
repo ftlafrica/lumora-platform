@@ -18,6 +18,7 @@ const {
   adminUserOperations,
   adminModelOperations,
   adminModelLicensingOperations,
+  adminDatasetGovernanceOperations,
   adminSafetyOperations,
   adminPolicyGovernanceOperations,
   adminGrowthOperations,
@@ -117,6 +118,7 @@ assert.ok(accessSession.scopes.includes("residency:manage"));
 assert.ok(accessSession.scopes.includes("dpia:review"));
 assert.ok(accessSession.scopes.includes("policy:govern"));
 assert.ok(accessSession.scopes.includes("licensing:review"));
+assert.ok(accessSession.scopes.includes("datasets:govern"));
 assert.ok(accessSession.scopes.includes("finance:read"));
 assert.ok(accessSession.scopes.includes("unit:economics"));
 assert.ok(accessSession.scopes.includes("analytics:read"));
@@ -178,6 +180,7 @@ const adminContracts = [
   ["users", adminUserOperations(), data => data.summary && Array.isArray(data.accountQueues) && Array.isArray(data.organizations)],
   ["models", adminModelOperations(), data => Array.isArray(data.registry) && Array.isArray(data.health) && data.summary.modelSources >= modelRegistry.length],
   ["model licensing", adminModelLicensingOperations(), data => data.summary && Array.isArray(data.modelLicenses) && Array.isArray(data.datasetSources) && Array.isArray(data.rightsRisks)],
+  ["dataset governance", adminDatasetGovernanceOperations(), data => data.summary && Array.isArray(data.datasetSources) && Array.isArray(data.provenanceReviews) && Array.isArray(data.trainingEligibility)],
   ["safety", adminSafetyOperations(), data => data.summary && Array.isArray(data.moderationQueues) && Array.isArray(data.languageQuality)],
   ["policy governance", adminPolicyGovernanceOperations(), data => data.summary && Array.isArray(data.policyVersions) && Array.isArray(data.taxonomy) && Array.isArray(data.enforcementRules)],
   ["growth", adminGrowthOperations(), data => data.summary && Array.isArray(data.funnel) && Array.isArray(data.countries) && Array.isArray(data.channels)],

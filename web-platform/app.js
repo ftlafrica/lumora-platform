@@ -108,6 +108,7 @@ const ADMIN_SECTIONS = [
   { id: "customerExperience", label: "CX", desc: "NPS, CSAT, sentiment themes, product insights, app-store signals, and customer experience guardrails." },
   { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
   { id: "licensing", label: "Licensing", desc: "Model licenses, dataset provenance, rights risks, usage restrictions, attribution, and consent guardrails." },
+  { id: "datasets", label: "Datasets", desc: "Dataset provenance, consent, training/eval reuse, correction loops, quality coverage, and data governance guardrails." },
   { id: "evaluations", label: "Evals", desc: "Model eval suites, benchmark runs, regressions, human samples, and release gates." },
   { id: "languages", label: "Languages", desc: "Country coverage, dialect readiness, reviewer queues, benchmarks, and expansion quality." },
   { id: "localization", label: "Localize", desc: "UI copy localization, translation QA, glossary control, reviewer workflow, and release guardrails." },
@@ -222,6 +223,8 @@ const DEFAULT_STATE = {
   adminModelsLoadedAt: null,
   adminModelLicensing: null,
   adminModelLicensingLoadedAt: null,
+  adminDatasetGovernance: null,
+  adminDatasetGovernanceLoadedAt: null,
   adminSafety: null,
   adminSafetyLoadedAt: null,
   adminSecurity: null,
@@ -1524,6 +1527,26 @@ async function loadAdminModelLicensing(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminDatasetGovernance(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminDatasetGovernanceLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/dataset-governance`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Dataset governance operations unavailable.");
+    state.adminDatasetGovernance = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminDatasetGovernanceLoadedAt = Date.now();
+  } catch {
+    state.adminDatasetGovernanceLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminSafety(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminSafetyLoadedAt || 0;
@@ -1792,7 +1815,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -3843,6 +3866,48 @@ function adminModelLicensingData() {
   };
 }
 
+function adminDatasetGovernanceData() {
+  return state.adminDatasetGovernance || {
+    summary: { governedDatasets: 46, consentGaps: 7, provenanceReviews: 18, trainingBlocks: 5, qualityCoverage: "84%" },
+    datasetSources: [
+      { dataset: "Yoruba conversational corrections", source: "User opt-in corrections", consent: "Explicit", owner: "Language QA", status: "Approved" },
+      { dataset: "Swahili classroom examples", source: "Education partners", consent: "Contract scoped", owner: "Education", status: "Review" },
+      { dataset: "Pidgin market replies", source: "Synthetic + reviewer examples", consent: "Internal", owner: "Product AI", status: "Approved" },
+      { dataset: "Voice Circle samples", source: "Mobile beta", consent: "Partial", owner: "Voice Ops", status: "Blocked" }
+    ],
+    provenanceReviews: [
+      { review: "Community correction reuse", market: "Nigeria", risk: "Medium", reviewer: "Privacy", status: "Mitigating" },
+      { review: "Partner classroom content", market: "Kenya", risk: "Low", reviewer: "Legal", status: "Queued" },
+      { review: "North Africa code-switch examples", market: "North Africa", risk: "Medium", reviewer: "Language QA", status: "Review" },
+      { review: "Voice transcription snippets", market: "Multi-market", risk: "High", reviewer: "DPIA", status: "Blocked" }
+    ],
+    trainingEligibility: [
+      { useCase: "Model training", eligible: 24, blocked: 9, rule: "Explicit consent + provenance", status: "Controlled" },
+      { useCase: "Model evaluation", eligible: 38, blocked: 4, rule: "Redacted + sampled", status: "Healthy" },
+      { useCase: "Reviewer guidance", eligible: 31, blocked: 6, rule: "Anonymized examples", status: "Review" },
+      { useCase: "Synthetic augmentation", eligible: 18, blocked: 2, rule: "No personal data", status: "Healthy" }
+    ],
+    qualityCoverage: [
+      { language: "Yoruba", coverage: "91%", reviewers: 18, gaps: "Regional tone", status: "Healthy" },
+      { language: "Swahili", coverage: "86%", reviewers: 11, gaps: "Youth/classroom style", status: "Watch" },
+      { language: "Hausa", coverage: "74%", reviewers: 9, gaps: "Education examples", status: "Needs data" },
+      { language: "Arabic/French code-switch", coverage: "68%", reviewers: 7, gaps: "North Africa variants", status: "Review" }
+    ],
+    contributionLoops: [
+      { loop: "User correction opt-in", volume: "1,284/week", consent: "88%", owner: "Product", status: "Live" },
+      { loop: "Native reviewer samples", volume: "312/week", consent: "Scoped", owner: "Language QA", status: "Live" },
+      { loop: "Partner education packs", volume: "46 packs", consent: "Contract", owner: "Education", status: "Review" },
+      { loop: "Voice beta snippets", volume: "5.8K clips", consent: "64%", owner: "Voice Ops", status: "Blocked" }
+    ],
+    guardrails: [
+      "Datasets cannot be used for training unless provenance, consent, license, retention, and residency are recorded.",
+      "Evaluation samples should be minimized, redacted, and linked to model risk and DPIA records.",
+      "African language quality coverage must track dialect, tone, country context, and reviewer capacity.",
+      "Contribution loops should make user consent clear and reversible without degrading the core chat experience."
+    ]
+  };
+}
+
 function adminSafetyData() {
   return state.adminSafety || {
     summary: { moderationFlags: 418, appeals: 44, corrections: 1284, correctionsPending: 312, safetyAlerts: 19 },
@@ -5270,7 +5335,23 @@ function modelLicenseRow(item) {
 }
 
 function datasetSourceRow(item) {
-  return `<div class="table-row"><strong>${item.dataset}</strong><span>${item.origin}</span><span>${item.consent}</span><span>${item.status}</span></div>`;
+  return `<div class="table-row"><strong>${item.dataset}</strong><span>${item.origin || item.source}</span><span>${item.consent}</span><span>${item.status}</span></div>`;
+}
+
+function provenanceReviewRow(item) {
+  return `<div class="table-row"><strong>${item.review}</strong><span>${item.market}</span><span>${item.risk}</span><span>${item.status}</span></div>`;
+}
+
+function trainingEligibilityRow(item) {
+  return `<div class="table-row"><strong>${item.useCase}</strong><span>${item.eligible} eligible</span><span>${item.blocked} blocked</span><span>${item.status}</span></div>`;
+}
+
+function dataQualityCoverageRow(item) {
+  return `<div class="table-row"><strong>${item.language}</strong><span>${item.coverage}</span><span>${item.gaps}</span><span>${item.status}</span></div>`;
+}
+
+function contributionLoopRow(item) {
+  return `<div class="table-row"><strong>${item.loop}</strong><span>${item.volume}</span><span>${item.consent}</span><span>${item.status}</span></div>`;
 }
 
 function usageRestrictionRow(item) {
@@ -5873,6 +5954,7 @@ function adminView() {
   if (state.adminSection === "customerExperience") loadAdminCustomerExperience();
   if (state.adminSection === "models") loadAdminModels();
   if (state.adminSection === "licensing") loadAdminModelLicensing();
+  if (state.adminSection === "datasets") loadAdminDatasetGovernance();
   if (state.adminSection === "evaluations") loadAdminEvaluations();
   if (state.adminSection === "languages") loadAdminLanguages();
   if (state.adminSection === "localization") loadAdminLocalizationContent();
@@ -6058,6 +6140,7 @@ function adminSectionView(section, readiness) {
     customerExperience: adminCustomerExperience,
     models: () => adminModels(readiness),
     licensing: adminModelLicensing,
+    datasets: adminDatasetGovernance,
     evaluations: adminEvaluations,
     languages: adminLanguages,
     localization: adminLocalizationContent,
@@ -6740,6 +6823,55 @@ function adminModelLicensing() {
         <h2>Licensing guardrails</h2>
         <div class="admin-checklist">
           ${licensing.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminDatasetGovernance() {
+  const datasets = adminDatasetGovernanceData();
+  const summary = datasets.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Datasets", summary.governedDatasets || "46")}
+      ${metric("Consent gaps", summary.consentGaps || "7")}
+      ${metric("Reviews", summary.provenanceReviews || "18")}
+      ${metric("Coverage", summary.qualityCoverage || "84%")}
+      <section class="admin-card full-admin">
+        <h2>Dataset sources</h2>
+        <div class="table admin-table-4">
+          ${datasets.datasetSources.map(datasetSourceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Provenance reviews</h2>
+        <div class="table admin-table-4">
+          ${datasets.provenanceReviews.map(provenanceReviewRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Training eligibility</h2>
+        <div class="table admin-table-4">
+          ${datasets.trainingEligibility.map(trainingEligibilityRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Quality coverage</h2>
+        <div class="table admin-table-4">
+          ${datasets.qualityCoverage.map(dataQualityCoverageRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Contribution loops</h2>
+        <div class="table admin-table-4">
+          ${datasets.contributionLoops.map(contributionLoopRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Dataset guardrails</h2>
+        <div class="admin-checklist">
+          ${datasets.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -9363,6 +9495,7 @@ function bindEvents() {
       loadAdminCustomerExperience(true);
       loadAdminModels(true);
       loadAdminModelLicensing(true);
+      loadAdminDatasetGovernance(true);
       loadAdminEvaluations(true);
       loadAdminLanguages(true);
       loadAdminLocalizationContent(true);
