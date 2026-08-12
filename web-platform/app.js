@@ -97,6 +97,7 @@ const ADMIN_SECTIONS = [
   { id: "payments", label: "Payments", desc: "Plans, upgrades, invoices, failed payments, refunds, taxes, and MRR." },
   { id: "entitlements", label: "Entitlements", desc: "Plan limits, usage metering, overages, voice minutes, API quotas, upgrade gates, and quota guardrails." },
   { id: "revenueAssurance", label: "Revenue Ops", desc: "Revenue leakage, VAT/GST coverage, payout reconciliation, recognition, invoice exceptions, and audit guardrails." },
+  { id: "subscriptions", label: "Subscriptions", desc: "Trials, renewals, cancellations, downgrades, grace periods, migrations, winback, and lifecycle guardrails." },
   { id: "finance", label: "Finance", desc: "Cost centers, margins, forecasts, refunds, cloud spend, model spend, and optimization queues." },
   { id: "unitEconomics", label: "Unit Econ", desc: "Cost per message, plan margins, route economics, margin leaks, and pricing actions." },
   { id: "users", label: "Users and Orgs", desc: "Consumer accounts, enterprise workspaces, risk, support, and seats." },
@@ -205,6 +206,8 @@ const DEFAULT_STATE = {
   adminEntitlementsLoadedAt: null,
   adminRevenueAssurance: null,
   adminRevenueAssuranceLoadedAt: null,
+  adminSubscriptions: null,
+  adminSubscriptionsLoadedAt: null,
   adminFinance: null,
   adminFinanceLoadedAt: null,
   adminUnitEconomics: null,
@@ -1309,6 +1312,26 @@ async function loadAdminRevenueAssurance(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminSubscriptions(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminSubscriptionsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/subscriptions`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Subscription lifecycle operations unavailable.");
+    state.adminSubscriptions = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminSubscriptionsLoadedAt = Date.now();
+  } catch {
+    state.adminSubscriptionsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminFinance(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminFinanceLoadedAt || 0;
@@ -1677,7 +1700,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "users:read", "models:operate", "licensing:review", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -3391,6 +3414,48 @@ function adminRevenueAssuranceData() {
   };
 }
 
+function adminSubscriptionData() {
+  return state.adminSubscriptions || {
+    summary: { activeSubscriptions: "4,047", trialsEnding: 312, renewalRisk: "$22.8K", cancellations: 47, saveRate: "18%" },
+    lifecycleStages: [
+      { stage: "Trial started", users: 1480, conversion: "31%", owner: "Growth", status: "Healthy" },
+      { stage: "Trial ending", users: 312, conversion: "24%", owner: "Lifecycle", status: "Watch" },
+      { stage: "Paid active", users: 4047, conversion: "N/A", owner: "Revenue Ops", status: "Healthy" },
+      { stage: "Grace period", users: 91, conversion: "42% recovered", owner: "Billing", status: "Active" }
+    ],
+    renewalQueues: [
+      { queue: "Teams renewal in 30 days", accounts: 11, value: "$48K", owner: "Success", status: "Review" },
+      { queue: "Annual Pro renewal", accounts: 83, value: "$14.9K", owner: "Lifecycle", status: "Queued" },
+      { queue: "Card expiry before renewal", accounts: 129, value: "$7.6K", owner: "Billing", status: "Active" },
+      { queue: "Procurement renewal blocker", accounts: 6, value: "$31K", owner: "Revenue Ops", status: "Escalated" }
+    ],
+    cancellationReasons: [
+      { reason: "Too expensive", share: "28%", action: "Offer annual discount", owner: "Growth", status: "Testing" },
+      { reason: "Language coverage gap", share: "22%", action: "Route to language roadmap", owner: "Language Ops", status: "Review" },
+      { reason: "Low usage", share: "19%", action: "Prompt education journey", owner: "Lifecycle", status: "Live" },
+      { reason: "Payment failed", share: "17%", action: "Dunning recovery", owner: "Billing", status: "Active" }
+    ],
+    planMigrations: [
+      { motion: "Free to Plus", volume: 842, driver: "Quota reached", owner: "Growth", status: "Healthy" },
+      { motion: "Plus to Pro", volume: 214, driver: "Creator tools", owner: "Product", status: "Growing" },
+      { motion: "Pro to Teams", volume: 38, driver: "Workspace seats", owner: "Sales", status: "Review" },
+      { motion: "Teams expansion", volume: 17, driver: "Seat/API usage", owner: "Success", status: "Healthy" }
+    ],
+    winbackOffers: [
+      { offer: "Language coverage follow-up", segment: "Coverage-gap churn", acceptance: "12%", owner: "Language Ops", status: "Ready" },
+      { offer: "Annual plan discount", segment: "Price-sensitive Pro", acceptance: "18%", owner: "Growth", status: "Testing" },
+      { offer: "Workspace onboarding", segment: "Low-use Teams", acceptance: "26%", owner: "Success", status: "Live" },
+      { offer: "Payment recovery credit", segment: "Failed renewal", acceptance: "9%", owner: "Billing", status: "Watch" }
+    ],
+    guardrails: [
+      "Subscription changes must sync plan, entitlement, invoice, tax, and usage records before confirming to the user.",
+      "Cancellation flows should capture reason, save attempt, refund eligibility, and data retention options clearly.",
+      "Grace-period access should protect user trust without creating hidden unpaid usage exposure.",
+      "Winback offers must respect consent, quiet hours, country rules, and prior opt-out preferences."
+    ]
+  };
+}
+
 function adminFinanceData() {
   return state.adminFinance || {
     summary: { mrr: "$184K", arr: "$2.2M", grossMargin: "74%", gpuToday: "$9.8K", savingsIdentified: "14%" },
@@ -4768,6 +4833,26 @@ function revenueAuditTaskRow(item) {
   return `<div class="table-row"><strong>${item.task}</strong><span>${item.owner}</span><span>${item.due}</span><span>${item.status}</span></div>`;
 }
 
+function subscriptionStageRow(item) {
+  return `<div class="table-row"><strong>${item.stage}</strong><span>${item.users} users</span><span>${item.conversion}</span><span>${item.status}</span></div>`;
+}
+
+function renewalQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.accounts} accounts</span><span>${item.value}</span><span>${item.status}</span></div>`;
+}
+
+function cancellationReasonRow(item) {
+  return `<div class="table-row"><strong>${item.reason}</strong><span>${item.share}</span><span>${item.action}</span><span>${item.status}</span></div>`;
+}
+
+function planMigrationRow(item) {
+  return `<div class="table-row"><strong>${item.motion}</strong><span>${item.volume}</span><span>${item.driver}</span><span>${item.status}</span></div>`;
+}
+
+function winbackOfferRow(item) {
+  return `<div class="table-row"><strong>${item.offer}</strong><span>${item.segment}</span><span>${item.acceptance}</span><span>${item.status}</span></div>`;
+}
+
 function financeCostRow(item) {
   return `<div class="table-row"><strong>${item.center}</strong><span>${item.spend}</span><span>${item.driver}</span><span>${item.status}</span></div>`;
 }
@@ -5440,6 +5525,7 @@ function adminView() {
   if (state.adminSection === "payments") loadAdminPayments();
   if (state.adminSection === "entitlements") loadAdminEntitlements();
   if (state.adminSection === "revenueAssurance") loadAdminRevenueAssurance();
+  if (state.adminSection === "subscriptions") loadAdminSubscriptions();
   if (state.adminSection === "finance") loadAdminFinance();
   if (state.adminSection === "unitEconomics") loadAdminUnitEconomics();
   if (state.adminSection === "users") loadAdminUsers();
@@ -5617,6 +5703,7 @@ function adminSectionView(section, readiness) {
     payments: adminPayments,
     entitlements: adminEntitlements,
     revenueAssurance: adminRevenueAssurance,
+    subscriptions: adminSubscriptions,
     finance: adminFinance,
     unitEconomics: adminUnitEconomics,
     users: adminUsers,
@@ -5948,6 +6035,55 @@ function adminRevenueAssurance() {
         <h2>Revenue assurance guardrails</h2>
         <div class="admin-checklist">
           ${revenue.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminSubscriptions() {
+  const subscriptions = adminSubscriptionData();
+  const summary = subscriptions.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active subs", summary.activeSubscriptions || "4,047")}
+      ${metric("Trials ending", summary.trialsEnding || "312")}
+      ${metric("Renewal risk", summary.renewalRisk || "$22.8K")}
+      ${metric("Save rate", summary.saveRate || "18%")}
+      <section class="admin-card full-admin">
+        <h2>Lifecycle stages</h2>
+        <div class="table admin-table-4">
+          ${subscriptions.lifecycleStages.map(subscriptionStageRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Renewal queues</h2>
+        <div class="table admin-table-4">
+          ${subscriptions.renewalQueues.map(renewalQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Cancellation reasons</h2>
+        <div class="table admin-table-4">
+          ${subscriptions.cancellationReasons.map(cancellationReasonRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Plan migrations</h2>
+        <div class="table admin-table-4">
+          ${subscriptions.planMigrations.map(planMigrationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Winback offers</h2>
+        <div class="table admin-table-4">
+          ${subscriptions.winbackOffers.map(winbackOfferRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Subscription guardrails</h2>
+        <div class="admin-checklist">
+          ${subscriptions.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -8675,6 +8811,7 @@ function bindEvents() {
       loadAdminPayments(true);
       loadAdminEntitlements(true);
       loadAdminRevenueAssurance(true);
+      loadAdminSubscriptions(true);
       loadAdminFinance(true);
       loadAdminUnitEconomics(true);
       loadAdminUsers(true);

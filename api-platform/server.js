@@ -184,6 +184,46 @@ const revenueAssuranceOperations = {
   ]
 };
 
+const subscriptionLifecycleOperations = {
+  summary: { activeSubscriptions: "4,047", trialsEnding: 312, renewalRisk: "$22.8K", cancellations: 47, saveRate: "18%" },
+  lifecycleStages: [
+    { stage: "Trial started", users: 1480, conversion: "31%", owner: "Growth", status: "Healthy" },
+    { stage: "Trial ending", users: 312, conversion: "24%", owner: "Lifecycle", status: "Watch" },
+    { stage: "Paid active", users: 4047, conversion: "N/A", owner: "Revenue Ops", status: "Healthy" },
+    { stage: "Grace period", users: 91, conversion: "42% recovered", owner: "Billing", status: "Active" }
+  ],
+  renewalQueues: [
+    { queue: "Teams renewal in 30 days", accounts: 11, value: "$48K", owner: "Success", status: "Review" },
+    { queue: "Annual Pro renewal", accounts: 83, value: "$14.9K", owner: "Lifecycle", status: "Queued" },
+    { queue: "Card expiry before renewal", accounts: 129, value: "$7.6K", owner: "Billing", status: "Active" },
+    { queue: "Procurement renewal blocker", accounts: 6, value: "$31K", owner: "Revenue Ops", status: "Escalated" }
+  ],
+  cancellationReasons: [
+    { reason: "Too expensive", share: "28%", action: "Offer annual discount", owner: "Growth", status: "Testing" },
+    { reason: "Language coverage gap", share: "22%", action: "Route to language roadmap", owner: "Language Ops", status: "Review" },
+    { reason: "Low usage", share: "19%", action: "Prompt education journey", owner: "Lifecycle", status: "Live" },
+    { reason: "Payment failed", share: "17%", action: "Dunning recovery", owner: "Billing", status: "Active" }
+  ],
+  planMigrations: [
+    { motion: "Free to Plus", volume: 842, driver: "Quota reached", owner: "Growth", status: "Healthy" },
+    { motion: "Plus to Pro", volume: 214, driver: "Creator tools", owner: "Product", status: "Growing" },
+    { motion: "Pro to Teams", volume: 38, driver: "Workspace seats", owner: "Sales", status: "Review" },
+    { motion: "Teams expansion", volume: 17, driver: "Seat/API usage", owner: "Success", status: "Healthy" }
+  ],
+  winbackOffers: [
+    { offer: "Language coverage follow-up", segment: "Coverage-gap churn", acceptance: "12%", owner: "Language Ops", status: "Ready" },
+    { offer: "Annual plan discount", segment: "Price-sensitive Pro", acceptance: "18%", owner: "Growth", status: "Testing" },
+    { offer: "Workspace onboarding", segment: "Low-use Teams", acceptance: "26%", owner: "Success", status: "Live" },
+    { offer: "Payment recovery credit", segment: "Failed renewal", acceptance: "9%", owner: "Billing", status: "Watch" }
+  ],
+  guardrails: [
+    "Subscription changes must sync plan, entitlement, invoice, tax, and usage records before confirming to the user.",
+    "Cancellation flows should capture reason, save attempt, refund eligibility, and data retention options clearly.",
+    "Grace-period access should protect user trust without creating hidden unpaid usage exposure.",
+    "Winback offers must respect consent, quiet hours, country rules, and prior opt-out preferences."
+  ]
+};
+
 const userOperations = {
   summary: { consumers: "18.4K", organizations: 47, enterpriseSeats: 1280, riskReviews: 92 },
   accountQueues: [
@@ -2300,6 +2340,10 @@ function adminRevenueAssuranceOperations() {
   return revenueAssuranceOperations;
 }
 
+function adminSubscriptionLifecycleOperations() {
+  return subscriptionLifecycleOperations;
+}
+
 function adminUserOperations() {
   return userOperations;
 }
@@ -2560,6 +2604,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "payments:read",
       "entitlements:manage",
       "revenue:assure",
+      "subscriptions:manage",
       "users:read",
       "models:operate",
       "licensing:review",
@@ -2714,6 +2759,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("revenue_assurance_viewed", "Revenue Assurance", "Info", "Revenue Ops");
       return sendJson(response, 200, adminRevenueAssuranceOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/subscriptions") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("subscriptions_viewed", "Subscriptions", "Info", "Lifecycle");
+      return sendJson(response, 200, adminSubscriptionLifecycleOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/users") {
@@ -3188,4 +3241,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
