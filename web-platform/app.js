@@ -113,6 +113,7 @@ const ADMIN_SECTIONS = [
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
   { id: "residency", label: "Residency", desc: "Country residency, storage regions, cross-border transfers, key custody, retention, and sovereignty guardrails." },
   { id: "privacy", label: "Privacy Ops", desc: "DSAR exports, deletion queues, correction requests, legal holds, residency reviews, and privacy guardrails." },
+  { id: "dpia", label: "DPIA", desc: "High-risk processing, impact assessments, mitigations, launch approvals, residual risks, and DPIA guardrails." },
   { id: "knowledge", label: "Knowledge", desc: "RAG collections, sources, indexing, embeddings, permissions, freshness, and quality queues." },
   { id: "safety", label: "Safety", desc: "Moderation, corrections, privacy, red-team findings, appeals, and policy." },
   { id: "fraud", label: "Fraud", desc: "Bot defense, account abuse, payment risk, API misuse, enforcement, and appeals." },
@@ -287,6 +288,8 @@ const DEFAULT_STATE = {
   adminResidencySovereigntyLoadedAt: null,
   adminPrivacyRequests: null,
   adminPrivacyRequestsLoadedAt: null,
+  adminDpia: null,
+  adminDpiaLoadedAt: null,
   adminIntegrations: null,
   adminIntegrationsLoadedAt: null,
   adminExperiments: null,
@@ -1175,6 +1178,26 @@ async function loadAdminPrivacyRequests(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminDpia(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminDpiaLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/dpia`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("DPIA operations unavailable.");
+    state.adminDpia = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminDpiaLoadedAt = Date.now();
+  } catch {
+    state.adminDpiaLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminIntegrations(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminIntegrationsLoadedAt || 0;
@@ -1723,7 +1746,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "residency:manage", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2472,6 +2495,48 @@ function adminPrivacyRequestsData() {
       "Deletion workflows must check billing, legal hold, safety appeal, and enterprise tenant dependencies.",
       "Exports should be time-limited, watermarked where appropriate, encrypted, and audit logged.",
       "Privacy operations must expose workflow status, not raw private conversations or sensitive user content."
+    ]
+  };
+}
+
+function adminDpiaData() {
+  return state.adminDpia || {
+    summary: { openAssessments: 12, highRiskLaunches: 5, mitigationsDue: 18, approvalsPending: 7, residualRisk: "Medium" },
+    assessments: [
+      { assessment: "Voice Circle retention", surface: "Mobile", risk: "High", owner: "Privacy/Voice Ops", status: "Mitigating" },
+      { assessment: "Teams RAG workspace", surface: "Web/API", risk: "High", owner: "Enterprise", status: "Legal review" },
+      { assessment: "Language correction program", surface: "Review tools", risk: "Medium", owner: "Language QA", status: "Approved" },
+      { assessment: "Mobile crash telemetry", surface: "Android/iOS", risk: "Medium", owner: "Mobile Ops", status: "Queued" }
+    ],
+    highRiskProcessing: [
+      { process: "Sensitive voice samples", data: "Voice + language", lawfulBasis: "Explicit consent", market: "Multi-market", status: "Gate required" },
+      { process: "Enterprise documents", data: "Workspace files", lawfulBasis: "Contract", market: "Tenant scoped", status: "Review" },
+      { process: "Safety investigations", data: "Moderation evidence", lawfulBasis: "Legitimate interest", market: "All", status: "Controlled" },
+      { process: "Model evaluation samples", data: "Redacted prompts", lawfulBasis: "Consent/contract", market: "Regional", status: "Sampling" }
+    ],
+    mitigations: [
+      { mitigation: "Voice sample auto-expiry", risk: "Retention", owner: "Voice Ops", due: "Aug 18", status: "Building" },
+      { mitigation: "Tenant key isolation", risk: "Enterprise file exposure", owner: "Platform", due: "Aug 22", status: "In progress" },
+      { mitigation: "Reviewer least-privilege access", risk: "Correction data misuse", owner: "Security", due: "Aug 15", status: "Ready" },
+      { mitigation: "Telemetry minimization", risk: "Mobile device data", owner: "Mobile", due: "Aug 20", status: "Queued" }
+    ],
+    approvals: [
+      { gate: "Mobile voice beta", approver: "Privacy Lead", evidence: "Consent UX + retention", decision: "Conditional" },
+      { gate: "Teams knowledge launch", approver: "Legal + Security", evidence: "DPA + key custody", decision: "Pending" },
+      { gate: "Correction reviewer expansion", approver: "Language QA", evidence: "Access policy", decision: "Approved" },
+      { gate: "Public-sector pilot", approver: "DPO/Counsel", evidence: "Residency note", decision: "Review" }
+    ],
+    residualRisks: [
+      { risk: "Cross-border model evaluation", severity: "Medium", owner: "AI Governance", review: "Weekly", status: "Open" },
+      { risk: "Voice consent comprehension", severity: "High", owner: "Product/Privacy", review: "Before beta", status: "Mitigating" },
+      { risk: "Enterprise file deletion dependency", severity: "Medium", owner: "Knowledge Ops", review: "Sprint", status: "Watch" },
+      { risk: "Reviewer market bias", severity: "Low", owner: "Language QA", review: "Monthly", status: "Tracked" }
+    ],
+    guardrails: [
+      "High-risk processing cannot launch without owner, lawful basis, mitigation, approver, and residual-risk decision.",
+      "DPIA evidence should link to privacy, residency, AI governance, security, and release-readiness records.",
+      "Assessments must cover web, mobile, API, model evaluation, support tooling, and reviewer workflows.",
+      "Admin views should summarize risks and decisions without exposing private prompts, voice samples, or tenant files."
     ]
   };
 }
@@ -4446,6 +4511,26 @@ function privacyResidencyRow(item) {
   return `<div class="table-row"><strong>${item.market}</strong><span>${item.data}</span><span>${item.requirement}</span><span>${item.status}</span></div>`;
 }
 
+function dpiaAssessmentRow(item) {
+  return `<div class="table-row"><strong>${item.assessment}</strong><span>${item.surface}</span><span>${item.risk}</span><span>${item.status}</span></div>`;
+}
+
+function highRiskProcessingRow(item) {
+  return `<div class="table-row"><strong>${item.process}</strong><span>${item.data}</span><span>${item.lawfulBasis}</span><span>${item.status}</span></div>`;
+}
+
+function dpiaMitigationRow(item) {
+  return `<div class="table-row"><strong>${item.mitigation}</strong><span>${item.risk}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
+function dpiaApprovalRow(item) {
+  return `<div class="table-row"><strong>${item.gate}</strong><span>${item.approver}</span><span>${item.evidence}</span><span>${item.decision}</span></div>`;
+}
+
+function residualRiskRow(item) {
+  return `<div class="table-row"><strong>${item.risk}</strong><span>${item.severity}</span><span>${item.review}</span><span>${item.status}</span></div>`;
+}
+
 function regionPostureRow(item) {
   return `<div class="table-row"><strong>${item.region}</strong><span>${item.primary}</span><span>${item.dataClass}</span><span>${item.status}</span></div>`;
 }
@@ -5624,6 +5709,7 @@ function adminView() {
   if (state.adminSection === "data") loadAdminDataGovernance();
   if (state.adminSection === "residency") loadAdminResidencySovereignty();
   if (state.adminSection === "privacy") loadAdminPrivacyRequests();
+  if (state.adminSection === "dpia") loadAdminDpia();
   if (state.adminSection === "safety") loadAdminSafety();
   if (state.adminSection === "fraud") loadAdminFraudAbuse();
   if (state.adminSection === "security") loadAdminSecurity();
@@ -5805,6 +5891,7 @@ function adminSectionView(section, readiness) {
     data: adminDataGovernance,
     residency: adminResidencySovereignty,
     privacy: adminPrivacyRequests,
+    dpia: adminDpia,
     knowledge: adminKnowledge,
     safety: adminSafety,
     fraud: adminFraudAbuse,
@@ -7937,6 +8024,55 @@ function adminPrivacyRequests() {
   `;
 }
 
+function adminDpia() {
+  const dpia = adminDpiaData();
+  const summary = dpia.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Assessments", summary.openAssessments || "12")}
+      ${metric("High-risk", summary.highRiskLaunches || "5")}
+      ${metric("Mitigations", summary.mitigationsDue || "18")}
+      ${metric("Residual risk", summary.residualRisk || "Medium")}
+      <section class="admin-card full-admin">
+        <h2>Impact assessments</h2>
+        <div class="table admin-table-4">
+          ${dpia.assessments.map(dpiaAssessmentRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>High-risk processing</h2>
+        <div class="table admin-table-4">
+          ${dpia.highRiskProcessing.map(highRiskProcessingRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Mitigation plan</h2>
+        <div class="table admin-table-4">
+          ${dpia.mitigations.map(dpiaMitigationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Launch approvals</h2>
+        <div class="table admin-table-4">
+          ${dpia.approvals.map(dpiaApprovalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Residual risks</h2>
+        <div class="table admin-table-4">
+          ${dpia.residualRisks.map(residualRiskRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>DPIA guardrails</h2>
+        <div class="admin-checklist">
+          ${dpia.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminIntegrations() {
   const integrations = adminIntegrationsData();
   const summary = integrations.summary || {};
@@ -8961,6 +9097,7 @@ function bindEvents() {
       loadAdminDataGovernance(true);
       loadAdminResidencySovereignty(true);
       loadAdminPrivacyRequests(true);
+      loadAdminDpia(true);
       loadAdminSafety(true);
       loadAdminFraudAbuse(true);
       loadAdminSecurity(true);

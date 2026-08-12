@@ -14,6 +14,7 @@ const {
   adminRevenueAssuranceOperations,
   adminSubscriptionLifecycleOperations,
   adminResidencySovereigntyOperations,
+  adminDpiaOperations,
   adminUserOperations,
   adminModelOperations,
   adminModelLicensingOperations,
@@ -111,6 +112,7 @@ assert.ok(accessSession.scopes.includes("entitlements:manage"));
 assert.ok(accessSession.scopes.includes("revenue:assure"));
 assert.ok(accessSession.scopes.includes("subscriptions:manage"));
 assert.ok(accessSession.scopes.includes("residency:manage"));
+assert.ok(accessSession.scopes.includes("dpia:review"));
 assert.ok(accessSession.scopes.includes("licensing:review"));
 assert.ok(accessSession.scopes.includes("finance:read"));
 assert.ok(accessSession.scopes.includes("unit:economics"));
@@ -168,6 +170,7 @@ const adminContracts = [
   ["revenue assurance", adminRevenueAssuranceOperations(), data => data.summary && Array.isArray(data.taxCoverage) && Array.isArray(data.leakageSignals) && Array.isArray(data.reconciliation)],
   ["subscriptions", adminSubscriptionLifecycleOperations(), data => data.summary && Array.isArray(data.lifecycleStages) && Array.isArray(data.renewalQueues) && Array.isArray(data.cancellationReasons)],
   ["residency sovereignty", adminResidencySovereigntyOperations(), data => data.summary && Array.isArray(data.regionPosture) && Array.isArray(data.transferReviews) && Array.isArray(data.dataStores)],
+  ["dpia", adminDpiaOperations(), data => data.summary && Array.isArray(data.assessments) && Array.isArray(data.highRiskProcessing) && Array.isArray(data.mitigations)],
   ["users", adminUserOperations(), data => data.summary && Array.isArray(data.accountQueues) && Array.isArray(data.organizations)],
   ["models", adminModelOperations(), data => Array.isArray(data.registry) && Array.isArray(data.health) && data.summary.modelSources >= modelRegistry.length],
   ["model licensing", adminModelLicensingOperations(), data => data.summary && Array.isArray(data.modelLicenses) && Array.isArray(data.datasetSources) && Array.isArray(data.rightsRisks)],

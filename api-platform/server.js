@@ -1346,6 +1346,46 @@ const privacyRequestOperations = {
   ]
 };
 
+const dpiaOperations = {
+  summary: { openAssessments: 12, highRiskLaunches: 5, mitigationsDue: 18, approvalsPending: 7, residualRisk: "Medium" },
+  assessments: [
+    { assessment: "Voice Circle retention", surface: "Mobile", risk: "High", owner: "Privacy/Voice Ops", status: "Mitigating" },
+    { assessment: "Teams RAG workspace", surface: "Web/API", risk: "High", owner: "Enterprise", status: "Legal review" },
+    { assessment: "Language correction program", surface: "Review tools", risk: "Medium", owner: "Language QA", status: "Approved" },
+    { assessment: "Mobile crash telemetry", surface: "Android/iOS", risk: "Medium", owner: "Mobile Ops", status: "Queued" }
+  ],
+  highRiskProcessing: [
+    { process: "Sensitive voice samples", data: "Voice + language", lawfulBasis: "Explicit consent", market: "Multi-market", status: "Gate required" },
+    { process: "Enterprise documents", data: "Workspace files", lawfulBasis: "Contract", market: "Tenant scoped", status: "Review" },
+    { process: "Safety investigations", data: "Moderation evidence", lawfulBasis: "Legitimate interest", market: "All", status: "Controlled" },
+    { process: "Model evaluation samples", data: "Redacted prompts", lawfulBasis: "Consent/contract", market: "Regional", status: "Sampling" }
+  ],
+  mitigations: [
+    { mitigation: "Voice sample auto-expiry", risk: "Retention", owner: "Voice Ops", due: "Aug 18", status: "Building" },
+    { mitigation: "Tenant key isolation", risk: "Enterprise file exposure", owner: "Platform", due: "Aug 22", status: "In progress" },
+    { mitigation: "Reviewer least-privilege access", risk: "Correction data misuse", owner: "Security", due: "Aug 15", status: "Ready" },
+    { mitigation: "Telemetry minimization", risk: "Mobile device data", owner: "Mobile", due: "Aug 20", status: "Queued" }
+  ],
+  approvals: [
+    { gate: "Mobile voice beta", approver: "Privacy Lead", evidence: "Consent UX + retention", decision: "Conditional" },
+    { gate: "Teams knowledge launch", approver: "Legal + Security", evidence: "DPA + key custody", decision: "Pending" },
+    { gate: "Correction reviewer expansion", approver: "Language QA", evidence: "Access policy", decision: "Approved" },
+    { gate: "Public-sector pilot", approver: "DPO/Counsel", evidence: "Residency note", decision: "Review" }
+  ],
+  residualRisks: [
+    { risk: "Cross-border model evaluation", severity: "Medium", owner: "AI Governance", review: "Weekly", status: "Open" },
+    { risk: "Voice consent comprehension", severity: "High", owner: "Product/Privacy", review: "Before beta", status: "Mitigating" },
+    { risk: "Enterprise file deletion dependency", severity: "Medium", owner: "Knowledge Ops", review: "Sprint", status: "Watch" },
+    { risk: "Reviewer market bias", severity: "Low", owner: "Language QA", review: "Monthly", status: "Tracked" }
+  ],
+  guardrails: [
+    "High-risk processing cannot launch without owner, lawful basis, mitigation, approver, and residual-risk decision.",
+    "DPIA evidence should link to privacy, residency, AI governance, security, and release-readiness records.",
+    "Assessments must cover web, mobile, API, model evaluation, support tooling, and reviewer workflows.",
+    "Admin views should summarize risks and decisions without exposing private prompts, voice samples, or tenant files."
+  ]
+};
+
 const integrationOperations = {
   summary: { connectedServices: 18, degradedServices: 2, webhookRetries: 42, partnerAccounts: 11, secretsRotating: 3 },
   services: [
@@ -2528,6 +2568,10 @@ function adminPrivacyRequestOperations() {
   return privacyRequestOperations;
 }
 
+function adminDpiaOperations() {
+  return dpiaOperations;
+}
+
 function adminIntegrationOperations() {
   return integrationOperations;
 }
@@ -2680,6 +2724,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "localization:manage",
       "data:govern",
       "privacy:operate",
+      "dpia:review",
       "integrations:manage",
       "experiments:operate",
       "evals:review",
@@ -3070,6 +3115,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminPrivacyRequestOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/dpia") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("dpia_operations_viewed", "DPIA", "Info", "Privacy");
+      return sendJson(response, 200, adminDpiaOperations());
+    }
+
     if (request.method === "GET" && url.pathname === "/v1/admin/integrations") {
       if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
         return sendJson(response, 403, { error: "Seed admin access required" });
@@ -3294,4 +3347,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
