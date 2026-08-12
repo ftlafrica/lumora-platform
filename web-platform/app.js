@@ -115,6 +115,7 @@ const ADMIN_SECTIONS = [
   { id: "privacy", label: "Privacy Ops", desc: "DSAR exports, deletion queues, correction requests, legal holds, residency reviews, and privacy guardrails." },
   { id: "dpia", label: "DPIA", desc: "High-risk processing, impact assessments, mitigations, launch approvals, residual risks, and DPIA guardrails." },
   { id: "knowledge", label: "Knowledge", desc: "RAG collections, sources, indexing, embeddings, permissions, freshness, and quality queues." },
+  { id: "policy", label: "Policy", desc: "Policy versions, content taxonomy, reviewer guidance, enforcement rules, appeals, and localization guardrails." },
   { id: "safety", label: "Safety", desc: "Moderation, corrections, privacy, red-team findings, appeals, and policy." },
   { id: "fraud", label: "Fraud", desc: "Bot defense, account abuse, payment risk, API misuse, enforcement, and appeals." },
   { id: "security", label: "Security", desc: "Threats, MFA/SSO, device trust, audit integrity, data requests, and compliance readiness." },
@@ -290,6 +291,8 @@ const DEFAULT_STATE = {
   adminPrivacyRequestsLoadedAt: null,
   adminDpia: null,
   adminDpiaLoadedAt: null,
+  adminPolicyGovernance: null,
+  adminPolicyGovernanceLoadedAt: null,
   adminIntegrations: null,
   adminIntegrationsLoadedAt: null,
   adminExperiments: null,
@@ -1198,6 +1201,26 @@ async function loadAdminDpia(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminPolicyGovernance(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminPolicyGovernanceLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/policy-governance`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Policy governance operations unavailable.");
+    state.adminPolicyGovernance = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminPolicyGovernanceLoadedAt = Date.now();
+  } catch {
+    state.adminPolicyGovernanceLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminIntegrations(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminIntegrationsLoadedAt || 0;
@@ -1746,7 +1769,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -3785,6 +3808,48 @@ function adminSafetyData() {
   };
 }
 
+function adminPolicyGovernanceData() {
+  return state.adminPolicyGovernance || {
+    summary: { activePolicies: 18, draftUpdates: 6, localizedGuides: 14, appealsRules: 9, policyDrift: "Low" },
+    policyVersions: [
+      { policy: "Safety response policy", version: "v1.4", owner: "Trust", effective: "Aug 2026", status: "Live" },
+      { policy: "Language and dialect quality", version: "v0.9", owner: "Language QA", effective: "Beta", status: "Review" },
+      { policy: "Voice consent and retention", version: "v0.8", owner: "Privacy", effective: "Mobile beta", status: "Draft" },
+      { policy: "Marketplace and business replies", version: "v1.1", owner: "Product Policy", effective: "Aug 2026", status: "Live" }
+    ],
+    taxonomy: [
+      { category: "High-risk advice", examples: "Medical, legal, financial", handling: "Caution + referral", status: "Live" },
+      { category: "Cultural sensitivity", examples: "Proverbs, elders, identity", handling: "Context-aware tone", status: "Review" },
+      { category: "Harassment and hate", examples: "Ethnicity, religion, gender", handling: "Block/escalate", status: "Live" },
+      { category: "Commercial claims", examples: "Pricing, offers, refunds", handling: "Source-controlled", status: "Live" }
+    ],
+    reviewerGuidance: [
+      { guide: "Yoruba/Pidgin tone review", language: "Yoruba + Nigerian Pidgin", reviewers: 18, status: "Active" },
+      { guide: "Swahili respectful refusal", language: "Swahili", reviewers: 11, status: "Review" },
+      { guide: "Arabic/French North Africa style", language: "Arabic/French", reviewers: 7, status: "Draft" },
+      { guide: "Marketplace reply safety", language: "Pan-African English", reviewers: 9, status: "Active" }
+    ],
+    enforcementRules: [
+      { rule: "No sensitive admin data in user responses", action: "Block + audit", owner: "Security", status: "Live" },
+      { rule: "Unsupported dialect uncertainty", action: "Disclose uncertainty", owner: "Language QA", status: "Live" },
+      { rule: "Paid-plan offer accuracy", action: "Use plan source only", owner: "Revenue Ops", status: "Live" },
+      { rule: "Voice consent missing", action: "Disable retention", owner: "Privacy", status: "Testing" }
+    ],
+    appealsPolicy: [
+      { appeal: "Moderation decision", sla: "7 days", reviewer: "Trust Ops", escalation: "Policy Lead", status: "Live" },
+      { appeal: "Account hold", sla: "3 days", reviewer: "Trust/Security", escalation: "Legal", status: "Live" },
+      { appeal: "Language correction dispute", sla: "14 days", reviewer: "Native reviewer", escalation: "Language QA", status: "Beta" },
+      { appeal: "Business reply rejection", sla: "5 days", reviewer: "Product Policy", escalation: "Revenue Ops", status: "Draft" }
+    ],
+    guardrails: [
+      "Policies must be versioned, localized, reviewed, and linked to product surfaces before launch.",
+      "Reviewer guidance should preserve African cultural context without overfitting to one country or dialect.",
+      "Enforcement rules require user-facing clarity, admin audit events, and appeal paths where appropriate.",
+      "Policy dashboards should summarize decisions without exposing private prompts, reviewer notes, or sensitive identities."
+    ]
+  };
+}
+
 function adminFraudAbuseData() {
   return state.adminFraudAbuse || {
     summary: { openCases: 73, botBlocks: "18.4K", paymentRisk: "$6.8K", apiAbuse: 22, falsePositiveRate: "1.7%" },
@@ -5139,6 +5204,26 @@ function safetyQueueRow(item) {
   return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.owner} / ${item.priority}</span></div>`;
 }
 
+function policyVersionRow(item) {
+  return `<div class="table-row"><strong>${item.policy}</strong><span>${item.version}</span><span>${item.effective}</span><span>${item.status}</span></div>`;
+}
+
+function policyTaxonomyRow(item) {
+  return `<div class="table-row"><strong>${item.category}</strong><span>${item.examples}</span><span>${item.handling}</span><span>${item.status}</span></div>`;
+}
+
+function reviewerGuidanceRow(item) {
+  return `<div class="table-row"><strong>${item.guide}</strong><span>${item.language}</span><span>${item.reviewers} reviewers</span><span>${item.status}</span></div>`;
+}
+
+function policyEnforcementRow(item) {
+  return `<div class="table-row"><strong>${item.rule}</strong><span>${item.action}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
+function appealsPolicyRow(item) {
+  return `<div class="table-row"><strong>${item.appeal}</strong><span>${item.sla}</span><span>${item.escalation}</span><span>${item.status}</span></div>`;
+}
+
 function abuseQueueRow(item) {
   return `<div class="table-row"><strong>${item.queue}</strong><span>${item.surface}</span><span>${item.volume} cases</span><span>${item.status}</span></div>`;
 }
@@ -5710,6 +5795,7 @@ function adminView() {
   if (state.adminSection === "residency") loadAdminResidencySovereignty();
   if (state.adminSection === "privacy") loadAdminPrivacyRequests();
   if (state.adminSection === "dpia") loadAdminDpia();
+  if (state.adminSection === "policy") loadAdminPolicyGovernance();
   if (state.adminSection === "safety") loadAdminSafety();
   if (state.adminSection === "fraud") loadAdminFraudAbuse();
   if (state.adminSection === "security") loadAdminSecurity();
@@ -5893,6 +5979,7 @@ function adminSectionView(section, readiness) {
     privacy: adminPrivacyRequests,
     dpia: adminDpia,
     knowledge: adminKnowledge,
+    policy: adminPolicyGovernance,
     safety: adminSafety,
     fraud: adminFraudAbuse,
     security: adminSecurity,
@@ -6655,6 +6742,55 @@ function adminSafety() {
         <h2>Safety guardrails</h2>
         <div class="admin-checklist">
           ${safety.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminPolicyGovernance() {
+  const policy = adminPolicyGovernanceData();
+  const summary = policy.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active policies", summary.activePolicies || "18")}
+      ${metric("Draft updates", summary.draftUpdates || "6")}
+      ${metric("Localized guides", summary.localizedGuides || "14")}
+      ${metric("Policy drift", summary.policyDrift || "Low")}
+      <section class="admin-card full-admin">
+        <h2>Policy versions</h2>
+        <div class="table admin-table-4">
+          ${policy.policyVersions.map(policyVersionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Content taxonomy</h2>
+        <div class="table admin-table-4">
+          ${policy.taxonomy.map(policyTaxonomyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Reviewer guidance</h2>
+        <div class="table admin-table-4">
+          ${policy.reviewerGuidance.map(reviewerGuidanceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Enforcement rules</h2>
+        <div class="table admin-table-4">
+          ${policy.enforcementRules.map(policyEnforcementRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Appeals policy</h2>
+        <div class="table admin-table-4">
+          ${policy.appealsPolicy.map(appealsPolicyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Policy guardrails</h2>
+        <div class="admin-checklist">
+          ${policy.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -9098,6 +9234,7 @@ function bindEvents() {
       loadAdminResidencySovereignty(true);
       loadAdminPrivacyRequests(true);
       loadAdminDpia(true);
+      loadAdminPolicyGovernance(true);
       loadAdminSafety(true);
       loadAdminFraudAbuse(true);
       loadAdminSecurity(true);

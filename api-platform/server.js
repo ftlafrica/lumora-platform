@@ -380,6 +380,46 @@ const safetyOperations = {
   ]
 };
 
+const policyGovernanceOperations = {
+  summary: { activePolicies: 18, draftUpdates: 6, localizedGuides: 14, appealsRules: 9, policyDrift: "Low" },
+  policyVersions: [
+    { policy: "Safety response policy", version: "v1.4", owner: "Trust", effective: "Aug 2026", status: "Live" },
+    { policy: "Language and dialect quality", version: "v0.9", owner: "Language QA", effective: "Beta", status: "Review" },
+    { policy: "Voice consent and retention", version: "v0.8", owner: "Privacy", effective: "Mobile beta", status: "Draft" },
+    { policy: "Marketplace and business replies", version: "v1.1", owner: "Product Policy", effective: "Aug 2026", status: "Live" }
+  ],
+  taxonomy: [
+    { category: "High-risk advice", examples: "Medical, legal, financial", handling: "Caution + referral", status: "Live" },
+    { category: "Cultural sensitivity", examples: "Proverbs, elders, identity", handling: "Context-aware tone", status: "Review" },
+    { category: "Harassment and hate", examples: "Ethnicity, religion, gender", handling: "Block/escalate", status: "Live" },
+    { category: "Commercial claims", examples: "Pricing, offers, refunds", handling: "Source-controlled", status: "Live" }
+  ],
+  reviewerGuidance: [
+    { guide: "Yoruba/Pidgin tone review", language: "Yoruba + Nigerian Pidgin", reviewers: 18, status: "Active" },
+    { guide: "Swahili respectful refusal", language: "Swahili", reviewers: 11, status: "Review" },
+    { guide: "Arabic/French North Africa style", language: "Arabic/French", reviewers: 7, status: "Draft" },
+    { guide: "Marketplace reply safety", language: "Pan-African English", reviewers: 9, status: "Active" }
+  ],
+  enforcementRules: [
+    { rule: "No sensitive admin data in user responses", action: "Block + audit", owner: "Security", status: "Live" },
+    { rule: "Unsupported dialect uncertainty", action: "Disclose uncertainty", owner: "Language QA", status: "Live" },
+    { rule: "Paid-plan offer accuracy", action: "Use plan source only", owner: "Revenue Ops", status: "Live" },
+    { rule: "Voice consent missing", action: "Disable retention", owner: "Privacy", status: "Testing" }
+  ],
+  appealsPolicy: [
+    { appeal: "Moderation decision", sla: "7 days", reviewer: "Trust Ops", escalation: "Policy Lead", status: "Live" },
+    { appeal: "Account hold", sla: "3 days", reviewer: "Trust/Security", escalation: "Legal", status: "Live" },
+    { appeal: "Language correction dispute", sla: "14 days", reviewer: "Native reviewer", escalation: "Language QA", status: "Beta" },
+    { appeal: "Business reply rejection", sla: "5 days", reviewer: "Product Policy", escalation: "Revenue Ops", status: "Draft" }
+  ],
+  guardrails: [
+    "Policies must be versioned, localized, reviewed, and linked to product surfaces before launch.",
+    "Reviewer guidance should preserve African cultural context without overfitting to one country or dialect.",
+    "Enforcement rules require user-facing clarity, admin audit events, and appeal paths where appropriate.",
+    "Policy dashboards should summarize decisions without exposing private prompts, reviewer notes, or sensitive identities."
+  ]
+};
+
 const growthOperations = {
   summary: { visitorsToday: 4812, newVisitors: 2184, returningVisitors: 2628, signupConversion: "12.4%", mobileWebShare: "38%" },
   funnel: [
@@ -2460,6 +2500,10 @@ function adminSafetyOperations() {
   return safetyOperations;
 }
 
+function adminPolicyGovernanceOperations() {
+  return policyGovernanceOperations;
+}
+
 function adminGrowthOperations() {
   return growthOperations;
 }
@@ -2698,6 +2742,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "models:operate",
       "licensing:review",
       "safety:review",
+      "policy:govern",
       "platform:operate",
       "devex:operate",
       "access:grant",
@@ -2897,6 +2942,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("safety_operations_viewed", "Safety", "Info", "Moderator");
       return sendJson(response, 200, adminSafetyOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/policy-governance") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("policy_governance_viewed", "Policy", "Info", "Trust");
+      return sendJson(response, 200, adminPolicyGovernanceOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/growth") {
@@ -3347,4 +3400,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
