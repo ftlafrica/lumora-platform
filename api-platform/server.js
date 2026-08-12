@@ -731,6 +731,46 @@ const supportOperations = {
   ]
 };
 
+const conversationOperations = {
+  summary: { activeChats: "42.8K", streamSuccess: "99.2%", failedResponses: 128, attachmentQueue: 37, privacyReplays: 6 },
+  chatHealth: [
+    { surface: "Web chat", active: "24.1K", p95: "640ms", issue: "Healthy", status: "Live" },
+    { surface: "Mobile chat", active: "14.8K", p95: "720ms", issue: "Beta latency watch", status: "Watch" },
+    { surface: "Voice Circle", active: "2.6K", p95: "1.6s", issue: "Speech queue", status: "Mitigating" },
+    { surface: "Teams workspace", active: "1.3K", p95: "690ms", issue: "Tenant policy sync", status: "Healthy" }
+  ],
+  messageQueues: [
+    { queue: "Streaming responses", depth: 284, oldest: "9s", owner: "Platform", status: "Normal" },
+    { queue: "Failed generation retry", depth: 128, oldest: "4m", owner: "AI Ops", status: "Watch" },
+    { queue: "Attachment processing", depth: 37, oldest: "11m", owner: "Knowledge Ops", status: "Review" },
+    { queue: "Voice transcript handoff", depth: 92, oldest: "2m", owner: "Voice Ops", status: "Busy" }
+  ],
+  failureReasons: [
+    { reason: "Model timeout", count: 54, route: "Fallback chain", owner: "AI Ops", status: "Mitigating" },
+    { reason: "Policy refusal appeal", count: 21, route: "Trust review", owner: "Safety", status: "Review" },
+    { reason: "Attachment parse failed", count: 37, route: "Retry parser", owner: "Knowledge Ops", status: "Queued" },
+    { reason: "Network interruption", count: 16, route: "Client retry", owner: "Frontend/Mobile", status: "Design" }
+  ],
+  replayControls: [
+    { control: "Privacy-safe transcript replay", coverage: "Admin only", access: "Case scoped", owner: "Privacy", status: "Restricted" },
+    { control: "Prompt/response redaction", coverage: "PII + secrets", access: "Automated", owner: "Security", status: "Live" },
+    { control: "Conversation export", coverage: "User requested", access: "Privacy workflow", owner: "Privacy Ops", status: "Ready" },
+    { control: "Support summary view", coverage: "Metadata + user notes", access: "Support role", owner: "Support", status: "Live" }
+  ],
+  experienceSignals: [
+    { signal: "First token delay", segment: "Fresh chat", score: "0.7s", trend: "-8%", status: "Healthy" },
+    { signal: "Composer abandonment", segment: "Mobile", score: "6.4%", trend: "-2%", status: "Improving" },
+    { signal: "Language switch success", segment: "Code-switch chats", score: "91%", trend: "+5%", status: "Healthy" },
+    { signal: "Retry satisfaction", segment: "Failed response recovery", score: "78%", trend: "+3%", status: "Watch" }
+  ],
+  guardrails: [
+    "Conversation operations should monitor aggregate health without exposing private chat content by default.",
+    "Support and admin replay must be case-scoped, redacted, audited, and justified by privacy, safety, or user request.",
+    "Failed responses should preserve trust with graceful retry, fallback routing, and clear user-facing recovery.",
+    "Mobile and web chat health should track latency, streaming quality, attachment processing, voice handoff, and language switching."
+  ]
+};
+
 const customerExperienceOperations = {
   summary: { nps: 48, csat: "4.6", feedbackItems: 1284, appRating: "4.7", productInsights: 36 },
   sentimentThemes: [
@@ -2660,6 +2700,10 @@ function adminSupportOperations() {
   return supportOperations;
 }
 
+function adminConversationOperations() {
+  return conversationOperations;
+}
+
 function adminCustomerExperienceOperations() {
   return customerExperienceOperations;
 }
@@ -2884,6 +2928,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "api:manage",
       "knowledge:operate",
       "support:review",
+      "conversations:operate",
       "cx:review",
       "finance:read",
       "unit:economics",
@@ -3157,6 +3202,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("support_center_viewed", "Support", "Info", "Support");
       return sendJson(response, 200, adminSupportOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/conversations") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("conversation_operations_viewed", "Conversations", "Info", "Platform");
+      return sendJson(response, 200, adminConversationOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/customer-experience") {
@@ -3559,4 +3612,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

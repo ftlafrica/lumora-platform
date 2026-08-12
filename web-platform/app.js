@@ -105,6 +105,7 @@ const ADMIN_SECTIONS = [
   { id: "success", label: "Success", desc: "Enterprise account health, onboarding, renewals, expansion, and customer success playbooks." },
   { id: "sales", label: "Sales", desc: "Enterprise pipeline, demos, procurement, partners, and expansion revenue motions." },
   { id: "support", label: "Support", desc: "Tickets, SLA, escalations, CSAT, macros, user-impact signals, and safe support boundaries." },
+  { id: "conversations", label: "Conversations", desc: "Chat health, streaming, message queues, failed responses, attachments, replay controls, and UX signals." },
   { id: "customerExperience", label: "CX", desc: "NPS, CSAT, sentiment themes, product insights, app-store signals, and customer experience guardrails." },
   { id: "models", label: "AI Ops", desc: "Hugging Face sources, routing, latency, fallbacks, quality, and costs." },
   { id: "licensing", label: "Licensing", desc: "Model licenses, dataset provenance, rights risks, usage restrictions, attribution, and consent guardrails." },
@@ -336,6 +337,8 @@ const DEFAULT_STATE = {
   adminKnowledgeLoadedAt: null,
   adminSupport: null,
   adminSupportLoadedAt: null,
+  adminConversations: null,
+  adminConversationsLoadedAt: null,
   adminCustomerExperience: null,
   adminCustomerExperienceLoadedAt: null,
   adminFraudAbuse: null,
@@ -1810,6 +1813,26 @@ async function loadAdminSupport(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminConversations(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminConversationsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/conversations`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Conversation operations unavailable.");
+    state.adminConversations = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminConversationsLoadedAt = Date.now();
+  } catch {
+    state.adminConversationsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminCustomerExperience(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminCustomerExperienceLoadedAt || 0;
@@ -1838,7 +1861,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -4423,6 +4446,48 @@ function adminSupportData() {
   };
 }
 
+function adminConversationsData() {
+  return state.adminConversations || {
+    summary: { activeChats: "42.8K", streamSuccess: "99.2%", failedResponses: 128, attachmentQueue: 37, privacyReplays: 6 },
+    chatHealth: [
+      { surface: "Web chat", active: "24.1K", p95: "640ms", issue: "Healthy", status: "Live" },
+      { surface: "Mobile chat", active: "14.8K", p95: "720ms", issue: "Beta latency watch", status: "Watch" },
+      { surface: "Voice Circle", active: "2.6K", p95: "1.6s", issue: "Speech queue", status: "Mitigating" },
+      { surface: "Teams workspace", active: "1.3K", p95: "690ms", issue: "Tenant policy sync", status: "Healthy" }
+    ],
+    messageQueues: [
+      { queue: "Streaming responses", depth: 284, oldest: "9s", owner: "Platform", status: "Normal" },
+      { queue: "Failed generation retry", depth: 128, oldest: "4m", owner: "AI Ops", status: "Watch" },
+      { queue: "Attachment processing", depth: 37, oldest: "11m", owner: "Knowledge Ops", status: "Review" },
+      { queue: "Voice transcript handoff", depth: 92, oldest: "2m", owner: "Voice Ops", status: "Busy" }
+    ],
+    failureReasons: [
+      { reason: "Model timeout", count: 54, route: "Fallback chain", owner: "AI Ops", status: "Mitigating" },
+      { reason: "Policy refusal appeal", count: 21, route: "Trust review", owner: "Safety", status: "Review" },
+      { reason: "Attachment parse failed", count: 37, route: "Retry parser", owner: "Knowledge Ops", status: "Queued" },
+      { reason: "Network interruption", count: 16, route: "Client retry", owner: "Frontend/Mobile", status: "Design" }
+    ],
+    replayControls: [
+      { control: "Privacy-safe transcript replay", coverage: "Admin only", access: "Case scoped", owner: "Privacy", status: "Restricted" },
+      { control: "Prompt/response redaction", coverage: "PII + secrets", access: "Automated", owner: "Security", status: "Live" },
+      { control: "Conversation export", coverage: "User requested", access: "Privacy workflow", owner: "Privacy Ops", status: "Ready" },
+      { control: "Support summary view", coverage: "Metadata + user notes", access: "Support role", owner: "Support", status: "Live" }
+    ],
+    experienceSignals: [
+      { signal: "First token delay", segment: "Fresh chat", score: "0.7s", trend: "-8%", status: "Healthy" },
+      { signal: "Composer abandonment", segment: "Mobile", score: "6.4%", trend: "-2%", status: "Improving" },
+      { signal: "Language switch success", segment: "Code-switch chats", score: "91%", trend: "+5%", status: "Healthy" },
+      { signal: "Retry satisfaction", segment: "Failed response recovery", score: "78%", trend: "+3%", status: "Watch" }
+    ],
+    guardrails: [
+      "Conversation operations should monitor aggregate health without exposing private chat content by default.",
+      "Support and admin replay must be case-scoped, redacted, audited, and justified by privacy, safety, or user request.",
+      "Failed responses should preserve trust with graceful retry, fallback routing, and clear user-facing recovery.",
+      "Mobile and web chat health should track latency, streaming quality, attachment processing, voice handoff, and language switching."
+    ]
+  };
+}
+
 function adminCustomerExperienceData() {
   return state.adminCustomerExperience || {
     summary: { nps: 48, csat: "4.6", feedbackItems: 1284, appRating: "4.7", productInsights: 36 },
@@ -5379,6 +5444,26 @@ function supportMacroRow(item) {
   return `<div class="table-row"><strong>${item.macro}</strong><span>${item.use}</span><span>${item.status}</span></div>`;
 }
 
+function chatHealthRow(item) {
+  return `<div class="table-row"><strong>${item.surface}</strong><span>${item.active} active</span><span>${item.p95}</span><span>${item.status}</span></div>`;
+}
+
+function messageQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.depth} items</span><span>${item.oldest}</span><span>${item.status}</span></div>`;
+}
+
+function failureReasonRow(item) {
+  return `<div class="table-row"><strong>${item.reason}</strong><span>${item.count} cases</span><span>${item.route}</span><span>${item.status}</span></div>`;
+}
+
+function replayControlRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.coverage}</span><span>${item.access}</span><span>${item.status}</span></div>`;
+}
+
+function experienceSignalRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.segment}</span><span>${item.score} / ${item.trend}</span><span>${item.status}</span></div>`;
+}
+
 function sentimentThemeRow(item) {
   return `<div class="table-row"><strong>${item.theme}</strong><span>${item.volume} mentions</span><span>${item.sentiment}</span><span>${item.status}</span></div>`;
 }
@@ -6032,6 +6117,7 @@ function adminView() {
   if (state.adminSection === "unitEconomics") loadAdminUnitEconomics();
   if (state.adminSection === "users") loadAdminUsers();
   if (state.adminSection === "support") loadAdminSupport();
+  if (state.adminSection === "conversations") loadAdminConversations();
   if (state.adminSection === "customerExperience") loadAdminCustomerExperience();
   if (state.adminSection === "models") loadAdminModels();
   if (state.adminSection === "licensing") loadAdminModelLicensing();
@@ -6219,6 +6305,7 @@ function adminSectionView(section, readiness) {
     success: adminCustomerSuccess,
     sales: adminSales,
     support: adminSupport,
+    conversations: adminConversations,
     customerExperience: adminCustomerExperience,
     models: () => adminModels(readiness),
     licensing: adminModelLicensing,
@@ -6762,6 +6849,55 @@ function adminSupport() {
         <h2>Support data boundaries</h2>
         <div class="admin-checklist">
           ${support.boundaries.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminConversations() {
+  const conversations = adminConversationsData();
+  const summary = conversations.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active chats", summary.activeChats || "42.8K")}
+      ${metric("Stream success", summary.streamSuccess || "99.2%")}
+      ${metric("Failed responses", summary.failedResponses || "128")}
+      ${metric("Attachment queue", summary.attachmentQueue || "37")}
+      <section class="admin-card full-admin">
+        <h2>Chat health</h2>
+        <div class="table admin-table-4">
+          ${conversations.chatHealth.map(chatHealthRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Message queues</h2>
+        <div class="table admin-table-4">
+          ${conversations.messageQueues.map(messageQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Failure reasons</h2>
+        <div class="table admin-table-4">
+          ${conversations.failureReasons.map(failureReasonRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Replay and privacy controls</h2>
+        <div class="table admin-table-4">
+          ${conversations.replayControls.map(replayControlRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Experience signals</h2>
+        <div class="table admin-table-4">
+          ${conversations.experienceSignals.map(experienceSignalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Conversation guardrails</h2>
+        <div class="admin-checklist">
+          ${conversations.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -9624,6 +9760,7 @@ function bindEvents() {
       loadAdminUnitEconomics(true);
       loadAdminUsers(true);
       loadAdminSupport(true);
+      loadAdminConversations(true);
       loadAdminCustomerExperience(true);
       loadAdminModels(true);
       loadAdminModelLicensing(true);
