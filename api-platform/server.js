@@ -2243,6 +2243,46 @@ const aiGovernanceOperations = {
   ]
 };
 
+const modelRiskOperations = {
+  summary: { trackedRoutes: 22, highRiskRoutes: 6, blockedReleases: 3, fallbackIncidents: 14, humanReviewCoverage: "87%" },
+  riskTiers: [
+    { route: "Voice transcription", model: "Meta MMS / Simba-H", tier: "High", reason: "Voice + consent", status: "Gate pending" },
+    { route: "Market replies", model: "AfroXLMR-Social", tier: "Medium", reason: "Commercial claims", status: "Controlled" },
+    { route: "Education assistant", model: "InkubaLM route", tier: "Medium", reason: "Youth/classroom use", status: "Review" },
+    { route: "General chat", model: "AfroXLMR + LLM fallback", tier: "Low", reason: "Standard prompts", status: "Approved" }
+  ],
+  releaseGates: [
+    { gate: "Dialect parity", route: "Yoruba/Pidgin", threshold: "90%", current: "88.7%", owner: "Language QA", status: "Blocked" },
+    { gate: "Safety refusal quality", route: "Creator mode", threshold: "97%", current: "97.4%", owner: "Trust", status: "Pass" },
+    { gate: "Voice consent coverage", route: "Voice Circle", threshold: "95%", current: "91%", owner: "Privacy", status: "Watch" },
+    { gate: "Latency fallback", route: "Mobile chat", threshold: "<8% fallback", current: "6.2%", owner: "AI Ops", status: "Pass" }
+  ],
+  driftSignals: [
+    { signal: "Tone drift in Pidgin market replies", route: "Market Mode", severity: "Medium", owner: "Language QA", status: "Sampling" },
+    { signal: "Swahili voice confidence drop", route: "Voice Circle", severity: "High", owner: "Voice Ops", status: "Investigating" },
+    { signal: "Hausa education over-formality", route: "Classroom", severity: "Low", owner: "Education", status: "Queued" },
+    { signal: "Arabic/French code-switch misses", route: "General chat", severity: "Medium", owner: "AI QA", status: "Review" }
+  ],
+  fallbackRisk: [
+    { fallback: "AfriNLLB to Meta NLLB", trigger: "Translation confidence", exposure: "4.8%", mitigation: "Reviewer sampling", status: "Healthy" },
+    { fallback: "Speech to text retry", trigger: "Voice latency", exposure: "9.1%", mitigation: "Throttle beta", status: "Watch" },
+    { fallback: "General LLM fallback", trigger: "Unsupported route", exposure: "2.4%", mitigation: "Uncertainty label", status: "Healthy" },
+    { fallback: "Manual support escalation", trigger: "Enterprise legal intent", exposure: "31 cases", mitigation: "Legal macro", status: "Active" }
+  ],
+  humanReview: [
+    { queue: "High-risk voice samples", reviewers: 8, coverage: "82%", sla: "24h", status: "Needs capacity" },
+    { queue: "Dialect parity evals", reviewers: 22, coverage: "91%", sla: "48h", status: "Healthy" },
+    { queue: "Commercial claim review", reviewers: 6, coverage: "86%", sla: "72h", status: "Watch" },
+    { queue: "Safety regression samples", reviewers: 12, coverage: "93%", sla: "24h", status: "Healthy" }
+  ],
+  guardrails: [
+    "Model risk tiers must be based on data sensitivity, user impact, task risk, market, and fallback behavior.",
+    "Blocked release gates should stop production rollout until owners record mitigation and approval.",
+    "Fallback routes must disclose uncertainty when confidence is low or language coverage is incomplete.",
+    "Human review queues should use sampled, minimized data and preserve reviewer accountability without exposing unnecessary private content."
+  ]
+};
+
 const mobileOpsOperations = {
   summary: { activeBuilds: 4, crashFree: "99.42%", betaUsers: "3,840", storeReadiness: "86%", blockedDevices: 12 },
   releases: [
@@ -2712,6 +2752,10 @@ function adminAiGovernanceOperations() {
   return aiGovernanceOperations;
 }
 
+function adminModelRiskOperations() {
+  return modelRiskOperations;
+}
+
 function adminMobileOpsOperations() {
   return mobileOpsOperations;
 }
@@ -2794,6 +2838,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "operating:rhythm",
       "data:room",
       "ai:governance",
+      "model:risk",
       "mobile:operate",
       "fraud:review",
       "notifications:operate"
@@ -3368,6 +3413,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminAiGovernanceOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/model-risk") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("model_risk_viewed", "Model Risk", "Info", "AI Governance");
+      return sendJson(response, 200, adminModelRiskOperations());
+    }
+
     if (request.method === "GET" && url.pathname === "/v1/admin/mobile-ops") {
       if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
         return sendJson(response, 403, { error: "Seed admin access required" });
@@ -3400,4 +3453,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

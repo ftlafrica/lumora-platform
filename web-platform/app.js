@@ -83,6 +83,7 @@ const ADMIN_SECTIONS = [
   { id: "rhythm", label: "Rhythm", desc: "Leadership rituals, decisions, action ownership, follow-up health, and operating guardrails." },
   { id: "dataRoom", label: "Data Room", desc: "Controlled rooms, evidence packs, access requests, exports, and audit-safe sharing." },
   { id: "aiGovernance", label: "AI Gov", desc: "Model approvals, risk tiers, deployment gates, policy exceptions, and review sign-offs." },
+  { id: "modelRisk", label: "Model Risk", desc: "Model risk tiers, release gates, drift signals, fallback risk, human review, and production guardrails." },
   { id: "mobileOps", label: "Mobile Ops", desc: "Android/iOS releases, crash health, store readiness, device labs, and rollout guardrails." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
@@ -273,6 +274,8 @@ const DEFAULT_STATE = {
   adminDataRoomLoadedAt: null,
   adminAiGovernance: null,
   adminAiGovernanceLoadedAt: null,
+  adminModelRisk: null,
+  adminModelRiskLoadedAt: null,
   adminMobileOps: null,
   adminMobileOpsLoadedAt: null,
   adminCommunications: null,
@@ -1016,6 +1019,26 @@ async function loadAdminAiGovernance(force = false) {
     state.adminAiGovernanceLoadedAt = Date.now();
   } catch {
     state.adminAiGovernanceLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminModelRisk(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminModelRiskLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/model-risk`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Model risk operations unavailable.");
+    state.adminModelRisk = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminModelRiskLoadedAt = Date.now();
+  } catch {
+    state.adminModelRiskLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -1769,7 +1792,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -3429,6 +3452,48 @@ function adminAiGovernanceData() {
   };
 }
 
+function adminModelRiskData() {
+  return state.adminModelRisk || {
+    summary: { trackedRoutes: 22, highRiskRoutes: 6, blockedReleases: 3, fallbackIncidents: 14, humanReviewCoverage: "87%" },
+    riskTiers: [
+      { route: "Voice transcription", model: "Meta MMS / Simba-H", tier: "High", reason: "Voice + consent", status: "Gate pending" },
+      { route: "Market replies", model: "AfroXLMR-Social", tier: "Medium", reason: "Commercial claims", status: "Controlled" },
+      { route: "Education assistant", model: "InkubaLM route", tier: "Medium", reason: "Youth/classroom use", status: "Review" },
+      { route: "General chat", model: "AfroXLMR + LLM fallback", tier: "Low", reason: "Standard prompts", status: "Approved" }
+    ],
+    releaseGates: [
+      { gate: "Dialect parity", route: "Yoruba/Pidgin", threshold: "90%", current: "88.7%", owner: "Language QA", status: "Blocked" },
+      { gate: "Safety refusal quality", route: "Creator mode", threshold: "97%", current: "97.4%", owner: "Trust", status: "Pass" },
+      { gate: "Voice consent coverage", route: "Voice Circle", threshold: "95%", current: "91%", owner: "Privacy", status: "Watch" },
+      { gate: "Latency fallback", route: "Mobile chat", threshold: "<8% fallback", current: "6.2%", owner: "AI Ops", status: "Pass" }
+    ],
+    driftSignals: [
+      { signal: "Tone drift in Pidgin market replies", route: "Market Mode", severity: "Medium", owner: "Language QA", status: "Sampling" },
+      { signal: "Swahili voice confidence drop", route: "Voice Circle", severity: "High", owner: "Voice Ops", status: "Investigating" },
+      { signal: "Hausa education over-formality", route: "Classroom", severity: "Low", owner: "Education", status: "Queued" },
+      { signal: "Arabic/French code-switch misses", route: "General chat", severity: "Medium", owner: "AI QA", status: "Review" }
+    ],
+    fallbackRisk: [
+      { fallback: "AfriNLLB to Meta NLLB", trigger: "Translation confidence", exposure: "4.8%", mitigation: "Reviewer sampling", status: "Healthy" },
+      { fallback: "Speech to text retry", trigger: "Voice latency", exposure: "9.1%", mitigation: "Throttle beta", status: "Watch" },
+      { fallback: "General LLM fallback", trigger: "Unsupported route", exposure: "2.4%", mitigation: "Uncertainty label", status: "Healthy" },
+      { fallback: "Manual support escalation", trigger: "Enterprise legal intent", exposure: "31 cases", mitigation: "Legal macro", status: "Active" }
+    ],
+    humanReview: [
+      { queue: "High-risk voice samples", reviewers: 8, coverage: "82%", sla: "24h", status: "Needs capacity" },
+      { queue: "Dialect parity evals", reviewers: 22, coverage: "91%", sla: "48h", status: "Healthy" },
+      { queue: "Commercial claim review", reviewers: 6, coverage: "86%", sla: "72h", status: "Watch" },
+      { queue: "Safety regression samples", reviewers: 12, coverage: "93%", sla: "24h", status: "Healthy" }
+    ],
+    guardrails: [
+      "Model risk tiers must be based on data sensitivity, user impact, task risk, market, and fallback behavior.",
+      "Blocked release gates should stop production rollout until owners record mitigation and approval.",
+      "Fallback routes must disclose uncertainty when confidence is low or language coverage is incomplete.",
+      "Human review queues should use sampled, minimized data and preserve reviewer accountability without exposing unnecessary private content."
+    ]
+  };
+}
+
 function adminMobileOpsData() {
   return state.adminMobileOps || {
     summary: { activeBuilds: 4, crashFree: "99.42%", betaUsers: "3,840", storeReadiness: "86%", blockedDevices: 12 },
@@ -5000,6 +5065,26 @@ function governanceReviewRow(item) {
   return `<div class="table-row"><strong>${item.review}</strong><span>${item.model}</span><span>${item.due}</span><span>${item.status}</span></div>`;
 }
 
+function modelRiskTierRow(item) {
+  return `<div class="table-row"><strong>${item.route}</strong><span>${item.model}</span><span>${item.tier}</span><span>${item.status}</span></div>`;
+}
+
+function modelRiskGateRow(item) {
+  return `<div class="table-row"><strong>${item.gate}</strong><span>${item.route}</span><span>${item.current} / ${item.threshold}</span><span>${item.status}</span></div>`;
+}
+
+function modelDriftRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.route}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
+function fallbackRiskRow(item) {
+  return `<div class="table-row"><strong>${item.fallback}</strong><span>${item.trigger}</span><span>${item.exposure}</span><span>${item.status}</span></div>`;
+}
+
+function humanReviewQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.reviewers} reviewers</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
 function mobileReleaseRow(item) {
   return `<div class="table-row"><strong>${item.release}</strong><span>${item.track}</span><span>${item.rollout}</span><span>${item.status}</span></div>`;
 }
@@ -5829,6 +5914,7 @@ function adminView() {
   if (state.adminSection === "rhythm") loadAdminOperatingRhythm();
   if (state.adminSection === "dataRoom") loadAdminDataRoom();
   if (state.adminSection === "aiGovernance") loadAdminAiGovernance();
+  if (state.adminSection === "modelRisk") loadAdminModelRisk();
   if (state.adminSection === "mobileOps") loadAdminMobileOps();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "notifications") loadAdminNotificationDelivery();
@@ -5955,6 +6041,7 @@ function adminSectionView(section, readiness) {
     rhythm: adminOperatingRhythm,
     dataRoom: adminDataRoom,
     aiGovernance: adminAiGovernance,
+    modelRisk: adminModelRisk,
     mobileOps: adminMobileOps,
     communications: adminCommunications,
     notifications: adminNotificationDelivery,
@@ -7792,6 +7879,55 @@ function adminAiGovernance() {
   `;
 }
 
+function adminModelRisk() {
+  const risk = adminModelRiskData();
+  const summary = risk.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Tracked routes", summary.trackedRoutes || "22")}
+      ${metric("High-risk routes", summary.highRiskRoutes || "6")}
+      ${metric("Blocked releases", summary.blockedReleases || "3")}
+      ${metric("Human review", summary.humanReviewCoverage || "87%")}
+      <section class="admin-card full-admin">
+        <h2>Risk tiers</h2>
+        <div class="table admin-table-4">
+          ${risk.riskTiers.map(modelRiskTierRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Release gates</h2>
+        <div class="table admin-table-4">
+          ${risk.releaseGates.map(modelRiskGateRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Drift signals</h2>
+        <div class="table admin-table-4">
+          ${risk.driftSignals.map(modelDriftRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Fallback risk</h2>
+        <div class="table admin-table-4">
+          ${risk.fallbackRisk.map(fallbackRiskRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Human review coverage</h2>
+        <div class="table admin-table-4">
+          ${risk.humanReview.map(humanReviewQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Model risk guardrails</h2>
+        <div class="admin-checklist">
+          ${risk.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminMobileOps() {
   const mobile = adminMobileOpsData();
   const summary = mobile.summary || {};
@@ -9268,6 +9404,7 @@ function bindEvents() {
       loadAdminOperatingRhythm(true);
       loadAdminDataRoom(true);
       loadAdminAiGovernance(true);
+      loadAdminModelRisk(true);
       loadAdminMobileOps(true);
       loadAdminCommunications(true);
       loadAdminNotificationDelivery(true);
