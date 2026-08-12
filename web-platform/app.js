@@ -111,6 +111,7 @@ const ADMIN_SECTIONS = [
   { id: "languages", label: "Languages", desc: "Country coverage, dialect readiness, reviewer queues, benchmarks, and expansion quality." },
   { id: "localization", label: "Localize", desc: "UI copy localization, translation QA, glossary control, reviewer workflow, and release guardrails." },
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
+  { id: "residency", label: "Residency", desc: "Country residency, storage regions, cross-border transfers, key custody, retention, and sovereignty guardrails." },
   { id: "privacy", label: "Privacy Ops", desc: "DSAR exports, deletion queues, correction requests, legal holds, residency reviews, and privacy guardrails." },
   { id: "knowledge", label: "Knowledge", desc: "RAG collections, sources, indexing, embeddings, permissions, freshness, and quality queues." },
   { id: "safety", label: "Safety", desc: "Moderation, corrections, privacy, red-team findings, appeals, and policy." },
@@ -282,6 +283,8 @@ const DEFAULT_STATE = {
   adminLocalizationContentLoadedAt: null,
   adminDataGovernance: null,
   adminDataGovernanceLoadedAt: null,
+  adminResidencySovereignty: null,
+  adminResidencySovereigntyLoadedAt: null,
   adminPrivacyRequests: null,
   adminPrivacyRequestsLoadedAt: null,
   adminIntegrations: null,
@@ -1132,6 +1135,26 @@ async function loadAdminDataGovernance(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminResidencySovereignty(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminResidencySovereigntyLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/residency-sovereignty`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Residency and sovereignty operations unavailable.");
+    state.adminResidencySovereignty = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminResidencySovereigntyLoadedAt = Date.now();
+  } catch {
+    state.adminResidencySovereigntyLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminPrivacyRequests(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminPrivacyRequestsLoadedAt || 0;
@@ -1700,7 +1723,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "safety:review", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "mobile:operate", "communications:send", "notifications:operate", "language:review", "localization:manage", "data:govern", "residency:manage", "privacy:operate", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2365,6 +2388,48 @@ function adminDataGovernanceData() {
       "Memory, voice, and reviewer access must honor user consent, country rules, and tenant boundaries.",
       "Model training or evaluation datasets must remove PII and track source license, reviewer, and retention.",
       "Consumer dashboards can show personal privacy status but never expose admin data governance controls."
+    ]
+  };
+}
+
+function adminResidencySovereigntyData() {
+  return state.adminResidencySovereignty || {
+    summary: { residencyRegions: 5, transferReviews: 14, sovereignDatasets: 38, keyCustodyHealth: "97%", retentionAlerts: 9 },
+    regionPosture: [
+      { region: "West Africa", primary: "Lagos edge", backup: "EU West", dataClass: "User profile + chat metadata", status: "Design" },
+      { region: "East Africa", primary: "Nairobi edge", backup: "EU West", dataClass: "Language telemetry", status: "Planned" },
+      { region: "Southern Africa", primary: "Johannesburg edge", backup: "EU West", dataClass: "Enterprise workspaces", status: "Ready" },
+      { region: "North Africa", primary: "EU South", backup: "EU West", dataClass: "Arabic/French traffic", status: "Review" }
+    ],
+    transferReviews: [
+      { review: "Teams export to EU processor", market: "Nigeria", risk: "Medium", owner: "Privacy", status: "Approved" },
+      { review: "Model eval samples", market: "Kenya", risk: "Low", owner: "AI Governance", status: "Queued" },
+      { review: "Support transcript handoff", market: "South Africa", risk: "Medium", owner: "Support/Privacy", status: "Review" },
+      { review: "Mobile crash analytics", market: "Ghana", risk: "Low", owner: "Mobile Ops", status: "Mapped" }
+    ],
+    dataStores: [
+      { store: "User profile DB", class: "Personal data", residency: "Market-aware", encryption: "KMS managed", status: "Healthy" },
+      { store: "Conversation ledger", class: "Sensitive prompts", residency: "Policy routed", encryption: "Per-tenant keys", status: "Watch" },
+      { store: "Language corrections", class: "Contributor data", residency: "Regional", encryption: "KMS managed", status: "Healthy" },
+      { store: "RAG workspaces", class: "Enterprise files", residency: "Tenant selected", encryption: "Customer-key ready", status: "Review" }
+    ],
+    keyCustody: [
+      { control: "KMS rotation", coverage: "98%", owner: "Security", status: "Healthy" },
+      { control: "Tenant key isolation", coverage: "Teams beta", owner: "Platform", status: "Building" },
+      { control: "Break-glass access", coverage: "Seed admins only", owner: "Security", status: "Review" },
+      { control: "Key access audit", coverage: "Realtime", owner: "Compliance", status: "Healthy" }
+    ],
+    retentionControls: [
+      { policy: "Free chat history", window: "30 days default", exceptions: 4, owner: "Privacy", status: "Healthy" },
+      { policy: "Paid chat history", window: "User controlled", exceptions: 2, owner: "Product", status: "Healthy" },
+      { policy: "Enterprise workspace files", window: "Contract controlled", exceptions: 3, owner: "Success/Legal", status: "Review" },
+      { policy: "Safety evidence", window: "Case based", exceptions: 9, owner: "Trust", status: "Watch" }
+    ],
+    guardrails: [
+      "Residency promises must match actual storage, backups, logs, analytics, support tooling, and model-evaluation flows.",
+      "Cross-border transfers need purpose, lawful basis, owner, expiry, and audit evidence before approval.",
+      "Enterprise tenants should see residency and retention controls without exposing infrastructure secrets.",
+      "Sensitive African-language datasets require consent, provenance, locality, and deletion paths before production use."
     ]
   };
 }
@@ -4381,6 +4446,26 @@ function privacyResidencyRow(item) {
   return `<div class="table-row"><strong>${item.market}</strong><span>${item.data}</span><span>${item.requirement}</span><span>${item.status}</span></div>`;
 }
 
+function regionPostureRow(item) {
+  return `<div class="table-row"><strong>${item.region}</strong><span>${item.primary}</span><span>${item.dataClass}</span><span>${item.status}</span></div>`;
+}
+
+function transferReviewRow(item) {
+  return `<div class="table-row"><strong>${item.review}</strong><span>${item.market}</span><span>${item.risk}</span><span>${item.status}</span></div>`;
+}
+
+function dataStoreResidencyRow(item) {
+  return `<div class="table-row"><strong>${item.store}</strong><span>${item.class}</span><span>${item.residency}</span><span>${item.status}</span></div>`;
+}
+
+function keyCustodyRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.coverage}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
+function retentionControlRow(item) {
+  return `<div class="table-row"><strong>${item.policy}</strong><span>${item.window}</span><span>${item.exceptions} exceptions</span><span>${item.status}</span></div>`;
+}
+
 function integrationServiceRow(item) {
   return `<div class="table-row"><strong>${item.service}</strong><span>${item.category}</span><span>${item.status}</span><span>${item.owner}</span></div>`;
 }
@@ -5537,6 +5622,7 @@ function adminView() {
   if (state.adminSection === "languages") loadAdminLanguages();
   if (state.adminSection === "localization") loadAdminLocalizationContent();
   if (state.adminSection === "data") loadAdminDataGovernance();
+  if (state.adminSection === "residency") loadAdminResidencySovereignty();
   if (state.adminSection === "privacy") loadAdminPrivacyRequests();
   if (state.adminSection === "safety") loadAdminSafety();
   if (state.adminSection === "fraud") loadAdminFraudAbuse();
@@ -5717,6 +5803,7 @@ function adminSectionView(section, readiness) {
     languages: adminLanguages,
     localization: adminLocalizationContent,
     data: adminDataGovernance,
+    residency: adminResidencySovereignty,
     privacy: adminPrivacyRequests,
     knowledge: adminKnowledge,
     safety: adminSafety,
@@ -7752,6 +7839,55 @@ function adminDataGovernance() {
   `;
 }
 
+function adminResidencySovereignty() {
+  const residency = adminResidencySovereigntyData();
+  const summary = residency.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Regions", summary.residencyRegions || "5")}
+      ${metric("Transfer reviews", summary.transferReviews || "14")}
+      ${metric("Datasets", summary.sovereignDatasets || "38")}
+      ${metric("Key custody", summary.keyCustodyHealth || "97%")}
+      <section class="admin-card full-admin">
+        <h2>Regional residency posture</h2>
+        <div class="table admin-table-4">
+          ${residency.regionPosture.map(regionPostureRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Cross-border transfer reviews</h2>
+        <div class="table admin-table-4">
+          ${residency.transferReviews.map(transferReviewRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Data stores</h2>
+        <div class="table admin-table-4">
+          ${residency.dataStores.map(dataStoreResidencyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Encryption and key custody</h2>
+        <div class="table admin-table-4">
+          ${residency.keyCustody.map(keyCustodyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Retention controls</h2>
+        <div class="table admin-table-4">
+          ${residency.retentionControls.map(retentionControlRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Residency guardrails</h2>
+        <div class="admin-checklist">
+          ${residency.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminPrivacyRequests() {
   const privacy = adminPrivacyRequestsData();
   const summary = privacy.summary || {};
@@ -8823,6 +8959,7 @@ function bindEvents() {
       loadAdminLanguages(true);
       loadAdminLocalizationContent(true);
       loadAdminDataGovernance(true);
+      loadAdminResidencySovereignty(true);
       loadAdminPrivacyRequests(true);
       loadAdminSafety(true);
       loadAdminFraudAbuse(true);

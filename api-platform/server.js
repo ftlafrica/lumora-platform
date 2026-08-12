@@ -224,6 +224,46 @@ const subscriptionLifecycleOperations = {
   ]
 };
 
+const residencySovereigntyOperations = {
+  summary: { residencyRegions: 5, transferReviews: 14, sovereignDatasets: 38, keyCustodyHealth: "97%", retentionAlerts: 9 },
+  regionPosture: [
+    { region: "West Africa", primary: "Lagos edge", backup: "EU West", dataClass: "User profile + chat metadata", status: "Design" },
+    { region: "East Africa", primary: "Nairobi edge", backup: "EU West", dataClass: "Language telemetry", status: "Planned" },
+    { region: "Southern Africa", primary: "Johannesburg edge", backup: "EU West", dataClass: "Enterprise workspaces", status: "Ready" },
+    { region: "North Africa", primary: "EU South", backup: "EU West", dataClass: "Arabic/French traffic", status: "Review" }
+  ],
+  transferReviews: [
+    { review: "Teams export to EU processor", market: "Nigeria", risk: "Medium", owner: "Privacy", status: "Approved" },
+    { review: "Model eval samples", market: "Kenya", risk: "Low", owner: "AI Governance", status: "Queued" },
+    { review: "Support transcript handoff", market: "South Africa", risk: "Medium", owner: "Support/Privacy", status: "Review" },
+    { review: "Mobile crash analytics", market: "Ghana", risk: "Low", owner: "Mobile Ops", status: "Mapped" }
+  ],
+  dataStores: [
+    { store: "User profile DB", class: "Personal data", residency: "Market-aware", encryption: "KMS managed", status: "Healthy" },
+    { store: "Conversation ledger", class: "Sensitive prompts", residency: "Policy routed", encryption: "Per-tenant keys", status: "Watch" },
+    { store: "Language corrections", class: "Contributor data", residency: "Regional", encryption: "KMS managed", status: "Healthy" },
+    { store: "RAG workspaces", class: "Enterprise files", residency: "Tenant selected", encryption: "Customer-key ready", status: "Review" }
+  ],
+  keyCustody: [
+    { control: "KMS rotation", coverage: "98%", owner: "Security", status: "Healthy" },
+    { control: "Tenant key isolation", coverage: "Teams beta", owner: "Platform", status: "Building" },
+    { control: "Break-glass access", coverage: "Seed admins only", owner: "Security", status: "Review" },
+    { control: "Key access audit", coverage: "Realtime", owner: "Compliance", status: "Healthy" }
+  ],
+  retentionControls: [
+    { policy: "Free chat history", window: "30 days default", exceptions: 4, owner: "Privacy", status: "Healthy" },
+    { policy: "Paid chat history", window: "User controlled", exceptions: 2, owner: "Product", status: "Healthy" },
+    { policy: "Enterprise workspace files", window: "Contract controlled", exceptions: 3, owner: "Success/Legal", status: "Review" },
+    { policy: "Safety evidence", window: "Case based", exceptions: 9, owner: "Trust", status: "Watch" }
+  ],
+  guardrails: [
+    "Residency promises must match actual storage, backups, logs, analytics, support tooling, and model-evaluation flows.",
+    "Cross-border transfers need purpose, lawful basis, owner, expiry, and audit evidence before approval.",
+    "Enterprise tenants should see residency and retention controls without exposing infrastructure secrets.",
+    "Sensitive African-language datasets require consent, provenance, locality, and deletion paths before production use."
+  ]
+};
+
 const userOperations = {
   summary: { consumers: "18.4K", organizations: 47, enterpriseSeats: 1280, riskReviews: 92 },
   accountQueues: [
@@ -2344,6 +2384,10 @@ function adminSubscriptionLifecycleOperations() {
   return subscriptionLifecycleOperations;
 }
 
+function adminResidencySovereigntyOperations() {
+  return residencySovereigntyOperations;
+}
+
 function adminUserOperations() {
   return userOperations;
 }
@@ -2605,6 +2649,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "entitlements:manage",
       "revenue:assure",
       "subscriptions:manage",
+      "residency:manage",
       "users:read",
       "models:operate",
       "licensing:review",
@@ -2767,6 +2812,14 @@ async function handler(request, response) {
       }
       recordAdminEvent("subscriptions_viewed", "Subscriptions", "Info", "Lifecycle");
       return sendJson(response, 200, adminSubscriptionLifecycleOperations());
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/admin/residency-sovereignty") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("residency_sovereignty_viewed", "Residency", "Info", "Privacy");
+      return sendJson(response, 200, adminResidencySovereigntyOperations());
     }
 
     if (request.method === "GET" && url.pathname === "/v1/admin/users") {
@@ -3241,4 +3294,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminSafetyOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminPrivacyRequestOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
