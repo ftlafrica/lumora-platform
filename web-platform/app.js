@@ -122,6 +122,7 @@ const ADMIN_SECTIONS = [
   { id: "classroomOps", label: "Classroom Ops", desc: "Learning sessions, curriculum coverage, pedagogy signals, safety queues, and education partnerships." },
   { id: "marketOps", label: "Market Ops", desc: "SMB customer replies, pricing copy, commerce risks, market templates, and upgrade signals." },
   { id: "multimodalOps", label: "Multimodal Ops", desc: "Uploads, images, documents, OCR, attachment safety, retention, and device upload health." },
+  { id: "searchOps", label: "Search Ops", desc: "Web lookup, RAG retrieval, citations, source freshness, hallucination controls, and search guardrails." },
   { id: "passport", label: "Passport", desc: "Language Passport completion, field quality, language pairs, personalization surfaces, consent, and risk controls." },
   { id: "localization", label: "Localize", desc: "UI copy localization, translation QA, glossary control, reviewer workflow, and release guardrails." },
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
@@ -318,6 +319,8 @@ const DEFAULT_STATE = {
   adminMarketCommerceLoadedAt: null,
   adminMultimodal: null,
   adminMultimodalLoadedAt: null,
+  adminSearchRetrieval: null,
+  adminSearchRetrievalLoadedAt: null,
   adminLanguagePassport: null,
   adminLanguagePassportLoadedAt: null,
   adminLocalizationContent: null,
@@ -1346,6 +1349,26 @@ async function loadAdminMultimodal(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminSearchRetrieval(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminSearchRetrievalLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/search-retrieval`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Search retrieval operations unavailable.");
+    state.adminSearchRetrieval = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminSearchRetrievalLoadedAt = Date.now();
+  } catch {
+    state.adminSearchRetrievalLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminLanguagePassport(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminLanguagePassportLoadedAt || 0;
@@ -2114,7 +2137,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -3101,6 +3124,49 @@ function adminMultimodalData() {
       "Private images, documents, audio, and camera captures must respect retention, deletion, and user export controls.",
       "Low-confidence OCR or image understanding should ask clarifying questions instead of inventing content.",
       "Admin views should show aggregate multimodal health without exposing raw private attachments."
+    ]
+  };
+}
+
+function adminSearchRetrievalData() {
+  return state.adminSearchRetrieval || {
+    summary: { searchesToday: "118K", groundedAnswerRate: "87%", citationCoverage: "82%", staleSourceRisk: "3.1%", retrievalLatency: "640ms" },
+    retrievalRoutes: [
+      { route: "Web lookup", volume: "42K", freshness: "Live", quality: "88%", status: "Beta" },
+      { route: "Lumora knowledge base", volume: "31K", freshness: "15m sync", quality: "91%", status: "Live" },
+      { route: "Country/local source retrieval", volume: "18K", freshness: "Daily", quality: "84%", status: "Building" },
+      { route: "Document-grounded chat", volume: "16K", freshness: "User file", quality: "89%", status: "Live" },
+      { route: "Safe fallback answer", volume: "11K", freshness: "No source", quality: "78%", status: "Guarded" }
+    ],
+    sourceHealth: [
+      { source: "Public web", coverage: "68%", risk: "Stale or low-quality pages", owner: "Search", status: "Watch" },
+      { source: "Partner knowledge bases", coverage: "42%", risk: "Permissions drift", owner: "Integrations", status: "Beta" },
+      { source: "Uploaded documents", coverage: "74%", risk: "Private data exposure", owner: "Privacy", status: "Guarded" },
+      { source: "Curated African language resources", coverage: "36%", risk: "Sparse markets", owner: "Language QA", status: "Building" }
+    ],
+    citationQuality: [
+      { signal: "Citations present", rate: "82%", target: "90%", owner: "Product AI", status: "Improving" },
+      { signal: "Citation supports claim", rate: "88%", target: "94%", owner: "AI QA", status: "Watch" },
+      { signal: "Fresh enough for query", rate: "91%", target: "95%", owner: "Search", status: "Healthy" },
+      { signal: "Broken source link", rate: "1.7%", target: "<1%", owner: "Platform", status: "Watch" }
+    ],
+    hallucinationControls: [
+      { control: "No-source uncertainty", coverage: "86%", owner: "AI Safety", status: "Live" },
+      { control: "High-stakes source requirement", coverage: "94%", owner: "Policy", status: "Guarded" },
+      { control: "Contradictory source handling", coverage: "72%", owner: "AI QA", status: "Improving" },
+      { control: "Source quote limits", coverage: "100%", owner: "Legal", status: "Live" }
+    ],
+    freshnessQueues: [
+      { queue: "Stale web snippets", count: 148, owner: "Search", priority: "High", status: "Refreshing" },
+      { queue: "Broken citations", count: 64, owner: "Platform", priority: "Medium", status: "Queued" },
+      { queue: "Country source gaps", count: 92, owner: "Regional", priority: "High", status: "Building" },
+      { queue: "RAG permission reviews", count: 38, owner: "Privacy", priority: "High", status: "Guarded" }
+    ],
+    guardrails: [
+      "Search answers should clearly distinguish sourced facts, model reasoning, uncertainty, and user-provided context.",
+      "High-stakes legal, medical, financial, safety, or government queries should require fresh and reliable sources.",
+      "Retrieval should respect document permissions, tenant boundaries, deletion/export controls, and source licenses.",
+      "Admin views should measure search quality and citation health without exposing private queries or documents."
     ]
   };
 }
@@ -5717,6 +5783,26 @@ function multimodalDeviceRow(item) {
   return `<div class="table-row"><strong>${item.device}</strong><span>${item.uploadSuccess}</span><span>${item.issue}</span><span>${item.status}</span></div>`;
 }
 
+function searchRouteRow(item) {
+  return `<div class="table-row"><strong>${item.route}</strong><span>${item.volume}</span><span>${item.freshness}</span><span>${item.status}</span></div>`;
+}
+
+function searchSourceRow(item) {
+  return `<div class="table-row"><strong>${item.source}</strong><span>${item.coverage}</span><span>${item.risk}</span><span>${item.status}</span></div>`;
+}
+
+function searchCitationRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.rate}</span><span>${item.target}</span><span>${item.status}</span></div>`;
+}
+
+function searchControlRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.coverage}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
+function searchFreshnessRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.priority}</span><span>${item.status}</span></div>`;
+}
+
 function passportFunnelRow(item) {
   return `<div class="table-row"><strong>${item.step}</strong><span>${item.users}</span><span>${item.conversion}</span><span>${item.owner}</span></div>`;
 }
@@ -7115,6 +7201,7 @@ function adminView() {
   if (state.adminSection === "classroomOps") loadAdminClassroomLearning();
   if (state.adminSection === "marketOps") loadAdminMarketCommerce();
   if (state.adminSection === "multimodalOps") loadAdminMultimodal();
+  if (state.adminSection === "searchOps") loadAdminSearchRetrieval();
   if (state.adminSection === "passport") loadAdminLanguagePassport();
   if (state.adminSection === "localization") loadAdminLocalizationContent();
   if (state.adminSection === "data") loadAdminDataGovernance();
@@ -7314,6 +7401,7 @@ function adminSectionView(section, readiness) {
     classroomOps: adminClassroomLearning,
     marketOps: adminMarketCommerce,
     multimodalOps: adminMultimodal,
+    searchOps: adminSearchRetrieval,
     passport: adminLanguagePassport,
     localization: adminLocalizationContent,
     data: adminDataGovernance,
@@ -9962,6 +10050,55 @@ function adminMultimodal() {
   `;
 }
 
+function adminSearchRetrieval() {
+  const search = adminSearchRetrievalData();
+  const summary = search.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Searches today", summary.searchesToday || "118K")}
+      ${metric("Grounded answers", summary.groundedAnswerRate || "87%")}
+      ${metric("Citation coverage", summary.citationCoverage || "82%")}
+      ${metric("Retrieval latency", summary.retrievalLatency || "640ms")}
+      <section class="admin-card full-admin">
+        <h2>Retrieval routes</h2>
+        <div class="table admin-table-4">
+          ${search.retrievalRoutes.map(searchRouteRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Source health</h2>
+        <div class="table admin-table-4">
+          ${search.sourceHealth.map(searchSourceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Citation quality</h2>
+        <div class="table admin-table-4">
+          ${search.citationQuality.map(searchCitationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Hallucination controls</h2>
+        <div class="table admin-table-4">
+          ${search.hallucinationControls.map(searchControlRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Freshness queues</h2>
+        <div class="table admin-table-4">
+          ${search.freshnessQueues.map(searchFreshnessRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Search guardrails</h2>
+        <div class="admin-checklist">
+          ${search.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminLanguagePassport() {
   const passport = adminLanguagePassportData();
   const summary = passport.summary || {};
@@ -11337,6 +11474,7 @@ function bindEvents() {
       loadAdminClassroomLearning(true);
       loadAdminMarketCommerce(true);
       loadAdminMultimodal(true);
+      loadAdminSearchRetrieval(true);
       loadAdminLanguagePassport(true);
       loadAdminLocalizationContent(true);
       loadAdminDataGovernance(true);

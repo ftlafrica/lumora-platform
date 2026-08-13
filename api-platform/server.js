@@ -1775,6 +1775,47 @@ const multimodalOperations = {
   ]
 };
 
+const searchRetrievalOperations = {
+  summary: { searchesToday: "118K", groundedAnswerRate: "87%", citationCoverage: "82%", staleSourceRisk: "3.1%", retrievalLatency: "640ms" },
+  retrievalRoutes: [
+    { route: "Web lookup", volume: "42K", freshness: "Live", quality: "88%", status: "Beta" },
+    { route: "Lumora knowledge base", volume: "31K", freshness: "15m sync", quality: "91%", status: "Live" },
+    { route: "Country/local source retrieval", volume: "18K", freshness: "Daily", quality: "84%", status: "Building" },
+    { route: "Document-grounded chat", volume: "16K", freshness: "User file", quality: "89%", status: "Live" },
+    { route: "Safe fallback answer", volume: "11K", freshness: "No source", quality: "78%", status: "Guarded" }
+  ],
+  sourceHealth: [
+    { source: "Public web", coverage: "68%", risk: "Stale or low-quality pages", owner: "Search", status: "Watch" },
+    { source: "Partner knowledge bases", coverage: "42%", risk: "Permissions drift", owner: "Integrations", status: "Beta" },
+    { source: "Uploaded documents", coverage: "74%", risk: "Private data exposure", owner: "Privacy", status: "Guarded" },
+    { source: "Curated African language resources", coverage: "36%", risk: "Sparse markets", owner: "Language QA", status: "Building" }
+  ],
+  citationQuality: [
+    { signal: "Citations present", rate: "82%", target: "90%", owner: "Product AI", status: "Improving" },
+    { signal: "Citation supports claim", rate: "88%", target: "94%", owner: "AI QA", status: "Watch" },
+    { signal: "Fresh enough for query", rate: "91%", target: "95%", owner: "Search", status: "Healthy" },
+    { signal: "Broken source link", rate: "1.7%", target: "<1%", owner: "Platform", status: "Watch" }
+  ],
+  hallucinationControls: [
+    { control: "No-source uncertainty", coverage: "86%", owner: "AI Safety", status: "Live" },
+    { control: "High-stakes source requirement", coverage: "94%", owner: "Policy", status: "Guarded" },
+    { control: "Contradictory source handling", coverage: "72%", owner: "AI QA", status: "Improving" },
+    { control: "Source quote limits", coverage: "100%", owner: "Legal", status: "Live" }
+  ],
+  freshnessQueues: [
+    { queue: "Stale web snippets", count: 148, owner: "Search", priority: "High", status: "Refreshing" },
+    { queue: "Broken citations", count: 64, owner: "Platform", priority: "Medium", status: "Queued" },
+    { queue: "Country source gaps", count: 92, owner: "Regional", priority: "High", status: "Building" },
+    { queue: "RAG permission reviews", count: 38, owner: "Privacy", priority: "High", status: "Guarded" }
+  ],
+  guardrails: [
+    "Search answers should clearly distinguish sourced facts, model reasoning, uncertainty, and user-provided context.",
+    "High-stakes legal, medical, financial, safety, or government queries should require fresh and reliable sources.",
+    "Retrieval should respect document permissions, tenant boundaries, deletion/export controls, and source licenses.",
+    "Admin views should measure search quality and citation health without exposing private queries or documents."
+  ]
+};
+
 const languagePassportOperations = {
   summary: { completionRate: "78.2%", activePassports: "14.4K", primaryLanguages: 54, bridgePairs: 128, consentHealth: "92%" },
   completionFunnel: [
@@ -3282,6 +3323,10 @@ function adminMultimodalOperations() {
   return multimodalOperations;
 }
 
+function adminSearchRetrievalOperations() {
+  return searchRetrievalOperations;
+}
+
 function adminLanguagePassportOperations() {
   return languagePassportOperations;
 }
@@ -3472,6 +3517,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "classroom:operate",
       "market:operate",
       "multimodal:operate",
+      "search:operate",
       "passport:operate",
       "localization:manage",
       "data:govern",
@@ -3949,6 +3995,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminMultimodalOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/search-retrieval") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("search_retrieval_viewed", "Search Ops", "Info", "AI Ops");
+      return sendJson(response, 200, adminSearchRetrievalOperations());
+    }
+
     if (request.method === "GET" && url.pathname === "/v1/admin/language-passport") {
       if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
         return sendJson(response, 403, { error: "Seed admin access required" });
@@ -4229,4 +4283,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminTranslationOperations, adminCreatorStudioOperations, adminClassroomLearningOperations, adminMarketCommerceOperations, adminMultimodalOperations, adminLanguagePassportOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminTranslationOperations, adminCreatorStudioOperations, adminClassroomLearningOperations, adminMarketCommerceOperations, adminMultimodalOperations, adminSearchRetrievalOperations, adminLanguagePassportOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
