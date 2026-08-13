@@ -88,6 +88,7 @@ const ADMIN_SECTIONS = [
   { id: "telemetryOps", label: "Telemetry", desc: "Web, mobile, admin, and API event pipelines, schemas, privacy filters, and certified dashboards." },
   { id: "statusOps", label: "Status Ops", desc: "Public status, incidents, maintenance windows, subscriber alerts, and postmortem readiness." },
   { id: "incidentResponse", label: "Incident Ops", desc: "Incident command, severity lanes, rollback readiness, communications, and postmortems." },
+  { id: "auditOps", label: "Audit Ops", desc: "Immutable events, privileged actions, access reviews, exports, and audit anomalies." },
   { id: "dataQualityOps", label: "Data Quality", desc: "Certified metrics, freshness, reconciliation, lineage, quality incidents, and decision-grade data." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
@@ -309,6 +310,8 @@ const DEFAULT_STATE = {
   adminStatusOpsLoadedAt: null,
   adminIncidentResponse: null,
   adminIncidentResponseLoadedAt: null,
+  adminAuditOps: null,
+  adminAuditOpsLoadedAt: null,
   adminDataQualityOps: null,
   adminDataQualityOpsLoadedAt: null,
   adminConsentOps: null,
@@ -1188,6 +1191,26 @@ async function loadAdminIncidentResponse(force = false) {
     state.adminIncidentResponseLoadedAt = Date.now();
   } catch {
     state.adminIncidentResponseLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminAuditOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminAuditOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/audit-ops`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Audit operations unavailable.");
+    state.adminAuditOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminAuditOpsLoadedAt = Date.now();
+  } catch {
+    state.adminAuditOpsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -2321,7 +2344,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "dataquality:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "dataquality:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -4773,6 +4796,48 @@ function adminIncidentResponseData() {
   };
 }
 
+function adminAuditOpsData() {
+  return state.adminAuditOps || {
+    summary: { immutableEvents: "1.9M", integrityScore: "99.99%", privilegedActions: 184, exportRequests: 7, retentionCoverage: "96%" },
+    auditStreams: [
+      { stream: "Admin console actions", source: "Admin API", freshness: "Realtime", retention: "7 years", status: "Immutable" },
+      { stream: "Seed-admin grants", source: "Access service", freshness: "Realtime", retention: "Permanent", status: "Protected" },
+      { stream: "Billing and entitlement changes", source: "Revenue systems", freshness: "2 min", retention: "7 years", status: "Healthy" },
+      { stream: "Model route changes", source: "AI gateway", freshness: "30s", retention: "3 years", status: "Healthy" }
+    ],
+    privilegedActions: [
+      { action: "Seed admin session issued", actor: "Seed Admin", surface: "Admin Console", severity: "High", status: "Logged" },
+      { action: "Model fallback policy changed", actor: "AI Ops", surface: "Model Gateway", severity: "High", status: "Review" },
+      { action: "Enterprise entitlement override", actor: "Revenue Ops", surface: "Billing", severity: "Medium", status: "Approved" },
+      { action: "Support replay access requested", actor: "Support Lead", surface: "Support", severity: "Medium", status: "Redacted" }
+    ],
+    accessReviews: [
+      { review: "Seed-admin access", scope: "Full platform", owner: "Security", cadence: "Weekly", status: "Due" },
+      { review: "Finance exports", scope: "Billing and invoices", owner: "Finance", cadence: "Monthly", status: "Healthy" },
+      { review: "Support replay tools", scope: "Conversation metadata", owner: "Support Trust", cadence: "Biweekly", status: "Watch" },
+      { review: "Model ops permissions", scope: "Routes and fallbacks", owner: "AI Governance", cadence: "Monthly", status: "Healthy" }
+    ],
+    exportControls: [
+      { export: "Audit evidence pack", destination: "Compliance vault", approval: "Security + Legal", sensitivity: "Restricted", status: "Ready" },
+      { export: "Admin action CSV", destination: "Leadership", approval: "Seed Admin", sensitivity: "Internal", status: "Approved" },
+      { export: "Billing change log", destination: "Finance", approval: "Finance lead", sensitivity: "Confidential", status: "Queued" },
+      { export: "Incident timeline", destination: "Postmortem", approval: "Incident commander", sensitivity: "Internal", status: "Draft" }
+    ],
+    anomalySignals: [
+      { signal: "After-hours admin refresh spike", surface: "Admin Console", severity: "Low", owner: "Security", status: "Watching" },
+      { signal: "Repeated export preview", surface: "Reports", severity: "Medium", owner: "Compliance", status: "Review" },
+      { signal: "Permission change without ticket", surface: "Access", severity: "High", owner: "Security", status: "Investigating" },
+      { signal: "Support replay access burst", surface: "Support", severity: "Medium", owner: "Support Trust", status: "Rate limited" }
+    ],
+    guardrails: [
+      "Audit logs must be append-only, tamper-evident, time-synced, and retained according to legal, finance, and security requirements.",
+      "Privileged actions need actor, purpose, scope, approval, affected surface, ticket or incident link, and immutable evidence.",
+      "Audit exports should be minimized, watermarked, approved, and redacted before leaving the Admin Console.",
+      "Suspicious admin activity must alert Security without exposing raw user prompts, private chats, payment secrets, or voice content."
+    ]
+  };
+}
+
 function adminDataQualityOpsData() {
   return state.adminDataQualityOps || {
     summary: { certifiedMetrics: 42, freshnessHealth: "96%", reconciliationGaps: 7, lineageCoverage: "89%", blockedReports: 3 },
@@ -6581,6 +6646,26 @@ function incidentPostmortemRow(item) {
   return `<div class="table-row"><strong>${item.report}</strong><span>${item.rootCause}</span><span>${item.due}</span><span>${item.status}</span></div>`;
 }
 
+function auditStreamRow(item) {
+  return `<div class="table-row"><strong>${item.stream}</strong><span>${item.source}</span><span>${item.retention}</span><span>${item.status}</span></div>`;
+}
+
+function privilegedActionRow(item) {
+  return `<div class="table-row"><strong>${item.action}</strong><span>${item.actor}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
+function accessReviewRow(item) {
+  return `<div class="table-row"><strong>${item.review}</strong><span>${item.scope}</span><span>${item.cadence}</span><span>${item.status}</span></div>`;
+}
+
+function auditExportControlRow(item) {
+  return `<div class="table-row"><strong>${item.export}</strong><span>${item.destination}</span><span>${item.sensitivity}</span><span>${item.status}</span></div>`;
+}
+
+function auditAnomalyRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.surface}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
 function metricHealthRow(item) {
   return `<div class="table-row"><strong>${item.metric}</strong><span>${item.source}</span><span>${item.freshness}</span><span>${item.status}</span></div>`;
 }
@@ -7935,6 +8020,7 @@ function adminView() {
   if (state.adminSection === "telemetryOps") loadAdminTelemetryOps();
   if (state.adminSection === "statusOps") loadAdminStatusOps();
   if (state.adminSection === "incidentResponse") loadAdminIncidentResponse();
+  if (state.adminSection === "auditOps") loadAdminAuditOps();
   if (state.adminSection === "dataQualityOps") loadAdminDataQualityOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
@@ -8069,6 +8155,7 @@ function adminSectionView(section, readiness) {
     telemetryOps: adminTelemetryOps,
     statusOps: adminStatusOps,
     incidentResponse: adminIncidentResponse,
+    auditOps: adminAuditOps,
     dataQualityOps: adminDataQualityOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
@@ -10366,6 +10453,55 @@ function adminIncidentResponse() {
   `;
 }
 
+function adminAuditOps() {
+  const audit = adminAuditOpsData();
+  const summary = audit.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Immutable events", summary.immutableEvents || "1.9M")}
+      ${metric("Integrity score", summary.integrityScore || "99.99%")}
+      ${metric("Privileged actions", summary.privilegedActions || "184")}
+      ${metric("Retention coverage", summary.retentionCoverage || "96%")}
+      <section class="admin-card full-admin">
+        <h2>Audit streams</h2>
+        <div class="table admin-table-4">
+          ${audit.auditStreams.map(auditStreamRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Privileged actions</h2>
+        <div class="table admin-table-4">
+          ${audit.privilegedActions.map(privilegedActionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Access reviews</h2>
+        <div class="table admin-table-4">
+          ${audit.accessReviews.map(accessReviewRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Export controls</h2>
+        <div class="table admin-table-4">
+          ${audit.exportControls.map(auditExportControlRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Anomaly signals</h2>
+        <div class="table admin-table-4">
+          ${audit.anomalySignals.map(auditAnomalyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Audit guardrails</h2>
+        <div class="admin-checklist">
+          ${audit.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminDataQualityOps() {
   const quality = adminDataQualityOpsData();
   const summary = quality.summary || {};
@@ -12622,6 +12758,7 @@ function bindEvents() {
       loadAdminTelemetryOps(true);
       loadAdminStatusOps(true);
       loadAdminIncidentResponse(true);
+      loadAdminAuditOps(true);
       loadAdminDataQualityOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);

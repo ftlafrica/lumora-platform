@@ -50,6 +50,7 @@ This is the first backend foundation for connecting the Web Platform, Enterprise
 - `GET /v1/admin/telemetry`
 - `GET /v1/admin/status-ops`
 - `GET /v1/admin/incident-response`
+- `GET /v1/admin/audit-ops`
 - `GET /v1/admin/data-quality`
 - `GET /v1/admin/consent`
 - `GET /v1/admin/secrets`
@@ -138,6 +139,8 @@ It also exposes `GET /v1/admin/telemetry` for web, mobile, admin, and API event 
 It also exposes `GET /v1/admin/status-ops` for public status, incidents, maintenance windows, subscriber communications, and postmortem readiness.
 
 It also exposes `GET /v1/admin/incident-response` for incident command, severity lanes, rollback readiness, communications, postmortems, and incident response guardrails.
+
+It also exposes `GET /v1/admin/audit-ops` for immutable audit streams, privileged actions, access reviews, export controls, anomaly signals, and audit guardrails.
 
 It also exposes `GET /v1/admin/data-quality` for certified metrics, freshness monitors, reconciliation checks, lineage coverage, quality incidents, and decision-grade data guardrails.
 
