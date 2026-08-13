@@ -92,6 +92,7 @@ const ADMIN_SECTIONS = [
   { id: "changeOps", label: "Change Ops", desc: "Change calendar, approvals, risk reviews, config drift, rollbacks, and release guardrails." },
   { id: "backupOps", label: "Backup Ops", desc: "Backup coverage, restore drills, immutable vaults, failures, recovery runbooks, and RPO/RTO." },
   { id: "assetOps", label: "Asset Ops", desc: "Service inventory, data assets, ownership gaps, dependencies, lifecycle queues, and asset guardrails." },
+  { id: "tenantOps", label: "Tenant Ops", desc: "Enterprise tenants, domains, SSO/SCIM, workspace policies, seats, and tenant boundaries." },
   { id: "dataQualityOps", label: "Data Quality", desc: "Certified metrics, freshness, reconciliation, lineage, quality incidents, and decision-grade data." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
@@ -321,6 +322,8 @@ const DEFAULT_STATE = {
   adminBackupOpsLoadedAt: null,
   adminAssetOps: null,
   adminAssetOpsLoadedAt: null,
+  adminTenantOps: null,
+  adminTenantOpsLoadedAt: null,
   adminDataQualityOps: null,
   adminDataQualityOpsLoadedAt: null,
   adminConsentOps: null,
@@ -1280,6 +1283,26 @@ async function loadAdminAssetOps(force = false) {
     state.adminAssetOpsLoadedAt = Date.now();
   } catch {
     state.adminAssetOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminTenantOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminTenantOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/tenant-ops`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Tenant operations unavailable.");
+    state.adminTenantOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminTenantOpsLoadedAt = Date.now();
+  } catch {
+    state.adminTenantOpsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -2413,7 +2436,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "dataquality:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "dataquality:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -5033,6 +5056,48 @@ function adminAssetOpsData() {
   };
 }
 
+function adminTenantOpsData() {
+  return state.adminTenantOps || {
+    summary: { activeTenants: 47, ssoEnabled: 14, scimQueued: 6, policyConflicts: 9, domainCoverage: "82%" },
+    tenantInventory: [
+      { tenant: "EduBridge Africa", plan: "Teams", country: "Nigeria", seats: 320, status: "Expansion" },
+      { tenant: "Swahili Learning Hub", plan: "Teams", country: "Kenya", seats: 184, status: "Onboarding" },
+      { tenant: "Akan Media Group", plan: "Pro Org", country: "Ghana", seats: 76, status: "Healthy" },
+      { tenant: "Ubuntu Clinic Network", plan: "Enterprise", country: "South Africa", seats: 410, status: "Security review" }
+    ],
+    domains: [
+      { domain: "edubridge.africa", tenant: "EduBridge Africa", verification: "Verified", owner: "Customer IT", status: "Live" },
+      { domain: "swahililearn.org", tenant: "Swahili Learning Hub", verification: "Pending DNS", owner: "Customer IT", status: "Blocked" },
+      { domain: "akanmedia.com", tenant: "Akan Media Group", verification: "Verified", owner: "Enterprise", status: "Live" },
+      { domain: "ubuntuclinic.co.za", tenant: "Ubuntu Clinic Network", verification: "Legal review", owner: "Security", status: "Review" }
+    ],
+    ssoScim: [
+      { control: "SAML SSO", coverage: "14 orgs", queue: "5 requested", owner: "Identity", status: "Healthy" },
+      { control: "OIDC SSO", coverage: "8 orgs", queue: "3 requested", owner: "Identity", status: "Expanding" },
+      { control: "SCIM provisioning", coverage: "6 orgs", queue: "6 requested", owner: "Enterprise", status: "Queued" },
+      { control: "Domain capture", coverage: "82%", queue: "4 domains", owner: "Security", status: "Review" }
+    ],
+    workspacePolicies: [
+      { policy: "Training exclusion", scope: "All enterprise prompts", tenants: 47, owner: "Data Gov", status: "Enforced" },
+      { policy: "External sharing", scope: "Workspace files", tenants: 31, owner: "Security", status: "Controlled" },
+      { policy: "Memory defaults", scope: "Team workspaces", tenants: 22, owner: "Product", status: "Review" },
+      { policy: "Voice retention", scope: "Voice Circle", tenants: 9, owner: "Privacy", status: "Blocked" }
+    ],
+    seatControls: [
+      { queue: "Seat overage", tenant: "EduBridge Africa", count: 18, owner: "Revenue Ops", status: "Invoice review" },
+      { queue: "Deprovisioning lag", tenant: "Swahili Learning Hub", count: 7, owner: "Enterprise", status: "SCIM queued" },
+      { queue: "Guest access review", tenant: "Akan Media Group", count: 12, owner: "Security", status: "Review" },
+      { queue: "Admin role expansion", tenant: "Ubuntu Clinic Network", count: 4, owner: "Success", status: "Approval" }
+    ],
+    guardrails: [
+      "Enterprise tenant controls must isolate workspaces, files, memories, embeddings, prompts, billing, and audit records.",
+      "SSO, SCIM, domain capture, and admin roles should never bypass Lumora scopes, tenant policy, or audit logging.",
+      "Tenant-level AI policies must clearly define training exclusion, retention, sharing, memory, and voice defaults.",
+      "Tenant Ops should show aggregate posture and control state without exposing private documents, prompts, or customer secrets."
+    ]
+  };
+}
+
 function adminDataQualityOpsData() {
   return state.adminDataQualityOps || {
     summary: { certifiedMetrics: 42, freshnessHealth: "96%", reconciliationGaps: 7, lineageCoverage: "89%", blockedReports: 3 },
@@ -6921,6 +6986,26 @@ function lifecycleQueueRow(item) {
   return `<div class="table-row"><strong>${item.asset}</strong><span>${item.action}</span><span>${item.due}</span><span>${item.status}</span></div>`;
 }
 
+function tenantInventoryRow(item) {
+  return `<div class="table-row"><strong>${item.tenant}</strong><span>${item.plan}</span><span>${item.country}</span><span>${item.status}</span></div>`;
+}
+
+function tenantDomainRow(item) {
+  return `<div class="table-row"><strong>${item.domain}</strong><span>${item.tenant}</span><span>${item.verification}</span><span>${item.status}</span></div>`;
+}
+
+function ssoScimRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.coverage}</span><span>${item.queue}</span><span>${item.status}</span></div>`;
+}
+
+function workspacePolicyRow(item) {
+  return `<div class="table-row"><strong>${item.policy}</strong><span>${item.scope}</span><span>${item.tenants}</span><span>${item.status}</span></div>`;
+}
+
+function seatControlRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.tenant}</span><span>${item.count}</span><span>${item.status}</span></div>`;
+}
+
 function metricHealthRow(item) {
   return `<div class="table-row"><strong>${item.metric}</strong><span>${item.source}</span><span>${item.freshness}</span><span>${item.status}</span></div>`;
 }
@@ -8279,6 +8364,7 @@ function adminView() {
   if (state.adminSection === "changeOps") loadAdminChangeOps();
   if (state.adminSection === "backupOps") loadAdminBackupOps();
   if (state.adminSection === "assetOps") loadAdminAssetOps();
+  if (state.adminSection === "tenantOps") loadAdminTenantOps();
   if (state.adminSection === "dataQualityOps") loadAdminDataQualityOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
@@ -8417,6 +8503,7 @@ function adminSectionView(section, readiness) {
     changeOps: adminChangeOps,
     backupOps: adminBackupOps,
     assetOps: adminAssetOps,
+    tenantOps: adminTenantOps,
     dataQualityOps: adminDataQualityOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
@@ -10910,6 +10997,55 @@ function adminAssetOps() {
   `;
 }
 
+function adminTenantOps() {
+  const tenants = adminTenantOpsData();
+  const summary = tenants.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active tenants", summary.activeTenants || "47")}
+      ${metric("SSO enabled", summary.ssoEnabled || "14")}
+      ${metric("SCIM queued", summary.scimQueued || "6")}
+      ${metric("Domain coverage", summary.domainCoverage || "82%")}
+      <section class="admin-card full-admin">
+        <h2>Tenant inventory</h2>
+        <div class="table admin-table-4">
+          ${tenants.tenantInventory.map(tenantInventoryRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Verified domains</h2>
+        <div class="table admin-table-4">
+          ${tenants.domains.map(tenantDomainRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>SSO and SCIM</h2>
+        <div class="table admin-table-4">
+          ${tenants.ssoScim.map(ssoScimRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Workspace policies</h2>
+        <div class="table admin-table-4">
+          ${tenants.workspacePolicies.map(workspacePolicyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Seat controls</h2>
+        <div class="table admin-table-4">
+          ${tenants.seatControls.map(seatControlRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Tenant guardrails</h2>
+        <div class="admin-checklist">
+          ${tenants.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminDataQualityOps() {
   const quality = adminDataQualityOpsData();
   const summary = quality.summary || {};
@@ -13170,6 +13306,7 @@ function bindEvents() {
       loadAdminChangeOps(true);
       loadAdminBackupOps(true);
       loadAdminAssetOps(true);
+      loadAdminTenantOps(true);
       loadAdminDataQualityOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);
