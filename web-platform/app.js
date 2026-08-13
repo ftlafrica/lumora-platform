@@ -90,6 +90,7 @@ const ADMIN_SECTIONS = [
   { id: "incidentResponse", label: "Incident Ops", desc: "Incident command, severity lanes, rollback readiness, communications, and postmortems." },
   { id: "auditOps", label: "Audit Ops", desc: "Immutable events, privileged actions, access reviews, exports, and audit anomalies." },
   { id: "changeOps", label: "Change Ops", desc: "Change calendar, approvals, risk reviews, config drift, rollbacks, and release guardrails." },
+  { id: "backupOps", label: "Backup Ops", desc: "Backup coverage, restore drills, immutable vaults, failures, recovery runbooks, and RPO/RTO." },
   { id: "dataQualityOps", label: "Data Quality", desc: "Certified metrics, freshness, reconciliation, lineage, quality incidents, and decision-grade data." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
@@ -315,6 +316,8 @@ const DEFAULT_STATE = {
   adminAuditOpsLoadedAt: null,
   adminChangeOps: null,
   adminChangeOpsLoadedAt: null,
+  adminBackupOps: null,
+  adminBackupOpsLoadedAt: null,
   adminDataQualityOps: null,
   adminDataQualityOpsLoadedAt: null,
   adminConsentOps: null,
@@ -1234,6 +1237,26 @@ async function loadAdminChangeOps(force = false) {
     state.adminChangeOpsLoadedAt = Date.now();
   } catch {
     state.adminChangeOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminBackupOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminBackupOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/backup-ops`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Backup operations unavailable.");
+    state.adminBackupOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminBackupOpsLoadedAt = Date.now();
+  } catch {
+    state.adminBackupOpsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -2367,7 +2390,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "dataquality:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "dataquality:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -4903,6 +4926,48 @@ function adminChangeOpsData() {
   };
 }
 
+function adminBackupOpsData() {
+  return state.adminBackupOps || {
+    summary: { protectedAssets: 46, backupFreshness: "8 min", restoreReadiness: "93%", failedBackups: 3, immutableCoverage: "97%" },
+    backupCoverage: [
+      { asset: "Primary user database", cadence: "Continuous WAL + hourly snapshot", region: "Multi-region", owner: "SRE", status: "Protected" },
+      { asset: "Conversation metadata store", cadence: "15 min snapshot", region: "Regional", owner: "Data Platform", status: "Healthy" },
+      { asset: "Object and upload storage", cadence: "Versioned daily snapshot", region: "Multi-region", owner: "Infrastructure", status: "Protected" },
+      { asset: "Vector and RAG indexes", cadence: "6-hour snapshot", region: "Regional", owner: "Knowledge Ops", status: "Drill due" }
+    ],
+    restoreDrills: [
+      { drill: "User profile restore", lastRun: "2026-08-08", rto: "24 min", rpo: "5 min", status: "Passed" },
+      { drill: "Billing ledger restore", lastRun: "2026-08-06", rto: "41 min", rpo: "2 min", status: "Passed" },
+      { drill: "Vector index rebuild", lastRun: "2026-07-31", rto: "2h 10m", rpo: "6h", status: "Due" },
+      { drill: "Admin audit archive restore", lastRun: "2026-08-07", rto: "18 min", rpo: "Realtime", status: "Passed" }
+    ],
+    vaultPosture: [
+      { vault: "Immutable audit vault", coverage: "100%", retention: "7 years", owner: "Security", status: "Protected" },
+      { vault: "Critical database snapshots", coverage: "99%", retention: "90 days", owner: "SRE", status: "Healthy" },
+      { vault: "Mobile release artifacts", coverage: "94%", retention: "Per release", owner: "Mobile Ops", status: "Healthy" },
+      { vault: "Model route configs", coverage: "91%", retention: "1 year", owner: "AI Ops", status: "Improving" }
+    ],
+    failureQueue: [
+      { failure: "Vector snapshot late", asset: "RAG indexes", age: "2h", owner: "Knowledge Ops", status: "Retrying" },
+      { failure: "Mobile artifact checksum mismatch", asset: "Android beta", age: "1d", owner: "Mobile Ops", status: "Review" },
+      { failure: "Regional analytics export skipped", asset: "Warehouse", age: "45m", owner: "Data Platform", status: "Queued" },
+      { failure: "Legacy object version gap", asset: "Uploads", age: "Resolved", owner: "Infrastructure", status: "Closed" }
+    ],
+    recoveryRunbooks: [
+      { runbook: "Regional database failover", trigger: "Primary DB unavailable", owner: "SRE", tested: "2026-08-05", status: "Ready" },
+      { runbook: "Conversation metadata replay", trigger: "Store corruption", owner: "Data Platform", tested: "2026-08-03", status: "Ready" },
+      { runbook: "Audit archive evidence recovery", trigger: "Compliance request", owner: "Security", tested: "2026-08-07", status: "Ready" },
+      { runbook: "Model config restore", trigger: "Route policy regression", owner: "AI Ops", tested: "2026-08-01", status: "Review" }
+    ],
+    guardrails: [
+      "Every critical asset needs documented RPO/RTO targets, backup owner, region posture, restore proof, and alerting.",
+      "Restore drills must be run often enough to prove recovery, not just backup existence.",
+      "Immutable vaults should protect audit, security, billing, and legal evidence from deletion or tampering.",
+      "Backup views must expose metadata and recovery posture without surfacing raw prompts, files, payment secrets, or private user data."
+    ]
+  };
+}
+
 function adminDataQualityOpsData() {
   return state.adminDataQualityOps || {
     summary: { certifiedMetrics: 42, freshnessHealth: "96%", reconciliationGaps: 7, lineageCoverage: "89%", blockedReports: 3 },
@@ -6751,6 +6816,26 @@ function rollbackPlanRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.trigger}</span><span>${item.readiness}</span><span>${item.status}</span></div>`;
 }
 
+function backupCoverageRow(item) {
+  return `<div class="table-row"><strong>${item.asset}</strong><span>${item.cadence}</span><span>${item.region}</span><span>${item.status}</span></div>`;
+}
+
+function restoreDrillRow(item) {
+  return `<div class="table-row"><strong>${item.drill}</strong><span>${item.lastRun}</span><span>${item.rto}</span><span>${item.status}</span></div>`;
+}
+
+function vaultPostureRow(item) {
+  return `<div class="table-row"><strong>${item.vault}</strong><span>${item.coverage}</span><span>${item.retention}</span><span>${item.status}</span></div>`;
+}
+
+function backupFailureRow(item) {
+  return `<div class="table-row"><strong>${item.failure}</strong><span>${item.asset}</span><span>${item.age}</span><span>${item.status}</span></div>`;
+}
+
+function recoveryRunbookRow(item) {
+  return `<div class="table-row"><strong>${item.runbook}</strong><span>${item.trigger}</span><span>${item.tested}</span><span>${item.status}</span></div>`;
+}
+
 function metricHealthRow(item) {
   return `<div class="table-row"><strong>${item.metric}</strong><span>${item.source}</span><span>${item.freshness}</span><span>${item.status}</span></div>`;
 }
@@ -8107,6 +8192,7 @@ function adminView() {
   if (state.adminSection === "incidentResponse") loadAdminIncidentResponse();
   if (state.adminSection === "auditOps") loadAdminAuditOps();
   if (state.adminSection === "changeOps") loadAdminChangeOps();
+  if (state.adminSection === "backupOps") loadAdminBackupOps();
   if (state.adminSection === "dataQualityOps") loadAdminDataQualityOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
@@ -8243,6 +8329,7 @@ function adminSectionView(section, readiness) {
     incidentResponse: adminIncidentResponse,
     auditOps: adminAuditOps,
     changeOps: adminChangeOps,
+    backupOps: adminBackupOps,
     dataQualityOps: adminDataQualityOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
@@ -10638,6 +10725,55 @@ function adminChangeOps() {
   `;
 }
 
+function adminBackupOps() {
+  const backups = adminBackupOpsData();
+  const summary = backups.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Protected assets", summary.protectedAssets || "46")}
+      ${metric("Backup freshness", summary.backupFreshness || "8 min")}
+      ${metric("Restore readiness", summary.restoreReadiness || "93%")}
+      ${metric("Immutable coverage", summary.immutableCoverage || "97%")}
+      <section class="admin-card full-admin">
+        <h2>Backup coverage</h2>
+        <div class="table admin-table-4">
+          ${backups.backupCoverage.map(backupCoverageRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Restore drills</h2>
+        <div class="table admin-table-4">
+          ${backups.restoreDrills.map(restoreDrillRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Immutable vaults</h2>
+        <div class="table admin-table-4">
+          ${backups.vaultPosture.map(vaultPostureRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Failure queue</h2>
+        <div class="table admin-table-4">
+          ${backups.failureQueue.map(backupFailureRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Recovery runbooks</h2>
+        <div class="table admin-table-4">
+          ${backups.recoveryRunbooks.map(recoveryRunbookRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Backup guardrails</h2>
+        <div class="admin-checklist">
+          ${backups.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminDataQualityOps() {
   const quality = adminDataQualityOpsData();
   const summary = quality.summary || {};
@@ -12896,6 +13032,7 @@ function bindEvents() {
       loadAdminIncidentResponse(true);
       loadAdminAuditOps(true);
       loadAdminChangeOps(true);
+      loadAdminBackupOps(true);
       loadAdminDataQualityOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);

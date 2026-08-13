@@ -94,6 +94,7 @@ const {
   adminIncidentResponseOperations,
   adminAuditOpsOperations,
   adminChangeOpsOperations,
+  adminBackupOpsOperations,
   adminDataQualityOpsOperations,
   adminConsentOpsOperations,
   adminSecretsOpsOperations,
@@ -207,6 +208,7 @@ assert.ok(accessSession.scopes.includes("status:operate"));
 assert.ok(accessSession.scopes.includes("incident:respond"));
 assert.ok(accessSession.scopes.includes("audit:operate"));
 assert.ok(accessSession.scopes.includes("change:manage"));
+assert.ok(accessSession.scopes.includes("backup:operate"));
 assert.ok(accessSession.scopes.includes("dataquality:operate"));
 assert.ok(accessSession.scopes.includes("consent:operate"));
 assert.ok(accessSession.scopes.includes("secrets:operate"));
@@ -304,6 +306,7 @@ const adminContracts = [
   ["incident response", adminIncidentResponseOperations(), data => data.summary && Array.isArray(data.commandCenter) && Array.isArray(data.activeIncidents) && Array.isArray(data.rollbackChecks)],
   ["audit ops", adminAuditOpsOperations(), data => data.summary && Array.isArray(data.auditStreams) && Array.isArray(data.privilegedActions) && Array.isArray(data.exportControls)],
   ["change ops", adminChangeOpsOperations(), data => data.summary && Array.isArray(data.changeCalendar) && Array.isArray(data.approvalGates) && Array.isArray(data.rollbackPlans)],
+  ["backup ops", adminBackupOpsOperations(), data => data.summary && Array.isArray(data.backupCoverage) && Array.isArray(data.restoreDrills) && Array.isArray(data.recoveryRunbooks)],
   ["data quality ops", adminDataQualityOpsOperations(), data => data.summary && Array.isArray(data.metricHealth) && Array.isArray(data.freshnessMonitors) && Array.isArray(data.reconciliation)],
   ["consent ops", adminConsentOpsOperations(), data => data.summary && Array.isArray(data.consentSurfaces) && Array.isArray(data.trainingEligibility) && Array.isArray(data.withdrawals)],
   ["secrets ops", adminSecretsOpsOperations(), data => data.summary && Array.isArray(data.secretInventory) && Array.isArray(data.rotations) && Array.isArray(data.kmsPosture)],
