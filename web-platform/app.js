@@ -88,6 +88,7 @@ const ADMIN_SECTIONS = [
   { id: "telemetryOps", label: "Telemetry", desc: "Web, mobile, admin, and API event pipelines, schemas, privacy filters, and certified dashboards." },
   { id: "statusOps", label: "Status Ops", desc: "Public status, incidents, maintenance windows, subscriber alerts, and postmortem readiness." },
   { id: "dataQualityOps", label: "Data Quality", desc: "Certified metrics, freshness, reconciliation, lineage, quality incidents, and decision-grade data." },
+  { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
   { id: "mobileOps", label: "Mobile Ops", desc: "Android/iOS releases, crash health, store readiness, device labs, and rollout guardrails." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
@@ -307,6 +308,8 @@ const DEFAULT_STATE = {
   adminStatusOpsLoadedAt: null,
   adminDataQualityOps: null,
   adminDataQualityOpsLoadedAt: null,
+  adminConsentOps: null,
+  adminConsentOpsLoadedAt: null,
   adminSecretsOps: null,
   adminSecretsOpsLoadedAt: null,
   adminMobileOps: null,
@@ -1182,6 +1185,26 @@ async function loadAdminDataQualityOps(force = false) {
     state.adminDataQualityOpsLoadedAt = Date.now();
   } catch {
     state.adminDataQualityOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminConsentOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminConsentOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/consent`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Consent operations unavailable.");
+    state.adminConsentOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminConsentOpsLoadedAt = Date.now();
+  } catch {
+    state.adminConsentOpsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -2275,7 +2298,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "dataquality:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "dataquality:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -4723,6 +4746,48 @@ function adminDataQualityOpsData() {
   };
 }
 
+function adminConsentOpsData() {
+  return state.adminConsentOps || {
+    summary: { consentProfiles: "18.4K", trainingOptIn: "41%", voiceConsent: "64%", withdrawalQueue: 11, policyCoverage: "92%" },
+    consentSurfaces: [
+      { surface: "Signup preferences", audience: "All users", coverage: "96%", owner: "Product", status: "Live" },
+      { surface: "Language Passport", audience: "Multilingual users", coverage: "88%", owner: "Language QA", status: "Improving" },
+      { surface: "Voice Circle capture", audience: "Voice users", coverage: "92%", owner: "Voice Ops", status: "Live" },
+      { surface: "Community corrections", audience: "Contributors", coverage: "74%", owner: "Community", status: "Review" }
+    ],
+    trainingEligibility: [
+      { dataset: "Text corrections", eligible: "318K", blocker: "License + consent", owner: "Data Governance", status: "Controlled" },
+      { dataset: "Voice beta samples", eligible: "41%", blocker: "Retention consent", owner: "Voice Ops", status: "Blocked" },
+      { dataset: "Reviewer decisions", eligible: "82%", blocker: "Attribution policy", owner: "Language QA", status: "Review" },
+      { dataset: "Enterprise workspace prompts", eligible: "0%", blocker: "Tenant policy", owner: "Enterprise", status: "Excluded" }
+    ],
+    withdrawals: [
+      { request: "Consent withdrawal", region: "Diaspora", count: 11, sla: "Immediate", owner: "Privacy", status: "Automated" },
+      { request: "Voice sample deletion", region: "Nigeria/Kenya", count: 7, sla: "7 days", owner: "Voice Ops", status: "Queued" },
+      { request: "Correction attribution removal", region: "Ghana", count: 4, sla: "14 days", owner: "Community", status: "Review" },
+      { request: "Personalization pause", region: "Pan-African", count: 42, sla: "Immediate", owner: "Product", status: "Live" }
+    ],
+    policyCoverage: [
+      { policy: "Training reuse consent", surface: "Voice + corrections", coverage: "41%", owner: "Data Gov", status: "Blocked" },
+      { policy: "Personalization consent", surface: "Memory + Passport", coverage: "88%", owner: "Privacy", status: "Healthy" },
+      { policy: "Contributor consent", surface: "Community corrections", coverage: "74%", owner: "Community", status: "Improving" },
+      { policy: "Enterprise exclusion", surface: "Teams workspaces", coverage: "100%", owner: "Enterprise", status: "Protected" }
+    ],
+    auditTrail: [
+      { event: "Voice consent updated", surface: "Mobile", actor: "User controlled", evidence: "Policy v0.8", status: "Logged" },
+      { event: "Correction sample approved", surface: "Reviewer network", actor: "Language QA", evidence: "Consent + license", status: "Logged" },
+      { event: "Training reuse blocked", surface: "Voice beta", actor: "Data Gov", evidence: "Missing retention consent", status: "Blocked" },
+      { event: "Enterprise prompt excluded", surface: "Teams", actor: "Tenant policy", evidence: "Workspace policy", status: "Protected" }
+    ],
+    guardrails: [
+      "Consent must be specific, revocable, auditable, and understandable across supported languages and literacy levels.",
+      "No voice, correction, workspace, or private chat data should become training/eval material without explicit eligibility gates.",
+      "Withdrawal requests must flow through deletion, de-indexing, attribution, and model-training exclusion workflows.",
+      "Admin views should show consent posture and aggregate risks without exposing raw user prompts, voice clips, or private profiles."
+    ]
+  };
+}
+
 function adminSecretsOpsData() {
   return state.adminSecretsOps || {
     summary: { managedSecrets: 128, rotationHealth: "94%", expiringSoon: 6, leakAlerts: 2, kmsCoverage: "98%" },
@@ -6443,6 +6508,26 @@ function dataQualityIncidentRow(item) {
   return `<div class="table-row"><strong>${item.incident}</strong><span>${item.impact}</span><span>${item.eta}</span><span>${item.status}</span></div>`;
 }
 
+function consentSurfaceRow(item) {
+  return `<div class="table-row"><strong>${item.surface}</strong><span>${item.audience}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
+function trainingEligibilityRow(item) {
+  return `<div class="table-row"><strong>${item.dataset}</strong><span>${item.eligible}</span><span>${item.blocker}</span><span>${item.status}</span></div>`;
+}
+
+function consentWithdrawalRow(item) {
+  return `<div class="table-row"><strong>${item.request}</strong><span>${item.region}</span><span>${item.sla}</span><span>${item.status}</span></div>`;
+}
+
+function consentPolicyRow(item) {
+  return `<div class="table-row"><strong>${item.policy}</strong><span>${item.surface}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
+function consentAuditRow(item) {
+  return `<div class="table-row"><strong>${item.event}</strong><span>${item.surface}</span><span>${item.evidence}</span><span>${item.status}</span></div>`;
+}
+
 function secretInventoryRow(item) {
   return `<div class="table-row"><strong>${item.secret}</strong><span>${item.scope}</span><span>${item.rotation}</span><span>${item.status}</span></div>`;
 }
@@ -7757,6 +7842,7 @@ function adminView() {
   if (state.adminSection === "telemetryOps") loadAdminTelemetryOps();
   if (state.adminSection === "statusOps") loadAdminStatusOps();
   if (state.adminSection === "dataQualityOps") loadAdminDataQualityOps();
+  if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
   if (state.adminSection === "mobileOps") loadAdminMobileOps();
   if (state.adminSection === "communications") loadAdminCommunications();
@@ -7889,6 +7975,7 @@ function adminSectionView(section, readiness) {
     telemetryOps: adminTelemetryOps,
     statusOps: adminStatusOps,
     dataQualityOps: adminDataQualityOps,
+    consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
     mobileOps: adminMobileOps,
     communications: adminCommunications,
@@ -10178,6 +10265,55 @@ function adminDataQualityOps() {
   `;
 }
 
+function adminConsentOps() {
+  const consent = adminConsentOpsData();
+  const summary = consent.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Consent profiles", summary.consentProfiles || "18.4K")}
+      ${metric("Training opt-in", summary.trainingOptIn || "41%")}
+      ${metric("Voice consent", summary.voiceConsent || "64%")}
+      ${metric("Policy coverage", summary.policyCoverage || "92%")}
+      <section class="admin-card full-admin">
+        <h2>Consent surfaces</h2>
+        <div class="table admin-table-4">
+          ${consent.consentSurfaces.map(consentSurfaceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Training eligibility</h2>
+        <div class="table admin-table-4">
+          ${consent.trainingEligibility.map(trainingEligibilityRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Withdrawal queue</h2>
+        <div class="table admin-table-4">
+          ${consent.withdrawals.map(consentWithdrawalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Policy coverage</h2>
+        <div class="table admin-table-4">
+          ${consent.policyCoverage.map(consentPolicyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Consent audit trail</h2>
+        <div class="table admin-table-4">
+          ${consent.auditTrail.map(consentAuditRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Consent guardrails</h2>
+        <div class="admin-checklist">
+          ${consent.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminSecretsOps() {
   const secrets = adminSecretsOpsData();
   const summary = secrets.summary || {};
@@ -12336,6 +12472,7 @@ function bindEvents() {
       loadAdminTelemetryOps(true);
       loadAdminStatusOps(true);
       loadAdminDataQualityOps(true);
+      loadAdminConsentOps(true);
       loadAdminSecretsOps(true);
       loadAdminMobileOps(true);
       loadAdminCommunications(true);
