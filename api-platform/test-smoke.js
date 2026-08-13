@@ -91,6 +91,7 @@ const {
   adminWebOpsOperations,
   adminTelemetryOpsOperations,
   adminStatusOpsOperations,
+  adminIncidentResponseOperations,
   adminDataQualityOpsOperations,
   adminConsentOpsOperations,
   adminSecretsOpsOperations,
@@ -201,6 +202,7 @@ assert.ok(accessSession.scopes.includes("model:risk"));
 assert.ok(accessSession.scopes.includes("web:operate"));
 assert.ok(accessSession.scopes.includes("telemetry:operate"));
 assert.ok(accessSession.scopes.includes("status:operate"));
+assert.ok(accessSession.scopes.includes("incident:respond"));
 assert.ok(accessSession.scopes.includes("dataquality:operate"));
 assert.ok(accessSession.scopes.includes("consent:operate"));
 assert.ok(accessSession.scopes.includes("secrets:operate"));
@@ -295,6 +297,7 @@ const adminContracts = [
   ["web ops", adminWebOpsOperations(), data => data.summary && Array.isArray(data.deployments) && Array.isArray(data.performance) && Array.isArray(data.browserCoverage)],
   ["telemetry ops", adminTelemetryOpsOperations(), data => data.summary && Array.isArray(data.eventPipelines) && Array.isArray(data.schemaContracts) && Array.isArray(data.privacyFilters)],
   ["status ops", adminStatusOpsOperations(), data => data.summary && Array.isArray(data.statusSurfaces) && Array.isArray(data.incidents) && Array.isArray(data.maintenance)],
+  ["incident response", adminIncidentResponseOperations(), data => data.summary && Array.isArray(data.commandCenter) && Array.isArray(data.activeIncidents) && Array.isArray(data.rollbackChecks)],
   ["data quality ops", adminDataQualityOpsOperations(), data => data.summary && Array.isArray(data.metricHealth) && Array.isArray(data.freshnessMonitors) && Array.isArray(data.reconciliation)],
   ["consent ops", adminConsentOpsOperations(), data => data.summary && Array.isArray(data.consentSurfaces) && Array.isArray(data.trainingEligibility) && Array.isArray(data.withdrawals)],
   ["secrets ops", adminSecretsOpsOperations(), data => data.summary && Array.isArray(data.secretInventory) && Array.isArray(data.rotations) && Array.isArray(data.kmsPosture)],
