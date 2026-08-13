@@ -53,6 +53,7 @@ This is the first backend foundation for connecting the Web Platform, Enterprise
 - `GET /v1/admin/audit-ops`
 - `GET /v1/admin/change-ops`
 - `GET /v1/admin/backup-ops`
+- `GET /v1/admin/asset-ops`
 - `GET /v1/admin/data-quality`
 - `GET /v1/admin/consent`
 - `GET /v1/admin/secrets`
@@ -147,6 +148,8 @@ It also exposes `GET /v1/admin/audit-ops` for immutable audit streams, privilege
 It also exposes `GET /v1/admin/change-ops` for change calendar, approval gates, risk reviews, configuration drift, rollback plans, and change guardrails.
 
 It also exposes `GET /v1/admin/backup-ops` for backup coverage, restore drills, immutable vaults, failure queues, recovery runbooks, and backup guardrails.
+
+It also exposes `GET /v1/admin/asset-ops` for service inventory, data assets, ownership gaps, dependency mapping, lifecycle queues, and asset guardrails.
 
 It also exposes `GET /v1/admin/data-quality` for certified metrics, freshness monitors, reconciliation checks, lineage coverage, quality incidents, and decision-grade data guardrails.
 

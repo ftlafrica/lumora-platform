@@ -91,6 +91,7 @@ const ADMIN_SECTIONS = [
   { id: "auditOps", label: "Audit Ops", desc: "Immutable events, privileged actions, access reviews, exports, and audit anomalies." },
   { id: "changeOps", label: "Change Ops", desc: "Change calendar, approvals, risk reviews, config drift, rollbacks, and release guardrails." },
   { id: "backupOps", label: "Backup Ops", desc: "Backup coverage, restore drills, immutable vaults, failures, recovery runbooks, and RPO/RTO." },
+  { id: "assetOps", label: "Asset Ops", desc: "Service inventory, data assets, ownership gaps, dependencies, lifecycle queues, and asset guardrails." },
   { id: "dataQualityOps", label: "Data Quality", desc: "Certified metrics, freshness, reconciliation, lineage, quality incidents, and decision-grade data." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
@@ -318,6 +319,8 @@ const DEFAULT_STATE = {
   adminChangeOpsLoadedAt: null,
   adminBackupOps: null,
   adminBackupOpsLoadedAt: null,
+  adminAssetOps: null,
+  adminAssetOpsLoadedAt: null,
   adminDataQualityOps: null,
   adminDataQualityOpsLoadedAt: null,
   adminConsentOps: null,
@@ -1257,6 +1260,26 @@ async function loadAdminBackupOps(force = false) {
     state.adminBackupOpsLoadedAt = Date.now();
   } catch {
     state.adminBackupOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminAssetOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminAssetOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/asset-ops`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Asset operations unavailable.");
+    state.adminAssetOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminAssetOpsLoadedAt = Date.now();
+  } catch {
+    state.adminAssetOpsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -2390,7 +2413,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "dataquality:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "dataquality:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -4968,6 +4991,48 @@ function adminBackupOpsData() {
   };
 }
 
+function adminAssetOpsData() {
+  return state.adminAssetOps || {
+    summary: { trackedAssets: 284, criticalAssets: 42, ownerCoverage: "96%", lifecycleRisks: 9, dependencyCoverage: "88%" },
+    serviceInventory: [
+      { service: "Chat gateway", tier: "Tier 0", owner: "Platform", dependency: "Model gateway", status: "Critical" },
+      { service: "Model gateway", tier: "Tier 0", owner: "AI Ops", dependency: "Provider tokens", status: "Critical" },
+      { service: "Billing ledger", tier: "Tier 1", owner: "Revenue Ops", dependency: "Payment processor", status: "Healthy" },
+      { service: "Admin console", tier: "Tier 1", owner: "Enterprise", dependency: "Seed admin access", status: "Protected" }
+    ],
+    dataAssets: [
+      { asset: "User profile store", class: "Restricted", region: "Regional", owner: "Data Platform", status: "Protected" },
+      { asset: "Conversation metadata", class: "Confidential", region: "Regional", owner: "Chat Platform", status: "Healthy" },
+      { asset: "Language correction samples", class: "Controlled", region: "Pan-African", owner: "Language QA", status: "Consent gated" },
+      { asset: "Billing events", class: "Restricted", region: "Global", owner: "Finance Data", status: "Certified" }
+    ],
+    ownershipGaps: [
+      { gap: "Legacy prompt templates", surface: "Creator Studio", owner: "Product", severity: "Medium", status: "Assigning" },
+      { gap: "Partner webhook sandbox", surface: "Integrations", owner: "API Platform", severity: "Low", status: "Review" },
+      { gap: "Regional launch checklist archive", surface: "Regional Ops", owner: "Launch", severity: "Low", status: "Mapped" },
+      { gap: "Voice beta benchmark scripts", surface: "Voice Ops", owner: "AI QA", severity: "Medium", status: "Review" }
+    ],
+    dependencyMap: [
+      { dependency: "Payment processor", consumers: "Billing, plans, entitlements", criticality: "High", owner: "Revenue Ops", status: "Healthy" },
+      { dependency: "Hugging Face model sources", consumers: "AI gateway, evals", criticality: "High", owner: "AI Ops", status: "Watch" },
+      { dependency: "Push notification provider", consumers: "Mobile, communications", criticality: "Medium", owner: "Mobile Ops", status: "Healthy" },
+      { dependency: "Object storage", consumers: "Uploads, multimodal, evidence", criticality: "High", owner: "Infrastructure", status: "Protected" }
+    ],
+    lifecycleQueue: [
+      { asset: "Old pricing experiment flags", action: "Archive", owner: "Growth", due: "Aug 16", status: "Queued" },
+      { asset: "Deprecated model route v0", action: "Retire", owner: "AI Ops", due: "Aug 20", status: "Review" },
+      { asset: "Legacy admin export CSV", action: "Restrict", owner: "Security", due: "Aug 14", status: "Urgent" },
+      { asset: "Mobile beta artifact set", action: "Retain", owner: "Mobile Ops", due: "Per release", status: "Active" }
+    ],
+    guardrails: [
+      "Every service, data store, model route, integration, report, and admin tool needs an accountable owner and lifecycle state.",
+      "Critical asset inventory should link dependencies, backup posture, access controls, incidents, and change history.",
+      "Assets without owners should not be used for production decisions, compliance evidence, or customer commitments.",
+      "Asset views must expose metadata and ownership without leaking raw prompts, files, payment secrets, or private customer data."
+    ]
+  };
+}
+
 function adminDataQualityOpsData() {
   return state.adminDataQualityOps || {
     summary: { certifiedMetrics: 42, freshnessHealth: "96%", reconciliationGaps: 7, lineageCoverage: "89%", blockedReports: 3 },
@@ -6836,6 +6901,26 @@ function recoveryRunbookRow(item) {
   return `<div class="table-row"><strong>${item.runbook}</strong><span>${item.trigger}</span><span>${item.tested}</span><span>${item.status}</span></div>`;
 }
 
+function serviceInventoryRow(item) {
+  return `<div class="table-row"><strong>${item.service}</strong><span>${item.tier}</span><span>${item.dependency}</span><span>${item.status}</span></div>`;
+}
+
+function dataAssetRow(item) {
+  return `<div class="table-row"><strong>${item.asset}</strong><span>${item.class}</span><span>${item.region}</span><span>${item.status}</span></div>`;
+}
+
+function ownershipGapRow(item) {
+  return `<div class="table-row"><strong>${item.gap}</strong><span>${item.surface}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
+function dependencyMapRow(item) {
+  return `<div class="table-row"><strong>${item.dependency}</strong><span>${item.consumers}</span><span>${item.criticality}</span><span>${item.status}</span></div>`;
+}
+
+function lifecycleQueueRow(item) {
+  return `<div class="table-row"><strong>${item.asset}</strong><span>${item.action}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
 function metricHealthRow(item) {
   return `<div class="table-row"><strong>${item.metric}</strong><span>${item.source}</span><span>${item.freshness}</span><span>${item.status}</span></div>`;
 }
@@ -8193,6 +8278,7 @@ function adminView() {
   if (state.adminSection === "auditOps") loadAdminAuditOps();
   if (state.adminSection === "changeOps") loadAdminChangeOps();
   if (state.adminSection === "backupOps") loadAdminBackupOps();
+  if (state.adminSection === "assetOps") loadAdminAssetOps();
   if (state.adminSection === "dataQualityOps") loadAdminDataQualityOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
@@ -8330,6 +8416,7 @@ function adminSectionView(section, readiness) {
     auditOps: adminAuditOps,
     changeOps: adminChangeOps,
     backupOps: adminBackupOps,
+    assetOps: adminAssetOps,
     dataQualityOps: adminDataQualityOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
@@ -10774,6 +10861,55 @@ function adminBackupOps() {
   `;
 }
 
+function adminAssetOps() {
+  const assets = adminAssetOpsData();
+  const summary = assets.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Tracked assets", summary.trackedAssets || "284")}
+      ${metric("Critical assets", summary.criticalAssets || "42")}
+      ${metric("Owner coverage", summary.ownerCoverage || "96%")}
+      ${metric("Dependency coverage", summary.dependencyCoverage || "88%")}
+      <section class="admin-card full-admin">
+        <h2>Service inventory</h2>
+        <div class="table admin-table-4">
+          ${assets.serviceInventory.map(serviceInventoryRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Data assets</h2>
+        <div class="table admin-table-4">
+          ${assets.dataAssets.map(dataAssetRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Ownership gaps</h2>
+        <div class="table admin-table-4">
+          ${assets.ownershipGaps.map(ownershipGapRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Dependency map</h2>
+        <div class="table admin-table-4">
+          ${assets.dependencyMap.map(dependencyMapRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Lifecycle queue</h2>
+        <div class="table admin-table-4">
+          ${assets.lifecycleQueue.map(lifecycleQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Asset guardrails</h2>
+        <div class="admin-checklist">
+          ${assets.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminDataQualityOps() {
   const quality = adminDataQualityOpsData();
   const summary = quality.summary || {};
@@ -13033,6 +13169,7 @@ function bindEvents() {
       loadAdminAuditOps(true);
       loadAdminChangeOps(true);
       loadAdminBackupOps(true);
+      loadAdminAssetOps(true);
       loadAdminDataQualityOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);
