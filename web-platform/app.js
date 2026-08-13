@@ -121,6 +121,7 @@ const ADMIN_SECTIONS = [
   { id: "creatorOps", label: "Creator Ops", desc: "Creator Studio content modes, template health, brand safety, monetization, and workflow queues." },
   { id: "classroomOps", label: "Classroom Ops", desc: "Learning sessions, curriculum coverage, pedagogy signals, safety queues, and education partnerships." },
   { id: "marketOps", label: "Market Ops", desc: "SMB customer replies, pricing copy, commerce risks, market templates, and upgrade signals." },
+  { id: "multimodalOps", label: "Multimodal Ops", desc: "Uploads, images, documents, OCR, attachment safety, retention, and device upload health." },
   { id: "passport", label: "Passport", desc: "Language Passport completion, field quality, language pairs, personalization surfaces, consent, and risk controls." },
   { id: "localization", label: "Localize", desc: "UI copy localization, translation QA, glossary control, reviewer workflow, and release guardrails." },
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
@@ -315,6 +316,8 @@ const DEFAULT_STATE = {
   adminClassroomLearningLoadedAt: null,
   adminMarketCommerce: null,
   adminMarketCommerceLoadedAt: null,
+  adminMultimodal: null,
+  adminMultimodalLoadedAt: null,
   adminLanguagePassport: null,
   adminLanguagePassportLoadedAt: null,
   adminLocalizationContent: null,
@@ -1323,6 +1326,26 @@ async function loadAdminMarketCommerce(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminMultimodal(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminMultimodalLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/multimodal`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Multimodal operations unavailable.");
+    state.adminMultimodal = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminMultimodalLoadedAt = Date.now();
+  } catch {
+    state.adminMultimodalLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminLanguagePassport(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminLanguagePassportLoadedAt || 0;
@@ -2091,7 +2114,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -3035,6 +3058,49 @@ function adminMarketCommerceData() {
       "Business copy should preserve respectful local tone and avoid manipulative pressure or discriminatory targeting.",
       "Regulated products, financial advice, medical claims, and government services should trigger stricter policy checks.",
       "Admin views should monitor aggregate commerce quality and conversion without exposing private customer messages."
+    ]
+  };
+}
+
+function adminMultimodalData() {
+  return state.adminMultimodal || {
+    summary: { attachmentsToday: "38.6K", successfulParses: "93.4%", unsafeBlocks: 284, storageUsed: "2.8TB", mobileUploadSuccess: "91%" },
+    modalityRoutes: [
+      { route: "Image understanding", volume: "12.4K", quality: "92%", fallback: "Text clarification", status: "Live" },
+      { route: "Document OCR", volume: "9.8K", quality: "89%", fallback: "Manual text paste", status: "Improving" },
+      { route: "PDF summarization", volume: "7.2K", quality: "88%", fallback: "Page chunking", status: "Live" },
+      { route: "Audio note parse", volume: "5.1K", quality: "84%", fallback: "Voice Ops", status: "Testing" },
+      { route: "Camera capture", volume: "4.1K", quality: "86%", fallback: "Retry upload", status: "Mobile beta" }
+    ],
+    attachmentSafety: [
+      { signal: "PII in uploaded document", count: 118, owner: "Privacy", action: "Redact before review", status: "Guarded" },
+      { signal: "Unsafe image content", count: 84, owner: "Trust", action: "Block and explain", status: "Controlled" },
+      { signal: "Copyrighted worksheet/book scan", count: 51, owner: "Policy", action: "Limit transformation", status: "Review" },
+      { signal: "Malicious file attempt", count: 31, owner: "Security", action: "Quarantine", status: "Urgent" }
+    ],
+    processingQueues: [
+      { queue: "OCR retry", count: 182, latency: "2.8s p95", owner: "Platform", status: "Busy" },
+      { queue: "Large PDF chunking", count: 96, latency: "4.1s p95", owner: "AI Ops", status: "Watch" },
+      { queue: "Mobile upload retry", count: 74, latency: "3.3s p95", owner: "Mobile", status: "Improving" },
+      { queue: "Safety review samples", count: 42, latency: "Human review", owner: "Trust", status: "Guarded" }
+    ],
+    storageRetention: [
+      { bucket: "Temporary chat uploads", retention: "24h", volume: "1.2TB", owner: "Privacy", status: "Live" },
+      { bucket: "User-saved files", retention: "User controlled", volume: "940GB", owner: "Product", status: "Beta" },
+      { bucket: "Review-safe redacted samples", retention: "30d", volume: "420GB", owner: "Trust", status: "Controlled" },
+      { bucket: "Blocked/quarantined files", retention: "7d", volume: "18GB", owner: "Security", status: "Guarded" }
+    ],
+    deviceHealth: [
+      { device: "Desktop web", uploadSuccess: "96%", issue: "Large PDFs", owner: "Web", status: "Healthy" },
+      { device: "Mobile web", uploadSuccess: "88%", issue: "Camera permissions", owner: "Web/Mobile", status: "Watch" },
+      { device: "Android app", uploadSuccess: "92%", issue: "Low-memory retries", owner: "Android", status: "Testing" },
+      { device: "iOS app", uploadSuccess: "90%", issue: "Background upload pause", owner: "iOS", status: "Improving" }
+    ],
+    guardrails: [
+      "Uploaded files should be scanned, classified, and minimized before any reviewer or model-improvement workflow.",
+      "Private images, documents, audio, and camera captures must respect retention, deletion, and user export controls.",
+      "Low-confidence OCR or image understanding should ask clarifying questions instead of inventing content.",
+      "Admin views should show aggregate multimodal health without exposing raw private attachments."
     ]
   };
 }
@@ -5631,6 +5697,26 @@ function marketUpgradeRow(item) {
   return `<div class="table-row"><strong>${item.plan}</strong><span>${item.businessUsers}</span><span>${item.upgradeIntent}</span><span>${item.status}</span></div>`;
 }
 
+function multimodalRouteRow(item) {
+  return `<div class="table-row"><strong>${item.route}</strong><span>${item.volume}</span><span>${item.quality}</span><span>${item.status}</span></div>`;
+}
+
+function multimodalSafetyRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.count} items</span><span>${item.action}</span><span>${item.status}</span></div>`;
+}
+
+function multimodalQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.latency}</span><span>${item.status}</span></div>`;
+}
+
+function multimodalStorageRow(item) {
+  return `<div class="table-row"><strong>${item.bucket}</strong><span>${item.retention}</span><span>${item.volume}</span><span>${item.status}</span></div>`;
+}
+
+function multimodalDeviceRow(item) {
+  return `<div class="table-row"><strong>${item.device}</strong><span>${item.uploadSuccess}</span><span>${item.issue}</span><span>${item.status}</span></div>`;
+}
+
 function passportFunnelRow(item) {
   return `<div class="table-row"><strong>${item.step}</strong><span>${item.users}</span><span>${item.conversion}</span><span>${item.owner}</span></div>`;
 }
@@ -7028,6 +7114,7 @@ function adminView() {
   if (state.adminSection === "creatorOps") loadAdminCreatorStudio();
   if (state.adminSection === "classroomOps") loadAdminClassroomLearning();
   if (state.adminSection === "marketOps") loadAdminMarketCommerce();
+  if (state.adminSection === "multimodalOps") loadAdminMultimodal();
   if (state.adminSection === "passport") loadAdminLanguagePassport();
   if (state.adminSection === "localization") loadAdminLocalizationContent();
   if (state.adminSection === "data") loadAdminDataGovernance();
@@ -7226,6 +7313,7 @@ function adminSectionView(section, readiness) {
     creatorOps: adminCreatorStudio,
     classroomOps: adminClassroomLearning,
     marketOps: adminMarketCommerce,
+    multimodalOps: adminMultimodal,
     passport: adminLanguagePassport,
     localization: adminLocalizationContent,
     data: adminDataGovernance,
@@ -9825,6 +9913,55 @@ function adminMarketCommerce() {
   `;
 }
 
+function adminMultimodal() {
+  const multimodal = adminMultimodalData();
+  const summary = multimodal.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Attachments today", summary.attachmentsToday || "38.6K")}
+      ${metric("Successful parses", summary.successfulParses || "93.4%")}
+      ${metric("Unsafe blocks", summary.unsafeBlocks || "284")}
+      ${metric("Mobile upload", summary.mobileUploadSuccess || "91%")}
+      <section class="admin-card full-admin">
+        <h2>Modality routes</h2>
+        <div class="table admin-table-4">
+          ${multimodal.modalityRoutes.map(multimodalRouteRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Attachment safety</h2>
+        <div class="table admin-table-4">
+          ${multimodal.attachmentSafety.map(multimodalSafetyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Processing queues</h2>
+        <div class="table admin-table-4">
+          ${multimodal.processingQueues.map(multimodalQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Storage and retention</h2>
+        <div class="table admin-table-4">
+          ${multimodal.storageRetention.map(multimodalStorageRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Device upload health</h2>
+        <div class="table admin-table-4">
+          ${multimodal.deviceHealth.map(multimodalDeviceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Multimodal guardrails</h2>
+        <div class="admin-checklist">
+          ${multimodal.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminLanguagePassport() {
   const passport = adminLanguagePassportData();
   const summary = passport.summary || {};
@@ -11199,6 +11336,7 @@ function bindEvents() {
       loadAdminCreatorStudio(true);
       loadAdminClassroomLearning(true);
       loadAdminMarketCommerce(true);
+      loadAdminMultimodal(true);
       loadAdminLanguagePassport(true);
       loadAdminLocalizationContent(true);
       loadAdminDataGovernance(true);
