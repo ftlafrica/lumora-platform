@@ -117,6 +117,7 @@ const ADMIN_SECTIONS = [
   { id: "reviewers", label: "Reviewers", desc: "Human QA reviewer network, calibration, review queues, workload, onboarding, and quality guardrails." },
   { id: "improvement", label: "Improve", desc: "Correction feedback loops, consent gates, reviewer decisions, eval impact, and training handoffs." },
   { id: "voiceOps", label: "Voice Ops", desc: "African speech routes, accent coverage, mobile capture, consent, latency, and voice review queues." },
+  { id: "passport", label: "Passport", desc: "Language Passport completion, field quality, language pairs, personalization surfaces, consent, and risk controls." },
   { id: "localization", label: "Localize", desc: "UI copy localization, translation QA, glossary control, reviewer workflow, and release guardrails." },
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
   { id: "memory", label: "Memory", desc: "Personalization memory, language passport controls, consent, deletion/export, and safe remembered context." },
@@ -302,6 +303,8 @@ const DEFAULT_STATE = {
   adminCorrectionImprovementLoadedAt: null,
   adminVoiceSpeech: null,
   adminVoiceSpeechLoadedAt: null,
+  adminLanguagePassport: null,
+  adminLanguagePassportLoadedAt: null,
   adminLocalizationContent: null,
   adminLocalizationContentLoadedAt: null,
   adminDataGovernance: null,
@@ -1228,6 +1231,26 @@ async function loadAdminVoiceSpeech(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminLanguagePassport(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminLanguagePassportLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/language-passport`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Language Passport operations unavailable.");
+    state.adminLanguagePassport = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminLanguagePassportLoadedAt = Date.now();
+  } catch {
+    state.adminLanguagePassportLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminLocalizationContent(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminLocalizationContentLoadedAt || 0;
@@ -1976,7 +1999,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2744,6 +2767,58 @@ function adminVoiceSpeechData() {
       "Low-confidence speech routes should disclose uncertainty and offer text fallback instead of pretending accuracy.",
       "Voice quality must be measured by language, accent, noise condition, device class, and code-switching behavior.",
       "Admin views should show aggregate voice operations without exposing raw audio, transcripts, or speaker identity broadly."
+    ]
+  };
+}
+
+function adminLanguagePassportData() {
+  return state.adminLanguagePassport || {
+    summary: { completionRate: "78.2%", activePassports: "14.4K", primaryLanguages: 54, bridgePairs: 128, consentHealth: "92%" },
+    completionFunnel: [
+      { step: "Signup started", users: "2,184", conversion: "100%", issue: "None", owner: "Growth" },
+      { step: "Country and city added", users: "1,926", conversion: "88.2%", issue: "City autocomplete", owner: "Product" },
+      { step: "Main language selected", users: "1,812", conversion: "82.9%", issue: "Dialect labels", owner: "Language QA" },
+      { step: "Bridge language selected", users: "1,760", conversion: "80.6%", issue: "Education copy", owner: "Content" },
+      { step: "Language Passport completed", users: "1,708", conversion: "78.2%", issue: "Mobile copy test", owner: "Product" }
+    ],
+    fieldQuality: [
+      { field: "Country", coverage: "91%", quality: "High", risk: "VPN/location mismatch", status: "Healthy" },
+      { field: "City", coverage: "84%", quality: "Medium", risk: "Free-text variants", status: "Watch" },
+      { field: "Main language", coverage: "96%", quality: "High", risk: "Dialect not captured", status: "Healthy" },
+      { field: "Bridge language", coverage: "89%", quality: "High", risk: "Literal translation confusion", status: "Healthy" },
+      { field: "Tone preference", coverage: "74%", quality: "Medium", risk: "Tone labels need localization", status: "Testing" }
+    ],
+    languagePairs: [
+      { pair: "Yoruba + English", users: "4,820", growth: "+12%", quality: "94%", status: "Healthy" },
+      { pair: "Pidgin + English", users: "3,104", growth: "+18%", quality: "89%", status: "Improving" },
+      { pair: "Swahili + English", users: "2,760", growth: "+15%", quality: "92%", status: "Healthy" },
+      { pair: "Hausa + English", users: "1,448", growth: "+9%", quality: "87%", status: "Watch" },
+      { pair: "Arabic + French", users: "864", growth: "+7%", quality: "78%", status: "Building" }
+    ],
+    personalizationSurfaces: [
+      { surface: "Fresh chat", usage: "92%", signal: "Prompt chips and greeting", owner: "Product", status: "Live" },
+      { surface: "Active chat", usage: "88%", signal: "Language + tone route", owner: "AI Ops", status: "Live" },
+      { surface: "Voice Circle", usage: "41%", signal: "Accent + bridge language", owner: "Voice Ops", status: "Beta" },
+      { surface: "Creator Studio", usage: "36%", signal: "Tone and market copy", owner: "Product", status: "Design" },
+      { surface: "Mobile onboarding", usage: "74%", signal: "Compact passport cards", owner: "Mobile", status: "Testing" }
+    ],
+    consentControls: [
+      { control: "Editable profile fields", coverage: "100%", owner: "Product", status: "Live" },
+      { control: "Memory opt-in", coverage: "88%", owner: "Privacy", status: "Live" },
+      { control: "Personalization explanation", coverage: "72%", owner: "Content Design", status: "Improving" },
+      { control: "Delete/export passport", coverage: "Designed", owner: "Privacy", status: "Roadmap" }
+    ],
+    qualityRisks: [
+      { risk: "Passport values overfit response tone", impact: "Medium", owner: "AI QA", mitigation: "User can override per chat", status: "Mitigating" },
+      { risk: "Dialect not specific enough", impact: "Medium", owner: "Language QA", mitigation: "Add dialect chips gradually", status: "Design" },
+      { risk: "Regional assumptions from city/country", impact: "High", owner: "Policy", mitigation: "Use as context, not identity claim", status: "Guarded" },
+      { risk: "Sensitive profile exposure", impact: "High", owner: "Privacy", mitigation: "Aggregate admin views only", status: "Controlled" }
+    ],
+    guardrails: [
+      "Language Passport fields must stay user-editable, explainable, exportable, and deletable.",
+      "Admin views should aggregate passport adoption and quality without exposing individual profiles.",
+      "Country, city, language, and tone preferences should guide responses without stereotyping or forcing cultural assumptions.",
+      "Passport signals must support per-chat override and clear memory/privacy controls on web, Android, and iOS."
     ]
   };
 }
@@ -5208,6 +5283,30 @@ function voiceReviewQueueRow(item) {
   return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.language}</span><span>${item.status}</span></div>`;
 }
 
+function passportFunnelRow(item) {
+  return `<div class="table-row"><strong>${item.step}</strong><span>${item.users}</span><span>${item.conversion}</span><span>${item.owner}</span></div>`;
+}
+
+function passportFieldQualityRow(item) {
+  return `<div class="table-row"><strong>${item.field}</strong><span>${item.coverage}</span><span>${item.quality}</span><span>${item.status}</span></div>`;
+}
+
+function passportLanguagePairRow(item) {
+  return `<div class="table-row"><strong>${item.pair}</strong><span>${item.users}</span><span>${item.quality}</span><span>${item.status}</span></div>`;
+}
+
+function passportSurfaceRow(item) {
+  return `<div class="table-row"><strong>${item.surface}</strong><span>${item.usage}</span><span>${item.signal}</span><span>${item.status}</span></div>`;
+}
+
+function passportConsentRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.coverage}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
+function passportRiskRow(item) {
+  return `<div class="table-row"><strong>${item.risk}</strong><span>${item.impact}</span><span>${item.mitigation}</span><span>${item.status}</span></div>`;
+}
+
 function localizationReadinessRow(item) {
   return `<div class="table-row"><strong>${item.locale}</strong><span>${item.surface}</span><span>${item.completion}</span><span>${item.status}</span></div>`;
 }
@@ -6577,6 +6676,7 @@ function adminView() {
   if (state.adminSection === "reviewers") loadAdminReviewerNetwork();
   if (state.adminSection === "improvement") loadAdminCorrectionImprovement();
   if (state.adminSection === "voiceOps") loadAdminVoiceSpeech();
+  if (state.adminSection === "passport") loadAdminLanguagePassport();
   if (state.adminSection === "localization") loadAdminLocalizationContent();
   if (state.adminSection === "data") loadAdminDataGovernance();
   if (state.adminSection === "memory") loadAdminMemoryPersonalization();
@@ -6770,6 +6870,7 @@ function adminSectionView(section, readiness) {
     reviewers: adminReviewerNetwork,
     improvement: adminCorrectionImprovement,
     voiceOps: adminVoiceSpeech,
+    passport: adminLanguagePassport,
     localization: adminLocalizationContent,
     data: adminDataGovernance,
     memory: adminMemoryPersonalization,
@@ -9172,6 +9273,61 @@ function adminVoiceSpeech() {
   `;
 }
 
+function adminLanguagePassport() {
+  const passport = adminLanguagePassportData();
+  const summary = passport.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Completion", summary.completionRate || "78.2%")}
+      ${metric("Active passports", summary.activePassports || "14.4K")}
+      ${metric("Primary languages", summary.primaryLanguages || "54")}
+      ${metric("Bridge pairs", summary.bridgePairs || "128")}
+      <section class="admin-card full-admin">
+        <h2>Completion funnel</h2>
+        <div class="table admin-table-4">
+          ${passport.completionFunnel.map(passportFunnelRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Field quality</h2>
+        <div class="table admin-table-4">
+          ${passport.fieldQuality.map(passportFieldQualityRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Language and bridge pairs</h2>
+        <div class="table admin-table-4">
+          ${passport.languagePairs.map(passportLanguagePairRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Personalization surfaces</h2>
+        <div class="table admin-table-4">
+          ${passport.personalizationSurfaces.map(passportSurfaceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Consent controls</h2>
+        <div class="table admin-table-4">
+          ${passport.consentControls.map(passportConsentRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Passport quality risks</h2>
+        <div class="table admin-table-4">
+          ${passport.qualityRisks.map(passportRiskRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Language Passport guardrails</h2>
+        <div class="admin-checklist">
+          ${passport.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminLocalizationContent() {
   const localization = adminLocalizationContentData();
   const summary = localization.summary || {};
@@ -10487,6 +10643,7 @@ function bindEvents() {
       loadAdminReviewerNetwork(true);
       loadAdminCorrectionImprovement(true);
       loadAdminVoiceSpeech(true);
+      loadAdminLanguagePassport(true);
       loadAdminLocalizationContent(true);
       loadAdminDataGovernance(true);
       loadAdminMemoryPersonalization(true);

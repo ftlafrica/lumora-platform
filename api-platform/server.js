@@ -1566,6 +1566,56 @@ const voiceSpeechOperations = {
   ]
 };
 
+const languagePassportOperations = {
+  summary: { completionRate: "78.2%", activePassports: "14.4K", primaryLanguages: 54, bridgePairs: 128, consentHealth: "92%" },
+  completionFunnel: [
+    { step: "Signup started", users: "2,184", conversion: "100%", issue: "None", owner: "Growth" },
+    { step: "Country and city added", users: "1,926", conversion: "88.2%", issue: "City autocomplete", owner: "Product" },
+    { step: "Main language selected", users: "1,812", conversion: "82.9%", issue: "Dialect labels", owner: "Language QA" },
+    { step: "Bridge language selected", users: "1,760", conversion: "80.6%", issue: "Education copy", owner: "Content" },
+    { step: "Language Passport completed", users: "1,708", conversion: "78.2%", issue: "Mobile copy test", owner: "Product" }
+  ],
+  fieldQuality: [
+    { field: "Country", coverage: "91%", quality: "High", risk: "VPN/location mismatch", status: "Healthy" },
+    { field: "City", coverage: "84%", quality: "Medium", risk: "Free-text variants", status: "Watch" },
+    { field: "Main language", coverage: "96%", quality: "High", risk: "Dialect not captured", status: "Healthy" },
+    { field: "Bridge language", coverage: "89%", quality: "High", risk: "Literal translation confusion", status: "Healthy" },
+    { field: "Tone preference", coverage: "74%", quality: "Medium", risk: "Tone labels need localization", status: "Testing" }
+  ],
+  languagePairs: [
+    { pair: "Yoruba + English", users: "4,820", growth: "+12%", quality: "94%", status: "Healthy" },
+    { pair: "Pidgin + English", users: "3,104", growth: "+18%", quality: "89%", status: "Improving" },
+    { pair: "Swahili + English", users: "2,760", growth: "+15%", quality: "92%", status: "Healthy" },
+    { pair: "Hausa + English", users: "1,448", growth: "+9%", quality: "87%", status: "Watch" },
+    { pair: "Arabic + French", users: "864", growth: "+7%", quality: "78%", status: "Building" }
+  ],
+  personalizationSurfaces: [
+    { surface: "Fresh chat", usage: "92%", signal: "Prompt chips and greeting", owner: "Product", status: "Live" },
+    { surface: "Active chat", usage: "88%", signal: "Language + tone route", owner: "AI Ops", status: "Live" },
+    { surface: "Voice Circle", usage: "41%", signal: "Accent + bridge language", owner: "Voice Ops", status: "Beta" },
+    { surface: "Creator Studio", usage: "36%", signal: "Tone and market copy", owner: "Product", status: "Design" },
+    { surface: "Mobile onboarding", usage: "74%", signal: "Compact passport cards", owner: "Mobile", status: "Testing" }
+  ],
+  consentControls: [
+    { control: "Editable profile fields", coverage: "100%", owner: "Product", status: "Live" },
+    { control: "Memory opt-in", coverage: "88%", owner: "Privacy", status: "Live" },
+    { control: "Personalization explanation", coverage: "72%", owner: "Content Design", status: "Improving" },
+    { control: "Delete/export passport", coverage: "Designed", owner: "Privacy", status: "Roadmap" }
+  ],
+  qualityRisks: [
+    { risk: "Passport values overfit response tone", impact: "Medium", owner: "AI QA", mitigation: "User can override per chat", status: "Mitigating" },
+    { risk: "Dialect not specific enough", impact: "Medium", owner: "Language QA", mitigation: "Add dialect chips gradually", status: "Design" },
+    { risk: "Regional assumptions from city/country", impact: "High", owner: "Policy", mitigation: "Use as context, not identity claim", status: "Guarded" },
+    { risk: "Sensitive profile exposure", impact: "High", owner: "Privacy", mitigation: "Aggregate admin views only", status: "Controlled" }
+  ],
+  guardrails: [
+    "Language Passport fields must stay user-editable, explainable, exportable, and deletable.",
+    "Admin views should aggregate passport adoption and quality without exposing individual profiles.",
+    "Country, city, language, and tone preferences should guide responses without stereotyping or forcing cultural assumptions.",
+    "Passport signals must support per-chat override and clear memory/privacy controls on web, Android, and iOS."
+  ]
+};
+
 const localizationContentOperations = {
   summary: { localesInProgress: 18, stringsReady: "84%", glossaryTerms: 420, reviewerBacklog: 96, releaseBlockers: 3 },
   localeReadiness: [
@@ -3003,6 +3053,10 @@ function adminVoiceSpeechOperations() {
   return voiceSpeechOperations;
 }
 
+function adminLanguagePassportOperations() {
+  return languagePassportOperations;
+}
+
 function adminLocalizationContentOperations() {
   return localizationContentOperations;
 }
@@ -3184,6 +3238,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "reviewers:manage",
       "corrections:improve",
       "voice:operate",
+      "passport:operate",
       "localization:manage",
       "data:govern",
       "memory:govern",
@@ -3620,6 +3675,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminVoiceSpeechOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/language-passport") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("language_passport_viewed", "Passport", "Info", "Product");
+      return sendJson(response, 200, adminLanguagePassportOperations());
+    }
+
     if (request.method === "GET" && url.pathname === "/v1/admin/localization-content") {
       if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
         return sendJson(response, 403, { error: "Seed admin access required" });
@@ -3892,4 +3955,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminLanguagePassportOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
