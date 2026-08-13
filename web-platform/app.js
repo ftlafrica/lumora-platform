@@ -117,6 +117,7 @@ const ADMIN_SECTIONS = [
   { id: "reviewers", label: "Reviewers", desc: "Human QA reviewer network, calibration, review queues, workload, onboarding, and quality guardrails." },
   { id: "improvement", label: "Improve", desc: "Correction feedback loops, consent gates, reviewer decisions, eval impact, and training handoffs." },
   { id: "voiceOps", label: "Voice Ops", desc: "African speech routes, accent coverage, mobile capture, consent, latency, and voice review queues." },
+  { id: "translationOps", label: "Translate Ops", desc: "Translation route quality, meaning preservation, dialect drift, review queues, and enterprise controls." },
   { id: "passport", label: "Passport", desc: "Language Passport completion, field quality, language pairs, personalization surfaces, consent, and risk controls." },
   { id: "localization", label: "Localize", desc: "UI copy localization, translation QA, glossary control, reviewer workflow, and release guardrails." },
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
@@ -303,6 +304,8 @@ const DEFAULT_STATE = {
   adminCorrectionImprovementLoadedAt: null,
   adminVoiceSpeech: null,
   adminVoiceSpeechLoadedAt: null,
+  adminTranslationOps: null,
+  adminTranslationOpsLoadedAt: null,
   adminLanguagePassport: null,
   adminLanguagePassportLoadedAt: null,
   adminLocalizationContent: null,
@@ -1231,6 +1234,26 @@ async function loadAdminVoiceSpeech(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminTranslationOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminTranslationOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/translation-ops`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Translation operations unavailable.");
+    state.adminTranslationOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminTranslationOpsLoadedAt = Date.now();
+  } catch {
+    state.adminTranslationOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminLanguagePassport(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminLanguagePassportLoadedAt || 0;
@@ -1999,7 +2022,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2767,6 +2790,50 @@ function adminVoiceSpeechData() {
       "Low-confidence speech routes should disclose uncertainty and offer text fallback instead of pretending accuracy.",
       "Voice quality must be measured by language, accent, noise condition, device class, and code-switching behavior.",
       "Admin views should show aggregate voice operations without exposing raw audio, transcripts, or speaker identity broadly."
+    ]
+  };
+}
+
+function adminTranslationOpsData() {
+  return state.adminTranslationOps || {
+    summary: { translationRequests: "286K", meaningPreservation: "91%", dialectDrift: "3.8%", reviewBacklog: 214, enterpriseUsage: "18%" },
+    routeQuality: [
+      { route: "AfriNLLB translation", source: "huggingface.co/masakhane/afrinllb-200-distilled-600M", pairs: "200+ African-centered", quality: "91%", status: "Primary" },
+      { route: "NLLB fallback", source: "huggingface.co/facebook/nllb-200-distilled-600M", pairs: "Broad fallback", quality: "86%", status: "Guarded" },
+      { route: "Tone preservation layer", source: "Lumora orchestration", pairs: "Priority markets", quality: "88%", status: "Live" },
+      { route: "Human review assist", source: "Reviewer network", pairs: "High-risk/legal/business", quality: "96%", status: "Queued" }
+    ],
+    languagePairs: [
+      { pair: "Yoruba <> English", volume: "74K", preservation: "93%", drift: "2.8%", status: "Healthy" },
+      { pair: "Pidgin <> English", volume: "61K", preservation: "89%", drift: "5.4%", status: "Improving" },
+      { pair: "Swahili <> English", volume: "48K", preservation: "92%", drift: "3.1%", status: "Healthy" },
+      { pair: "Hausa <> English", volume: "34K", preservation: "87%", drift: "6.2%", status: "Watch" },
+      { pair: "Arabic <> French", volume: "22K", preservation: "82%", drift: "7.8%", status: "Building" }
+    ],
+    surfaceUsage: [
+      { surface: "Translate mode", requests: "128K", segment: "Consumers", owner: "Product", status: "Live" },
+      { surface: "Market Mode", requests: "54K", segment: "SMBs", owner: "Growth", status: "Live" },
+      { surface: "Support macros", requests: "38K", segment: "Enterprise", owner: "Support", status: "Review" },
+      { surface: "Classroom explainers", requests: "31K", segment: "Education", owner: "Learning", status: "Testing" },
+      { surface: "API translation", requests: "35K", segment: "Partners", owner: "API", status: "Beta" }
+    ],
+    riskQueues: [
+      { queue: "Meaning changed", count: 82, language: "Pidgin/Hausa", owner: "Language QA", status: "Urgent" },
+      { queue: "Sensitive legal/medical text", count: 44, language: "Multi-market", owner: "Policy", status: "Guarded" },
+      { queue: "Dialect mismatch", count: 58, language: "Yoruba/Arabic", owner: "Reviewers", status: "Busy" },
+      { queue: "Business pricing ambiguity", count: 30, language: "Market Mode", owner: "CX", status: "Review" }
+    ],
+    enterpriseControls: [
+      { control: "Confidential translation mode", coverage: "Designed", owner: "Enterprise", status: "Roadmap" },
+      { control: "Reviewer escalation approval", coverage: "100%", owner: "Trust", status: "Live" },
+      { control: "Glossary/domain term lock", coverage: "68%", owner: "Localization", status: "Beta" },
+      { control: "Translation export audit", coverage: "82%", owner: "Compliance", status: "Improving" }
+    ],
+    guardrails: [
+      "Translations should preserve meaning first, then tone, then local style; style must never override factual accuracy.",
+      "High-stakes medical, legal, financial, or government text should show uncertainty and route to review where appropriate.",
+      "Dialect and tone choices should be user-controlled and reversible, with clear source and target language labels.",
+      "Admin translation views should show aggregate quality and queues without exposing private translated content."
     ]
   };
 }
@@ -5283,6 +5350,26 @@ function voiceReviewQueueRow(item) {
   return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.language}</span><span>${item.status}</span></div>`;
 }
 
+function translationRouteRow(item) {
+  return `<div class="table-row"><strong>${item.route}</strong><span>${item.pairs}</span><span>${item.quality}</span><span>${item.status}</span></div>`;
+}
+
+function translationPairRow(item) {
+  return `<div class="table-row"><strong>${item.pair}</strong><span>${item.volume}</span><span>${item.preservation}</span><span>${item.status}</span></div>`;
+}
+
+function translationSurfaceRow(item) {
+  return `<div class="table-row"><strong>${item.surface}</strong><span>${item.requests}</span><span>${item.segment}</span><span>${item.status}</span></div>`;
+}
+
+function translationRiskRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.language}</span><span>${item.status}</span></div>`;
+}
+
+function translationControlRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.coverage}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
 function passportFunnelRow(item) {
   return `<div class="table-row"><strong>${item.step}</strong><span>${item.users}</span><span>${item.conversion}</span><span>${item.owner}</span></div>`;
 }
@@ -6676,6 +6763,7 @@ function adminView() {
   if (state.adminSection === "reviewers") loadAdminReviewerNetwork();
   if (state.adminSection === "improvement") loadAdminCorrectionImprovement();
   if (state.adminSection === "voiceOps") loadAdminVoiceSpeech();
+  if (state.adminSection === "translationOps") loadAdminTranslationOps();
   if (state.adminSection === "passport") loadAdminLanguagePassport();
   if (state.adminSection === "localization") loadAdminLocalizationContent();
   if (state.adminSection === "data") loadAdminDataGovernance();
@@ -6870,6 +6958,7 @@ function adminSectionView(section, readiness) {
     reviewers: adminReviewerNetwork,
     improvement: adminCorrectionImprovement,
     voiceOps: adminVoiceSpeech,
+    translationOps: adminTranslationOps,
     passport: adminLanguagePassport,
     localization: adminLocalizationContent,
     data: adminDataGovernance,
@@ -9273,6 +9362,55 @@ function adminVoiceSpeech() {
   `;
 }
 
+function adminTranslationOps() {
+  const translation = adminTranslationOpsData();
+  const summary = translation.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Translation requests", summary.translationRequests || "286K")}
+      ${metric("Meaning preservation", summary.meaningPreservation || "91%")}
+      ${metric("Dialect drift", summary.dialectDrift || "3.8%")}
+      ${metric("Review backlog", summary.reviewBacklog || "214")}
+      <section class="admin-card full-admin">
+        <h2>Translation route quality</h2>
+        <div class="table admin-table-4">
+          ${translation.routeQuality.map(translationRouteRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Language pair health</h2>
+        <div class="table admin-table-4">
+          ${translation.languagePairs.map(translationPairRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Translation surface usage</h2>
+        <div class="table admin-table-4">
+          ${translation.surfaceUsage.map(translationSurfaceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Risk and review queues</h2>
+        <div class="table admin-table-4">
+          ${translation.riskQueues.map(translationRiskRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Enterprise translation controls</h2>
+        <div class="table admin-table-4">
+          ${translation.enterpriseControls.map(translationControlRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Translation guardrails</h2>
+        <div class="admin-checklist">
+          ${translation.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminLanguagePassport() {
   const passport = adminLanguagePassportData();
   const summary = passport.summary || {};
@@ -10643,6 +10781,7 @@ function bindEvents() {
       loadAdminReviewerNetwork(true);
       loadAdminCorrectionImprovement(true);
       loadAdminVoiceSpeech(true);
+      loadAdminTranslationOps(true);
       loadAdminLanguagePassport(true);
       loadAdminLocalizationContent(true);
       loadAdminDataGovernance(true);

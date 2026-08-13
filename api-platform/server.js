@@ -1566,6 +1566,48 @@ const voiceSpeechOperations = {
   ]
 };
 
+const translationOperations = {
+  summary: { translationRequests: "286K", meaningPreservation: "91%", dialectDrift: "3.8%", reviewBacklog: 214, enterpriseUsage: "18%" },
+  routeQuality: [
+    { route: "AfriNLLB translation", source: "huggingface.co/masakhane/afrinllb-200-distilled-600M", pairs: "200+ African-centered", quality: "91%", status: "Primary" },
+    { route: "NLLB fallback", source: "huggingface.co/facebook/nllb-200-distilled-600M", pairs: "Broad fallback", quality: "86%", status: "Guarded" },
+    { route: "Tone preservation layer", source: "Lumora orchestration", pairs: "Priority markets", quality: "88%", status: "Live" },
+    { route: "Human review assist", source: "Reviewer network", pairs: "High-risk/legal/business", quality: "96%", status: "Queued" }
+  ],
+  languagePairs: [
+    { pair: "Yoruba <> English", volume: "74K", preservation: "93%", drift: "2.8%", status: "Healthy" },
+    { pair: "Pidgin <> English", volume: "61K", preservation: "89%", drift: "5.4%", status: "Improving" },
+    { pair: "Swahili <> English", volume: "48K", preservation: "92%", drift: "3.1%", status: "Healthy" },
+    { pair: "Hausa <> English", volume: "34K", preservation: "87%", drift: "6.2%", status: "Watch" },
+    { pair: "Arabic <> French", volume: "22K", preservation: "82%", drift: "7.8%", status: "Building" }
+  ],
+  surfaceUsage: [
+    { surface: "Translate mode", requests: "128K", segment: "Consumers", owner: "Product", status: "Live" },
+    { surface: "Market Mode", requests: "54K", segment: "SMBs", owner: "Growth", status: "Live" },
+    { surface: "Support macros", requests: "38K", segment: "Enterprise", owner: "Support", status: "Review" },
+    { surface: "Classroom explainers", requests: "31K", segment: "Education", owner: "Learning", status: "Testing" },
+    { surface: "API translation", requests: "35K", segment: "Partners", owner: "API", status: "Beta" }
+  ],
+  riskQueues: [
+    { queue: "Meaning changed", count: 82, language: "Pidgin/Hausa", owner: "Language QA", status: "Urgent" },
+    { queue: "Sensitive legal/medical text", count: 44, language: "Multi-market", owner: "Policy", status: "Guarded" },
+    { queue: "Dialect mismatch", count: 58, language: "Yoruba/Arabic", owner: "Reviewers", status: "Busy" },
+    { queue: "Business pricing ambiguity", count: 30, language: "Market Mode", owner: "CX", status: "Review" }
+  ],
+  enterpriseControls: [
+    { control: "Confidential translation mode", coverage: "Designed", owner: "Enterprise", status: "Roadmap" },
+    { control: "Reviewer escalation approval", coverage: "100%", owner: "Trust", status: "Live" },
+    { control: "Glossary/domain term lock", coverage: "68%", owner: "Localization", status: "Beta" },
+    { control: "Translation export audit", coverage: "82%", owner: "Compliance", status: "Improving" }
+  ],
+  guardrails: [
+    "Translations should preserve meaning first, then tone, then local style; style must never override factual accuracy.",
+    "High-stakes medical, legal, financial, or government text should show uncertainty and route to review where appropriate.",
+    "Dialect and tone choices should be user-controlled and reversible, with clear source and target language labels.",
+    "Admin translation views should show aggregate quality and queues without exposing private translated content."
+  ]
+};
+
 const languagePassportOperations = {
   summary: { completionRate: "78.2%", activePassports: "14.4K", primaryLanguages: 54, bridgePairs: 128, consentHealth: "92%" },
   completionFunnel: [
@@ -3053,6 +3095,10 @@ function adminVoiceSpeechOperations() {
   return voiceSpeechOperations;
 }
 
+function adminTranslationOperations() {
+  return translationOperations;
+}
+
 function adminLanguagePassportOperations() {
   return languagePassportOperations;
 }
@@ -3238,6 +3284,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "reviewers:manage",
       "corrections:improve",
       "voice:operate",
+      "translation:operate",
       "passport:operate",
       "localization:manage",
       "data:govern",
@@ -3675,6 +3722,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminVoiceSpeechOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/translation-ops") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("translation_ops_viewed", "Translate Ops", "Info", "Language QA");
+      return sendJson(response, 200, adminTranslationOperations());
+    }
+
     if (request.method === "GET" && url.pathname === "/v1/admin/language-passport") {
       if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
         return sendJson(response, 403, { error: "Seed admin access required" });
@@ -3955,4 +4010,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminLanguagePassportOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminTranslationOperations, adminLanguagePassportOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
