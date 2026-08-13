@@ -51,6 +51,7 @@ This is the first backend foundation for connecting the Web Platform, Enterprise
 - `GET /v1/admin/status-ops`
 - `GET /v1/admin/incident-response`
 - `GET /v1/admin/audit-ops`
+- `GET /v1/admin/change-ops`
 - `GET /v1/admin/data-quality`
 - `GET /v1/admin/consent`
 - `GET /v1/admin/secrets`
@@ -141,6 +142,8 @@ It also exposes `GET /v1/admin/status-ops` for public status, incidents, mainten
 It also exposes `GET /v1/admin/incident-response` for incident command, severity lanes, rollback readiness, communications, postmortems, and incident response guardrails.
 
 It also exposes `GET /v1/admin/audit-ops` for immutable audit streams, privileged actions, access reviews, export controls, anomaly signals, and audit guardrails.
+
+It also exposes `GET /v1/admin/change-ops` for change calendar, approval gates, risk reviews, configuration drift, rollback plans, and change guardrails.
 
 It also exposes `GET /v1/admin/data-quality` for certified metrics, freshness monitors, reconciliation checks, lineage coverage, quality incidents, and decision-grade data guardrails.
 

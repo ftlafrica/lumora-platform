@@ -89,6 +89,7 @@ const ADMIN_SECTIONS = [
   { id: "statusOps", label: "Status Ops", desc: "Public status, incidents, maintenance windows, subscriber alerts, and postmortem readiness." },
   { id: "incidentResponse", label: "Incident Ops", desc: "Incident command, severity lanes, rollback readiness, communications, and postmortems." },
   { id: "auditOps", label: "Audit Ops", desc: "Immutable events, privileged actions, access reviews, exports, and audit anomalies." },
+  { id: "changeOps", label: "Change Ops", desc: "Change calendar, approvals, risk reviews, config drift, rollbacks, and release guardrails." },
   { id: "dataQualityOps", label: "Data Quality", desc: "Certified metrics, freshness, reconciliation, lineage, quality incidents, and decision-grade data." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
@@ -312,6 +313,8 @@ const DEFAULT_STATE = {
   adminIncidentResponseLoadedAt: null,
   adminAuditOps: null,
   adminAuditOpsLoadedAt: null,
+  adminChangeOps: null,
+  adminChangeOpsLoadedAt: null,
   adminDataQualityOps: null,
   adminDataQualityOpsLoadedAt: null,
   adminConsentOps: null,
@@ -1211,6 +1214,26 @@ async function loadAdminAuditOps(force = false) {
     state.adminAuditOpsLoadedAt = Date.now();
   } catch {
     state.adminAuditOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminChangeOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminChangeOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/change-ops`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Change operations unavailable.");
+    state.adminChangeOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminChangeOpsLoadedAt = Date.now();
+  } catch {
+    state.adminChangeOpsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -2344,7 +2367,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "dataquality:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "dataquality:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -4838,6 +4861,48 @@ function adminAuditOpsData() {
   };
 }
 
+function adminChangeOpsData() {
+  return state.adminChangeOps || {
+    summary: { openChanges: 18, highRiskChanges: 4, emergencyChanges: 2, approvalHealth: "91%", rollbackCoverage: "94%" },
+    changeCalendar: [
+      { change: "Billing ledger migration", window: "Aug 17 02:00", risk: "High", owner: "Revenue Ops", status: "Approval" },
+      { change: "Model gateway fallback tuning", window: "Aug 14 01:00", risk: "High", owner: "AI Ops", status: "Ready" },
+      { change: "Mobile push certificate rotation", window: "Aug 19 00:30", risk: "Medium", owner: "Mobile Ops", status: "Scheduled" },
+      { change: "Fresh chat prompt-chip update", window: "Aug 15 09:00", risk: "Low", owner: "Web Ops", status: "Canary" }
+    ],
+    approvalGates: [
+      { gate: "Security review", appliesTo: "Secrets, access, auth", owner: "Security", coverage: "98%", status: "Healthy" },
+      { gate: "Data protection review", appliesTo: "Consent, privacy, telemetry", owner: "Privacy", coverage: "92%", status: "Watch" },
+      { gate: "AI governance review", appliesTo: "Model routes and prompts", owner: "AI Governance", coverage: "89%", status: "Improving" },
+      { gate: "Revenue approval", appliesTo: "Billing, entitlements, invoices", owner: "Finance", coverage: "94%", status: "Healthy" }
+    ],
+    riskReviews: [
+      { review: "Payment retry workflow", impact: "Plus upgrades", severity: "High", reviewer: "Finance/Security", status: "Review" },
+      { review: "Voice retention setting", impact: "Voice Circle", severity: "High", reviewer: "Privacy", status: "Blocked" },
+      { review: "Admin navigation expansion", impact: "Seed admin console", severity: "Medium", reviewer: "Security", status: "Approved" },
+      { review: "Language benchmark refresh", impact: "AI quality", severity: "Medium", reviewer: "Language QA", status: "Ready" }
+    ],
+    configDrift: [
+      { system: "Production feature flags", drift: "2 flags", owner: "Platform", status: "Reconciling" },
+      { system: "Admin RBAC scopes", drift: "0", owner: "Security", status: "Healthy" },
+      { system: "Model route policies", drift: "1 policy", owner: "AI Ops", status: "Review" },
+      { system: "Mobile release channels", drift: "3 builds", owner: "Mobile Ops", status: "Expected" }
+    ],
+    rollbackPlans: [
+      { plan: "Billing migration rollback", trigger: "Ledger mismatch >0.5%", owner: "Revenue Ops", readiness: "Ready", status: "Approved" },
+      { plan: "Model gateway fallback", trigger: "Route errors >1%", owner: "AI Ops", readiness: "Ready", status: "Approved" },
+      { plan: "Mobile rollout pause", trigger: "Crash-free <99.2%", owner: "Mobile Ops", readiness: "Ready", status: "Armed" },
+      { plan: "Web feature flag off", trigger: "Conversion drop >3%", owner: "Web Ops", readiness: "Ready", status: "Armed" }
+    ],
+    guardrails: [
+      "High-risk production changes need owner, approval, rollout plan, rollback plan, monitoring, and customer-impact assessment.",
+      "Emergency changes should be time-boxed, logged, reviewed after deployment, and linked to an incident or customer-impact reason.",
+      "Configuration drift should be visible before it becomes an outage, billing error, privacy regression, or model-routing incident.",
+      "Change records must avoid raw user prompts, private profile data, payment secrets, and sensitive incident evidence."
+    ]
+  };
+}
+
 function adminDataQualityOpsData() {
   return state.adminDataQualityOps || {
     summary: { certifiedMetrics: 42, freshnessHealth: "96%", reconciliationGaps: 7, lineageCoverage: "89%", blockedReports: 3 },
@@ -6666,6 +6731,26 @@ function auditAnomalyRow(item) {
   return `<div class="table-row"><strong>${item.signal}</strong><span>${item.surface}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
 }
 
+function changeCalendarRow(item) {
+  return `<div class="table-row"><strong>${item.change}</strong><span>${item.window}</span><span>${item.risk}</span><span>${item.status}</span></div>`;
+}
+
+function approvalGateRow(item) {
+  return `<div class="table-row"><strong>${item.gate}</strong><span>${item.appliesTo}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
+function changeRiskReviewRow(item) {
+  return `<div class="table-row"><strong>${item.review}</strong><span>${item.impact}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
+function configDriftRow(item) {
+  return `<div class="table-row"><strong>${item.system}</strong><span>${item.drift}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
+function rollbackPlanRow(item) {
+  return `<div class="table-row"><strong>${item.plan}</strong><span>${item.trigger}</span><span>${item.readiness}</span><span>${item.status}</span></div>`;
+}
+
 function metricHealthRow(item) {
   return `<div class="table-row"><strong>${item.metric}</strong><span>${item.source}</span><span>${item.freshness}</span><span>${item.status}</span></div>`;
 }
@@ -8021,6 +8106,7 @@ function adminView() {
   if (state.adminSection === "statusOps") loadAdminStatusOps();
   if (state.adminSection === "incidentResponse") loadAdminIncidentResponse();
   if (state.adminSection === "auditOps") loadAdminAuditOps();
+  if (state.adminSection === "changeOps") loadAdminChangeOps();
   if (state.adminSection === "dataQualityOps") loadAdminDataQualityOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
@@ -8156,6 +8242,7 @@ function adminSectionView(section, readiness) {
     statusOps: adminStatusOps,
     incidentResponse: adminIncidentResponse,
     auditOps: adminAuditOps,
+    changeOps: adminChangeOps,
     dataQualityOps: adminDataQualityOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
@@ -10502,6 +10589,55 @@ function adminAuditOps() {
   `;
 }
 
+function adminChangeOps() {
+  const changes = adminChangeOpsData();
+  const summary = changes.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Open changes", summary.openChanges || "18")}
+      ${metric("High risk", summary.highRiskChanges || "4")}
+      ${metric("Emergency", summary.emergencyChanges || "2")}
+      ${metric("Rollback coverage", summary.rollbackCoverage || "94%")}
+      <section class="admin-card full-admin">
+        <h2>Change calendar</h2>
+        <div class="table admin-table-4">
+          ${changes.changeCalendar.map(changeCalendarRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Approval gates</h2>
+        <div class="table admin-table-4">
+          ${changes.approvalGates.map(approvalGateRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Risk reviews</h2>
+        <div class="table admin-table-4">
+          ${changes.riskReviews.map(changeRiskReviewRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Configuration drift</h2>
+        <div class="table admin-table-4">
+          ${changes.configDrift.map(configDriftRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Rollback plans</h2>
+        <div class="table admin-table-4">
+          ${changes.rollbackPlans.map(rollbackPlanRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Change guardrails</h2>
+        <div class="admin-checklist">
+          ${changes.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminDataQualityOps() {
   const quality = adminDataQualityOpsData();
   const summary = quality.summary || {};
@@ -12759,6 +12895,7 @@ function bindEvents() {
       loadAdminStatusOps(true);
       loadAdminIncidentResponse(true);
       loadAdminAuditOps(true);
+      loadAdminChangeOps(true);
       loadAdminDataQualityOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);
