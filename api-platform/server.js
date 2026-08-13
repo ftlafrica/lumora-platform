@@ -3038,6 +3038,44 @@ const telemetryOpsOperations = {
   ]
 };
 
+const statusOpsOperations = {
+  summary: { publicStatus: "Operational", openIncidents: 1, maintenanceWindows: 3, subscribers: "18.2K", postmortemsDue: 2 },
+  statusSurfaces: [
+    { surface: "Public status page", audience: "All users", uptime: "99.97%", owner: "SRE", status: "Operational" },
+    { surface: "Enterprise status API", audience: "Teams/API", uptime: "99.99%", owner: "API Platform", status: "Operational" },
+    { surface: "In-app incident banner", audience: "Web/Mobile", uptime: "Ready", owner: "Comms", status: "Armed" },
+    { surface: "Regional availability map", audience: "Leadership", uptime: "Preview", owner: "Infrastructure", status: "Building" }
+  ],
+  incidents: [
+    { incident: "Voice latency in noisy audio", impact: "Voice Circle beta", severity: "Medium", owner: "Voice Ops", status: "Monitoring" },
+    { incident: "Android token cleanup spike", impact: "Push delivery", severity: "Low", owner: "Mobile", status: "Mitigating" },
+    { incident: "API quota meter lag", impact: "Developer dashboard", severity: "Medium", owner: "API Platform", status: "Fix queued" },
+    { incident: "Payment retry anomaly", impact: "Plus upgrades", severity: "Low", owner: "Revenue Ops", status: "Resolved" }
+  ],
+  maintenance: [
+    { window: "Search index refresh", surface: "RAG/Search", region: "Pan-African", time: "Aug 15 01:00", status: "Scheduled" },
+    { window: "Billing ledger migration", surface: "Payments", region: "Global", time: "Aug 17 02:00", status: "Approval" },
+    { window: "Mobile push certificate rotation", surface: "iOS push", region: "Global", time: "Aug 19 00:30", status: "Ready" }
+  ],
+  communications: [
+    { channel: "Status subscribers", audience: "18.2K", cadence: "Incident updates", owner: "Comms", status: "Ready" },
+    { channel: "Enterprise webhooks", audience: "Teams/API", cadence: "Realtime", owner: "API Platform", status: "Healthy" },
+    { channel: "In-app banner", audience: "Active users", cadence: "Impact scoped", owner: "Product", status: "Armed" },
+    { channel: "Support macro sync", audience: "Support team", cadence: "Per update", owner: "Support", status: "Ready" }
+  ],
+  postmortems: [
+    { report: "Voice latency beta review", incident: "Voice Circle", owner: "Voice Ops", due: "Aug 14", status: "Draft" },
+    { report: "Payment retry anomaly", incident: "Billing", owner: "Revenue Ops", due: "Aug 15", status: "Review" },
+    { report: "Notification token cleanup", incident: "Mobile push", owner: "Mobile", due: "Aug 18", status: "Queued" }
+  ],
+  guardrails: [
+    "Public status updates must be factual, timely, region-aware, and coordinated with support and communications.",
+    "Incident severity should include user impact, affected surfaces, owner, ETA, rollback posture, and next update time.",
+    "Maintenance windows need approvals, customer notice, rollback plan, and after-action review before closing.",
+    "Postmortems should capture root cause, user impact, prevention work, owners, and evidence without exposing private data."
+  ]
+};
+
 const mobileOpsOperations = {
   summary: { activeBuilds: 4, crashFree: "99.42%", betaUsers: "3,840", storeReadiness: "86%", blockedDevices: 12 },
   releases: [
@@ -3583,6 +3621,10 @@ function adminTelemetryOpsOperations() {
   return telemetryOpsOperations;
 }
 
+function adminStatusOpsOperations() {
+  return statusOpsOperations;
+}
+
 function adminMobileOpsOperations() {
   return mobileOpsOperations;
 }
@@ -3684,6 +3726,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "model:risk",
       "web:operate",
       "telemetry:operate",
+      "status:operate",
       "mobile:operate",
       "fraud:review",
       "notifications:operate"
@@ -4410,6 +4453,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminTelemetryOpsOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/status-ops") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("status_ops_viewed", "Status Ops", "Info", "SRE");
+      return sendJson(response, 200, adminStatusOpsOperations());
+    }
+
     if (request.method === "GET" && url.pathname === "/v1/admin/mobile-ops") {
       if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
         return sendJson(response, 403, { error: "Seed admin access required" });
@@ -4442,4 +4493,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminTranslationOperations, adminCreatorStudioOperations, adminClassroomLearningOperations, adminMarketCommerceOperations, adminMultimodalOperations, adminSearchRetrievalOperations, adminWorkspaceCollaborationOperations, adminLanguagePassportOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminWebOpsOperations, adminTelemetryOpsOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminTranslationOperations, adminCreatorStudioOperations, adminClassroomLearningOperations, adminMarketCommerceOperations, adminMultimodalOperations, adminSearchRetrievalOperations, adminWorkspaceCollaborationOperations, adminLanguagePassportOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminWebOpsOperations, adminTelemetryOpsOperations, adminStatusOpsOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

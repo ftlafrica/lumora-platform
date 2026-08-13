@@ -48,6 +48,7 @@ This is the first backend foundation for connecting the Web Platform, Enterprise
 - `GET /v1/admin/workspace-collaboration`
 - `GET /v1/admin/web-ops`
 - `GET /v1/admin/telemetry`
+- `GET /v1/admin/status-ops`
 - `GET /v1/admin/language-passport`
 - `GET /v1/admin/localization-content`
 - `GET /v1/admin/data-governance`
@@ -129,6 +130,8 @@ It also calls `POST /v1/admin/access/verify` to exchange the prototype seed-admi
 It also exposes `GET /v1/admin/web-ops` for web deployments, frontend performance, browser coverage, accessibility readiness, feature flags, and rollout guardrails.
 
 It also exposes `GET /v1/admin/telemetry` for web, mobile, admin, and API event pipelines, schema contracts, privacy filters, anomaly signals, and certified dashboards.
+
+It also exposes `GET /v1/admin/status-ops` for public status, incidents, maintenance windows, subscriber communications, and postmortem readiness.
 
 ## Example Requests
 

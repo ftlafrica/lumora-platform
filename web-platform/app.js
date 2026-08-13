@@ -86,6 +86,7 @@ const ADMIN_SECTIONS = [
   { id: "modelRisk", label: "Model Risk", desc: "Model risk tiers, release gates, drift signals, fallback risk, human review, and production guardrails." },
   { id: "webOps", label: "Web Ops", desc: "Deployments, frontend performance, browser coverage, accessibility, flags, and web rollout guardrails." },
   { id: "telemetryOps", label: "Telemetry", desc: "Web, mobile, admin, and API event pipelines, schemas, privacy filters, and certified dashboards." },
+  { id: "statusOps", label: "Status Ops", desc: "Public status, incidents, maintenance windows, subscriber alerts, and postmortem readiness." },
   { id: "mobileOps", label: "Mobile Ops", desc: "Android/iOS releases, crash health, store readiness, device labs, and rollout guardrails." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
@@ -300,6 +301,8 @@ const DEFAULT_STATE = {
   adminWebOpsLoadedAt: null,
   adminTelemetryOps: null,
   adminTelemetryOpsLoadedAt: null,
+  adminStatusOps: null,
+  adminStatusOpsLoadedAt: null,
   adminMobileOps: null,
   adminMobileOpsLoadedAt: null,
   adminCommunications: null,
@@ -1133,6 +1136,26 @@ async function loadAdminTelemetryOps(force = false) {
     state.adminTelemetryOpsLoadedAt = Date.now();
   } catch {
     state.adminTelemetryOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminStatusOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminStatusOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/status-ops`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Status operations unavailable.");
+    state.adminStatusOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminStatusOpsLoadedAt = Date.now();
+  } catch {
+    state.adminStatusOpsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -2206,7 +2229,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -4572,6 +4595,46 @@ function adminTelemetryOpsData() {
   };
 }
 
+function adminStatusOpsData() {
+  return state.adminStatusOps || {
+    summary: { publicStatus: "Operational", openIncidents: 1, maintenanceWindows: 3, subscribers: "18.2K", postmortemsDue: 2 },
+    statusSurfaces: [
+      { surface: "Public status page", audience: "All users", uptime: "99.97%", owner: "SRE", status: "Operational" },
+      { surface: "Enterprise status API", audience: "Teams/API", uptime: "99.99%", owner: "API Platform", status: "Operational" },
+      { surface: "In-app incident banner", audience: "Web/Mobile", uptime: "Ready", owner: "Comms", status: "Armed" },
+      { surface: "Regional availability map", audience: "Leadership", uptime: "Preview", owner: "Infrastructure", status: "Building" }
+    ],
+    incidents: [
+      { incident: "Voice latency in noisy audio", impact: "Voice Circle beta", severity: "Medium", owner: "Voice Ops", status: "Monitoring" },
+      { incident: "Android token cleanup spike", impact: "Push delivery", severity: "Low", owner: "Mobile", status: "Mitigating" },
+      { incident: "API quota meter lag", impact: "Developer dashboard", severity: "Medium", owner: "API Platform", status: "Fix queued" },
+      { incident: "Payment retry anomaly", impact: "Plus upgrades", severity: "Low", owner: "Revenue Ops", status: "Resolved" }
+    ],
+    maintenance: [
+      { window: "Search index refresh", surface: "RAG/Search", region: "Pan-African", time: "Aug 15 01:00", status: "Scheduled" },
+      { window: "Billing ledger migration", surface: "Payments", region: "Global", time: "Aug 17 02:00", status: "Approval" },
+      { window: "Mobile push certificate rotation", surface: "iOS push", region: "Global", time: "Aug 19 00:30", status: "Ready" }
+    ],
+    communications: [
+      { channel: "Status subscribers", audience: "18.2K", cadence: "Incident updates", owner: "Comms", status: "Ready" },
+      { channel: "Enterprise webhooks", audience: "Teams/API", cadence: "Realtime", owner: "API Platform", status: "Healthy" },
+      { channel: "In-app banner", audience: "Active users", cadence: "Impact scoped", owner: "Product", status: "Armed" },
+      { channel: "Support macro sync", audience: "Support team", cadence: "Per update", owner: "Support", status: "Ready" }
+    ],
+    postmortems: [
+      { report: "Voice latency beta review", incident: "Voice Circle", owner: "Voice Ops", due: "Aug 14", status: "Draft" },
+      { report: "Payment retry anomaly", incident: "Billing", owner: "Revenue Ops", due: "Aug 15", status: "Review" },
+      { report: "Notification token cleanup", incident: "Mobile push", owner: "Mobile", due: "Aug 18", status: "Queued" }
+    ],
+    guardrails: [
+      "Public status updates must be factual, timely, region-aware, and coordinated with support and communications.",
+      "Incident severity should include user impact, affected surfaces, owner, ETA, rollback posture, and next update time.",
+      "Maintenance windows need approvals, customer notice, rollback plan, and after-action review before closing.",
+      "Postmortems should capture root cause, user impact, prevention work, owners, and evidence without exposing private data."
+    ]
+  };
+}
+
 function adminMobileOpsData() {
   return state.adminMobileOps || {
     summary: { activeBuilds: 4, crashFree: "99.42%", betaUsers: "3,840", storeReadiness: "86%", blockedDevices: 12 },
@@ -6210,6 +6273,26 @@ function telemetryDashboardRow(item) {
   return `<div class="table-row"><strong>${item.dashboard}</strong><span>${item.source}</span><span>${item.freshness}</span><span>${item.status}</span></div>`;
 }
 
+function statusSurfaceRow(item) {
+  return `<div class="table-row"><strong>${item.surface}</strong><span>${item.audience}</span><span>${item.uptime}</span><span>${item.status}</span></div>`;
+}
+
+function statusIncidentRow(item) {
+  return `<div class="table-row"><strong>${item.incident}</strong><span>${item.impact}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
+function maintenanceWindowRow(item) {
+  return `<div class="table-row"><strong>${item.window}</strong><span>${item.surface}</span><span>${item.time}</span><span>${item.status}</span></div>`;
+}
+
+function statusCommunicationRow(item) {
+  return `<div class="table-row"><strong>${item.channel}</strong><span>${item.audience}</span><span>${item.cadence}</span><span>${item.status}</span></div>`;
+}
+
+function postmortemRow(item) {
+  return `<div class="table-row"><strong>${item.report}</strong><span>${item.incident}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
 function experimentRowAdmin(item) {
   return `<div class="table-row"><strong>${item.test}</strong><span>${item.segment}</span><span>${item.lift}</span><span>${item.status}</span></div>`;
 }
@@ -7502,6 +7585,7 @@ function adminView() {
   if (state.adminSection === "modelRisk") loadAdminModelRisk();
   if (state.adminSection === "webOps") loadAdminWebOps();
   if (state.adminSection === "telemetryOps") loadAdminTelemetryOps();
+  if (state.adminSection === "statusOps") loadAdminStatusOps();
   if (state.adminSection === "mobileOps") loadAdminMobileOps();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "notifications") loadAdminNotificationDelivery();
@@ -7631,6 +7715,7 @@ function adminSectionView(section, readiness) {
     modelRisk: adminModelRisk,
     webOps: adminWebOps,
     telemetryOps: adminTelemetryOps,
+    statusOps: adminStatusOps,
     mobileOps: adminMobileOps,
     communications: adminCommunications,
     notifications: adminNotificationDelivery,
@@ -9821,6 +9906,55 @@ function adminTelemetryOps() {
   `;
 }
 
+function adminStatusOps() {
+  const statusOps = adminStatusOpsData();
+  const summary = statusOps.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Public status", summary.publicStatus || "Operational")}
+      ${metric("Open incidents", summary.openIncidents ?? "1")}
+      ${metric("Maintenance", summary.maintenanceWindows || "3")}
+      ${metric("Subscribers", summary.subscribers || "18.2K")}
+      <section class="admin-card full-admin">
+        <h2>Status surfaces</h2>
+        <div class="table admin-table-4">
+          ${statusOps.statusSurfaces.map(statusSurfaceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Active and recent incidents</h2>
+        <div class="table admin-table-4">
+          ${statusOps.incidents.map(statusIncidentRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Maintenance windows</h2>
+        <div class="table admin-table-4">
+          ${statusOps.maintenance.map(maintenanceWindowRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Status communications</h2>
+        <div class="table admin-table-4">
+          ${statusOps.communications.map(statusCommunicationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Postmortem readiness</h2>
+        <div class="table admin-table-4">
+          ${statusOps.postmortems.map(postmortemRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Status guardrails</h2>
+        <div class="admin-checklist">
+          ${statusOps.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminCommunications() {
   const communications = adminCommunicationsData();
   const summary = communications.summary || {};
@@ -11928,6 +12062,7 @@ function bindEvents() {
       loadAdminModelRisk(true);
       loadAdminWebOps(true);
       loadAdminTelemetryOps(true);
+      loadAdminStatusOps(true);
       loadAdminMobileOps(true);
       loadAdminCommunications(true);
       loadAdminNotificationDelivery(true);
