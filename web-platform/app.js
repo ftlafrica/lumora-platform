@@ -114,6 +114,7 @@ const ADMIN_SECTIONS = [
   { id: "evaluations", label: "Evals", desc: "Model eval suites, benchmark runs, regressions, human samples, and release gates." },
   { id: "languages", label: "Languages", desc: "Country coverage, dialect readiness, reviewer queues, benchmarks, and expansion quality." },
   { id: "culture", label: "Culture", desc: "Tone quality, dialect parity, cultural review queues, reviewer calibration, and sensitive context guardrails." },
+  { id: "reviewers", label: "Reviewers", desc: "Human QA reviewer network, calibration, review queues, workload, onboarding, and quality guardrails." },
   { id: "localization", label: "Localize", desc: "UI copy localization, translation QA, glossary control, reviewer workflow, and release guardrails." },
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
   { id: "memory", label: "Memory", desc: "Personalization memory, language passport controls, consent, deletion/export, and safe remembered context." },
@@ -293,6 +294,8 @@ const DEFAULT_STATE = {
   adminLanguagesLoadedAt: null,
   adminCulturalQuality: null,
   adminCulturalQualityLoadedAt: null,
+  adminReviewerNetwork: null,
+  adminReviewerNetworkLoadedAt: null,
   adminLocalizationContent: null,
   adminLocalizationContentLoadedAt: null,
   adminDataGovernance: null,
@@ -1159,6 +1162,26 @@ async function loadAdminCulturalQuality(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminReviewerNetwork(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminReviewerNetworkLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/reviewer-network`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Reviewer network unavailable.");
+    state.adminReviewerNetwork = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminReviewerNetworkLoadedAt = Date.now();
+  } catch {
+    state.adminReviewerNetworkLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminLocalizationContent(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminLocalizationContentLoadedAt || 0;
@@ -1907,7 +1930,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2535,6 +2558,49 @@ function adminCulturalQualityData() {
       "Proverbs, honorifics, slang, and local references should be optional, context-aware, and never forced.",
       "Cultural quality reviews need native speakers, reviewer calibration, region-specific samples, and appeal paths.",
       "Admin views should track tone and cultural quality as aggregate signals, not expose private user messages."
+    ]
+  };
+}
+
+function adminReviewerNetworkData() {
+  return state.adminReviewerNetwork || {
+    summary: { activeReviewers: 116, languageCoverage: 42, calibrationPass: "88%", backlog: 312, burnoutRisk: 9 },
+    reviewerRegions: [
+      { region: "West Africa", reviewers: 42, languages: "Yoruba, Hausa, Igbo, Pidgin, Twi", capacity: "78%", status: "Busy" },
+      { region: "East Africa", reviewers: 28, languages: "Swahili, Amharic, Oromo, Somali", capacity: "72%", status: "Healthy" },
+      { region: "Southern Africa", reviewers: 19, languages: "Zulu, Xhosa, Shona, Sesotho", capacity: "64%", status: "Watch" },
+      { region: "Central/North Africa", reviewers: 16, languages: "Lingala, Arabic, French bridge", capacity: "58%", status: "Hiring" },
+      { region: "Diaspora panel", reviewers: 11, languages: "Mixed code-switch", capacity: "69%", status: "Healthy" }
+    ],
+    reviewQueues: [
+      { queue: "Tone corrections", count: 284, language: "Pidgin/Hausa/Yoruba", sla: "48h", status: "Busy" },
+      { queue: "Meaning changed reports", count: 41, language: "Yoruba/Swahili", sla: "24h", status: "Priority" },
+      { queue: "Cultural sensitivity checks", count: 18, language: "Multi-market", sla: "5d", status: "Watch" },
+      { queue: "Model eval human samples", count: 860, language: "Priority languages", sla: "Weekly", status: "Sampling" }
+    ],
+    calibrationPanels: [
+      { panel: "Yoruba/Pidgin tone", reviewers: 18, agreement: "91%", drift: "Low", status: "Healthy" },
+      { panel: "Swahili classroom clarity", reviewers: 11, agreement: "86%", drift: "Low", status: "Healthy" },
+      { panel: "Hausa business tone", reviewers: 9, agreement: "82%", drift: "Medium", status: "Watch" },
+      { panel: "Arabic/French bridge", reviewers: 7, agreement: "74%", drift: "Medium", status: "Building" }
+    ],
+    reviewerQuality: [
+      { metric: "Median review time", value: "18m", target: "<25m", owner: "Language QA", status: "Healthy" },
+      { metric: "Reviewer agreement", value: "88%", target: ">85%", owner: "QA Lead", status: "Healthy" },
+      { metric: "Appeal reversal rate", value: "4.2%", target: "<6%", owner: "Trust", status: "Healthy" },
+      { metric: "Burnout risk", value: "9 reviewers", target: "<5", owner: "People Ops", status: "Watch" }
+    ],
+    onboardingPipeline: [
+      { stage: "Native speaker sourcing", candidates: 48, owner: "Community", status: "Active" },
+      { stage: "Language assessment", candidates: 24, owner: "Language QA", status: "Testing" },
+      { stage: "Policy training", candidates: 16, owner: "Trust", status: "Queued" },
+      { stage: "Shadow reviews", candidates: 9, owner: "QA Lead", status: "In progress" }
+    ],
+    guardrails: [
+      "Reviewer access must be role-scoped, audited, and limited to redacted samples unless a privacy-approved case requires more.",
+      "Human QA should measure agreement, drift, cultural fit, safety handling, and reviewer wellbeing across regions.",
+      "Reviewer onboarding requires language assessment, policy training, calibration, and shadow review before production queues.",
+      "Reviewer dashboards should track aggregate quality and workload without exposing unnecessary private user content."
     ]
   };
 }
@@ -4931,6 +4997,26 @@ function culturalRiskSignalRow(item) {
   return `<div class="table-row"><strong>${item.signal}</strong><span>${item.severity}</span><span>${item.affected}</span><span>${item.status}</span></div>`;
 }
 
+function reviewerNetworkRegionRow(item) {
+  return `<div class="table-row"><strong>${item.region}</strong><span>${item.reviewers} reviewers</span><span>${item.capacity}</span><span>${item.status}</span></div>`;
+}
+
+function languageReviewQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.language}</span><span>${item.status}</span></div>`;
+}
+
+function calibrationPanelRow(item) {
+  return `<div class="table-row"><strong>${item.panel}</strong><span>${item.reviewers} reviewers</span><span>${item.agreement}</span><span>${item.status}</span></div>`;
+}
+
+function reviewerQualityMetricRow(item) {
+  return `<div class="table-row"><strong>${item.metric}</strong><span>${item.value}</span><span>${item.target}</span><span>${item.status}</span></div>`;
+}
+
+function reviewerOnboardingRow(item) {
+  return `<div class="table-row"><strong>${item.stage}</strong><span>${item.candidates} candidates</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
 function localizationReadinessRow(item) {
   return `<div class="table-row"><strong>${item.locale}</strong><span>${item.surface}</span><span>${item.completion}</span><span>${item.status}</span></div>`;
 }
@@ -6297,6 +6383,7 @@ function adminView() {
   if (state.adminSection === "evaluations") loadAdminEvaluations();
   if (state.adminSection === "languages") loadAdminLanguages();
   if (state.adminSection === "culture") loadAdminCulturalQuality();
+  if (state.adminSection === "reviewers") loadAdminReviewerNetwork();
   if (state.adminSection === "localization") loadAdminLocalizationContent();
   if (state.adminSection === "data") loadAdminDataGovernance();
   if (state.adminSection === "memory") loadAdminMemoryPersonalization();
@@ -6487,6 +6574,7 @@ function adminSectionView(section, readiness) {
     evaluations: adminEvaluations,
     languages: adminLanguages,
     culture: adminCulturalQuality,
+    reviewers: adminReviewerNetwork,
     localization: adminLocalizationContent,
     data: adminDataGovernance,
     memory: adminMemoryPersonalization,
@@ -8730,6 +8818,55 @@ function adminCulturalQuality() {
   `;
 }
 
+function adminReviewerNetwork() {
+  const reviewers = adminReviewerNetworkData();
+  const summary = reviewers.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Reviewers", summary.activeReviewers || "116")}
+      ${metric("Languages", summary.languageCoverage || "42")}
+      ${metric("Calibration", summary.calibrationPass || "88%")}
+      ${metric("Backlog", summary.backlog || "312")}
+      <section class="admin-card full-admin">
+        <h2>Reviewer regions</h2>
+        <div class="table admin-table-4">
+          ${reviewers.reviewerRegions.map(reviewerNetworkRegionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Review queues</h2>
+        <div class="table admin-table-4">
+          ${reviewers.reviewQueues.map(languageReviewQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Calibration panels</h2>
+        <div class="table admin-table-4">
+          ${reviewers.calibrationPanels.map(calibrationPanelRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Reviewer quality</h2>
+        <div class="table admin-table-4">
+          ${reviewers.reviewerQuality.map(reviewerQualityMetricRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Onboarding pipeline</h2>
+        <div class="table admin-table-4">
+          ${reviewers.onboardingPipeline.map(reviewerOnboardingRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Reviewer guardrails</h2>
+        <div class="admin-checklist">
+          ${reviewers.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminLocalizationContent() {
   const localization = adminLocalizationContentData();
   const summary = localization.summary || {};
@@ -10042,6 +10179,7 @@ function bindEvents() {
       loadAdminEvaluations(true);
       loadAdminLanguages(true);
       loadAdminCulturalQuality(true);
+      loadAdminReviewerNetwork(true);
       loadAdminLocalizationContent(true);
       loadAdminDataGovernance(true);
       loadAdminMemoryPersonalization(true);
