@@ -118,6 +118,7 @@ const ADMIN_SECTIONS = [
   { id: "improvement", label: "Improve", desc: "Correction feedback loops, consent gates, reviewer decisions, eval impact, and training handoffs." },
   { id: "voiceOps", label: "Voice Ops", desc: "African speech routes, accent coverage, mobile capture, consent, latency, and voice review queues." },
   { id: "translationOps", label: "Translate Ops", desc: "Translation route quality, meaning preservation, dialect drift, review queues, and enterprise controls." },
+  { id: "creatorOps", label: "Creator Ops", desc: "Creator Studio content modes, template health, brand safety, monetization, and workflow queues." },
   { id: "passport", label: "Passport", desc: "Language Passport completion, field quality, language pairs, personalization surfaces, consent, and risk controls." },
   { id: "localization", label: "Localize", desc: "UI copy localization, translation QA, glossary control, reviewer workflow, and release guardrails." },
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
@@ -306,6 +307,8 @@ const DEFAULT_STATE = {
   adminVoiceSpeechLoadedAt: null,
   adminTranslationOps: null,
   adminTranslationOpsLoadedAt: null,
+  adminCreatorStudio: null,
+  adminCreatorStudioLoadedAt: null,
   adminLanguagePassport: null,
   adminLanguagePassportLoadedAt: null,
   adminLocalizationContent: null,
@@ -1254,6 +1257,26 @@ async function loadAdminTranslationOps(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminCreatorStudio(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminCreatorStudioLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/creator-studio`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Creator Studio operations unavailable.");
+    state.adminCreatorStudio = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminCreatorStudioLoadedAt = Date.now();
+  } catch {
+    state.adminCreatorStudioLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminLanguagePassport(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminLanguagePassportLoadedAt || 0;
@@ -2022,7 +2045,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2834,6 +2857,50 @@ function adminTranslationOpsData() {
       "High-stakes medical, legal, financial, or government text should show uncertainty and route to review where appropriate.",
       "Dialect and tone choices should be user-controlled and reversible, with clear source and target language labels.",
       "Admin translation views should show aggregate quality and queues without exposing private translated content."
+    ]
+  };
+}
+
+function adminCreatorStudioData() {
+  return state.adminCreatorStudio || {
+    summary: { creationsToday: "96.4K", templateUsage: "42%", brandSafety: "97.2%", monetizedWorkflows: "18.6K", creatorRetention: "64%" },
+    contentModes: [
+      { mode: "Social captions", volume: "28K", quality: "93%", market: "Creators", status: "Healthy" },
+      { mode: "Video scripts", volume: "21K", quality: "89%", market: "Short-form video", status: "Improving" },
+      { mode: "Campaign copy", volume: "18K", quality: "91%", market: "SMBs", status: "Healthy" },
+      { mode: "Community posts", volume: "16K", quality: "88%", market: "Organizations", status: "Watch" },
+      { mode: "Audio show notes", volume: "13K", quality: "84%", market: "Podcasters", status: "Testing" }
+    ],
+    templateHealth: [
+      { template: "Launch announcement", usage: "18%", conversion: "7.4%", owner: "Growth", status: "Live" },
+      { template: "WhatsApp customer reply", usage: "16%", conversion: "9.1%", owner: "Market Mode", status: "Live" },
+      { template: "Creator reel script", usage: "13%", conversion: "6.8%", owner: "Creator", status: "Testing" },
+      { template: "Faith/community message", usage: "9%", conversion: "5.2%", owner: "Culture QA", status: "Review" },
+      { template: "Product pricing explainer", usage: "7%", conversion: "8.6%", owner: "SMB", status: "Improving" }
+    ],
+    toneBrandSafety: [
+      { signal: "Cultural tone mismatch", rate: "2.1%", owner: "Culture QA", action: "Native review", status: "Watch" },
+      { signal: "Unsupported claims", rate: "0.8%", owner: "Policy", action: "Claim guardrail", status: "Controlled" },
+      { signal: "Overly generic output", rate: "4.4%", owner: "Prompt Ops", action: "Template refresh", status: "Improving" },
+      { signal: "Brand unsafe phrasing", rate: "0.6%", owner: "Trust", action: "Blocklist + review", status: "Healthy" }
+    ],
+    monetizationFunnels: [
+      { funnel: "Free creator to Plus", users: "4,820", conversion: "8.7%", lever: "Longer scripts", status: "Live" },
+      { funnel: "Plus to Pro campaigns", users: "1,204", conversion: "21.3%", lever: "Brand kits", status: "Testing" },
+      { funnel: "SMB team upgrade", users: "384", conversion: "12.1%", lever: "Approval workflow", status: "Design" },
+      { funnel: "API content partner", users: "42", conversion: "18%", lever: "Bulk generation", status: "Beta" }
+    ],
+    workflowQueues: [
+      { queue: "Template refresh", count: 48, owner: "Prompt Ops", priority: "High", status: "Queued" },
+      { queue: "Creator feedback review", count: 126, owner: "CX", priority: "Medium", status: "Review" },
+      { queue: "Brand safety samples", count: 36, owner: "Trust", priority: "High", status: "Guarded" },
+      { queue: "Localized template QA", count: 72, owner: "Localization", priority: "Medium", status: "Busy" }
+    ],
+    guardrails: [
+      "Creator outputs should feel local and useful without copying protected works, imitating living creators, or making unsupported claims.",
+      "Brand and campaign templates must separate factual product details from generated persuasive language.",
+      "Community, faith, political, health, and finance content should use higher safety thresholds and clear uncertainty.",
+      "Admin views should track aggregate creator quality, monetization, and safety signals without exposing private drafts."
     ]
   };
 }
@@ -5370,6 +5437,26 @@ function translationControlRow(item) {
   return `<div class="table-row"><strong>${item.control}</strong><span>${item.coverage}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
 }
 
+function creatorContentModeRow(item) {
+  return `<div class="table-row"><strong>${item.mode}</strong><span>${item.volume}</span><span>${item.quality}</span><span>${item.status}</span></div>`;
+}
+
+function creatorTemplateRow(item) {
+  return `<div class="table-row"><strong>${item.template}</strong><span>${item.usage}</span><span>${item.conversion}</span><span>${item.status}</span></div>`;
+}
+
+function creatorSafetyRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.rate}</span><span>${item.action}</span><span>${item.status}</span></div>`;
+}
+
+function creatorFunnelRow(item) {
+  return `<div class="table-row"><strong>${item.funnel}</strong><span>${item.users}</span><span>${item.conversion}</span><span>${item.status}</span></div>`;
+}
+
+function creatorQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.priority}</span><span>${item.status}</span></div>`;
+}
+
 function passportFunnelRow(item) {
   return `<div class="table-row"><strong>${item.step}</strong><span>${item.users}</span><span>${item.conversion}</span><span>${item.owner}</span></div>`;
 }
@@ -6764,6 +6851,7 @@ function adminView() {
   if (state.adminSection === "improvement") loadAdminCorrectionImprovement();
   if (state.adminSection === "voiceOps") loadAdminVoiceSpeech();
   if (state.adminSection === "translationOps") loadAdminTranslationOps();
+  if (state.adminSection === "creatorOps") loadAdminCreatorStudio();
   if (state.adminSection === "passport") loadAdminLanguagePassport();
   if (state.adminSection === "localization") loadAdminLocalizationContent();
   if (state.adminSection === "data") loadAdminDataGovernance();
@@ -6959,6 +7047,7 @@ function adminSectionView(section, readiness) {
     improvement: adminCorrectionImprovement,
     voiceOps: adminVoiceSpeech,
     translationOps: adminTranslationOps,
+    creatorOps: adminCreatorStudio,
     passport: adminLanguagePassport,
     localization: adminLocalizationContent,
     data: adminDataGovernance,
@@ -9411,6 +9500,55 @@ function adminTranslationOps() {
   `;
 }
 
+function adminCreatorStudio() {
+  const creator = adminCreatorStudioData();
+  const summary = creator.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Creations today", summary.creationsToday || "96.4K")}
+      ${metric("Template usage", summary.templateUsage || "42%")}
+      ${metric("Brand safety", summary.brandSafety || "97.2%")}
+      ${metric("Creator retention", summary.creatorRetention || "64%")}
+      <section class="admin-card full-admin">
+        <h2>Creator content modes</h2>
+        <div class="table admin-table-4">
+          ${creator.contentModes.map(creatorContentModeRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Template health</h2>
+        <div class="table admin-table-4">
+          ${creator.templateHealth.map(creatorTemplateRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Tone and brand safety</h2>
+        <div class="table admin-table-4">
+          ${creator.toneBrandSafety.map(creatorSafetyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Monetization funnels</h2>
+        <div class="table admin-table-4">
+          ${creator.monetizationFunnels.map(creatorFunnelRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Workflow queues</h2>
+        <div class="table admin-table-4">
+          ${creator.workflowQueues.map(creatorQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Creator guardrails</h2>
+        <div class="admin-checklist">
+          ${creator.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminLanguagePassport() {
   const passport = adminLanguagePassportData();
   const summary = passport.summary || {};
@@ -10782,6 +10920,7 @@ function bindEvents() {
       loadAdminCorrectionImprovement(true);
       loadAdminVoiceSpeech(true);
       loadAdminTranslationOps(true);
+      loadAdminCreatorStudio(true);
       loadAdminLanguagePassport(true);
       loadAdminLocalizationContent(true);
       loadAdminDataGovernance(true);

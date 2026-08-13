@@ -1608,6 +1608,48 @@ const translationOperations = {
   ]
 };
 
+const creatorStudioOperations = {
+  summary: { creationsToday: "96.4K", templateUsage: "42%", brandSafety: "97.2%", monetizedWorkflows: "18.6K", creatorRetention: "64%" },
+  contentModes: [
+    { mode: "Social captions", volume: "28K", quality: "93%", market: "Creators", status: "Healthy" },
+    { mode: "Video scripts", volume: "21K", quality: "89%", market: "Short-form video", status: "Improving" },
+    { mode: "Campaign copy", volume: "18K", quality: "91%", market: "SMBs", status: "Healthy" },
+    { mode: "Community posts", volume: "16K", quality: "88%", market: "Organizations", status: "Watch" },
+    { mode: "Audio show notes", volume: "13K", quality: "84%", market: "Podcasters", status: "Testing" }
+  ],
+  templateHealth: [
+    { template: "Launch announcement", usage: "18%", conversion: "7.4%", owner: "Growth", status: "Live" },
+    { template: "WhatsApp customer reply", usage: "16%", conversion: "9.1%", owner: "Market Mode", status: "Live" },
+    { template: "Creator reel script", usage: "13%", conversion: "6.8%", owner: "Creator", status: "Testing" },
+    { template: "Faith/community message", usage: "9%", conversion: "5.2%", owner: "Culture QA", status: "Review" },
+    { template: "Product pricing explainer", usage: "7%", conversion: "8.6%", owner: "SMB", status: "Improving" }
+  ],
+  toneBrandSafety: [
+    { signal: "Cultural tone mismatch", rate: "2.1%", owner: "Culture QA", action: "Native review", status: "Watch" },
+    { signal: "Unsupported claims", rate: "0.8%", owner: "Policy", action: "Claim guardrail", status: "Controlled" },
+    { signal: "Overly generic output", rate: "4.4%", owner: "Prompt Ops", action: "Template refresh", status: "Improving" },
+    { signal: "Brand unsafe phrasing", rate: "0.6%", owner: "Trust", action: "Blocklist + review", status: "Healthy" }
+  ],
+  monetizationFunnels: [
+    { funnel: "Free creator to Plus", users: "4,820", conversion: "8.7%", lever: "Longer scripts", status: "Live" },
+    { funnel: "Plus to Pro campaigns", users: "1,204", conversion: "21.3%", lever: "Brand kits", status: "Testing" },
+    { funnel: "SMB team upgrade", users: "384", conversion: "12.1%", lever: "Approval workflow", status: "Design" },
+    { funnel: "API content partner", users: "42", conversion: "18%", lever: "Bulk generation", status: "Beta" }
+  ],
+  workflowQueues: [
+    { queue: "Template refresh", count: 48, owner: "Prompt Ops", priority: "High", status: "Queued" },
+    { queue: "Creator feedback review", count: 126, owner: "CX", priority: "Medium", status: "Review" },
+    { queue: "Brand safety samples", count: 36, owner: "Trust", priority: "High", status: "Guarded" },
+    { queue: "Localized template QA", count: 72, owner: "Localization", priority: "Medium", status: "Busy" }
+  ],
+  guardrails: [
+    "Creator outputs should feel local and useful without copying protected works, imitating living creators, or making unsupported claims.",
+    "Brand and campaign templates must separate factual product details from generated persuasive language.",
+    "Community, faith, political, health, and finance content should use higher safety thresholds and clear uncertainty.",
+    "Admin views should track aggregate creator quality, monetization, and safety signals without exposing private drafts."
+  ]
+};
+
 const languagePassportOperations = {
   summary: { completionRate: "78.2%", activePassports: "14.4K", primaryLanguages: 54, bridgePairs: 128, consentHealth: "92%" },
   completionFunnel: [
@@ -3099,6 +3141,10 @@ function adminTranslationOperations() {
   return translationOperations;
 }
 
+function adminCreatorStudioOperations() {
+  return creatorStudioOperations;
+}
+
 function adminLanguagePassportOperations() {
   return languagePassportOperations;
 }
@@ -3285,6 +3331,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "corrections:improve",
       "voice:operate",
       "translation:operate",
+      "creator:operate",
       "passport:operate",
       "localization:manage",
       "data:govern",
@@ -3730,6 +3777,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminTranslationOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/creator-studio") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("creator_studio_viewed", "Creator Ops", "Info", "Product");
+      return sendJson(response, 200, adminCreatorStudioOperations());
+    }
+
     if (request.method === "GET" && url.pathname === "/v1/admin/language-passport") {
       if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
         return sendJson(response, 403, { error: "Seed admin access required" });
@@ -4010,4 +4065,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminTranslationOperations, adminLanguagePassportOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminTranslationOperations, adminCreatorStudioOperations, adminLanguagePassportOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
