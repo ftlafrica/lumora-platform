@@ -88,6 +88,7 @@ const {
   adminDataRoomOperations,
   adminAiGovernanceOperations,
   adminModelRiskOperations,
+  adminWebOpsOperations,
   adminMobileOpsOperations,
   adminFraudAbuseOperations
 } = require("./server");
@@ -192,6 +193,7 @@ assert.ok(accessSession.scopes.includes("operating:rhythm"));
 assert.ok(accessSession.scopes.includes("data:room"));
 assert.ok(accessSession.scopes.includes("ai:governance"));
 assert.ok(accessSession.scopes.includes("model:risk"));
+assert.ok(accessSession.scopes.includes("web:operate"));
 assert.ok(accessSession.scopes.includes("mobile:operate"));
 assert.ok(accessSession.scopes.includes("fraud:review"));
 assert.ok(accessSession.scopes.includes("devex:operate"));
@@ -280,6 +282,7 @@ const adminContracts = [
   ["data room", adminDataRoomOperations(), data => data.summary && Array.isArray(data.rooms) && Array.isArray(data.evidencePacks) && Array.isArray(data.accessRequests)],
   ["ai governance", adminAiGovernanceOperations(), data => data.summary && Array.isArray(data.modelApprovals) && Array.isArray(data.deploymentGates) && Array.isArray(data.exceptions)],
   ["model risk", adminModelRiskOperations(), data => data.summary && Array.isArray(data.riskTiers) && Array.isArray(data.releaseGates) && Array.isArray(data.driftSignals)],
+  ["web ops", adminWebOpsOperations(), data => data.summary && Array.isArray(data.deployments) && Array.isArray(data.performance) && Array.isArray(data.browserCoverage)],
   ["mobile ops", adminMobileOpsOperations(), data => data.summary && Array.isArray(data.releases) && Array.isArray(data.crashHealth) && Array.isArray(data.storeReadiness)],
   ["fraud abuse", adminFraudAbuseOperations(), data => data.summary && Array.isArray(data.abuseQueues) && Array.isArray(data.botDefense) && Array.isArray(data.paymentRisk)]
 ];

@@ -84,6 +84,7 @@ const ADMIN_SECTIONS = [
   { id: "dataRoom", label: "Data Room", desc: "Controlled rooms, evidence packs, access requests, exports, and audit-safe sharing." },
   { id: "aiGovernance", label: "AI Gov", desc: "Model approvals, risk tiers, deployment gates, policy exceptions, and review sign-offs." },
   { id: "modelRisk", label: "Model Risk", desc: "Model risk tiers, release gates, drift signals, fallback risk, human review, and production guardrails." },
+  { id: "webOps", label: "Web Ops", desc: "Deployments, frontend performance, browser coverage, accessibility, flags, and web rollout guardrails." },
   { id: "mobileOps", label: "Mobile Ops", desc: "Android/iOS releases, crash health, store readiness, device labs, and rollout guardrails." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
@@ -294,6 +295,8 @@ const DEFAULT_STATE = {
   adminAiGovernanceLoadedAt: null,
   adminModelRisk: null,
   adminModelRiskLoadedAt: null,
+  adminWebOps: null,
+  adminWebOpsLoadedAt: null,
   adminMobileOps: null,
   adminMobileOpsLoadedAt: null,
   adminCommunications: null,
@@ -1087,6 +1090,26 @@ async function loadAdminModelRisk(force = false) {
     state.adminModelRiskLoadedAt = Date.now();
   } catch {
     state.adminModelRiskLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminWebOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminWebOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/web-ops`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Web ops unavailable.");
+    state.adminWebOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminWebOpsLoadedAt = Date.now();
+  } catch {
+    state.adminWebOpsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -2160,7 +2183,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -4442,6 +4465,48 @@ function adminModelRiskData() {
   };
 }
 
+function adminWebOpsData() {
+  return state.adminWebOps || {
+    summary: { activeDeployments: 5, webUptime: "99.97%", p95Load: "1.8s", conversionHealth: "92%", accessibilityScore: "94%" },
+    deployments: [
+      { release: "Web chat shell v1.4", environment: "Production", rollout: "100%", owner: "Web Lead", status: "Healthy" },
+      { release: "Admin console phase 3", environment: "Staging", rollout: "0%", owner: "Enterprise", status: "Review" },
+      { release: "Fresh chat onboarding", environment: "Production", rollout: "65%", owner: "Growth", status: "Watching" },
+      { release: "Language Passport profile sync", environment: "Preview", rollout: "15%", owner: "Product", status: "Testing" }
+    ],
+    performance: [
+      { surface: "Fresh chat", p95: "1.4s", coreVitals: "Pass", owner: "Web Performance", status: "Healthy" },
+      { surface: "Active chat", p95: "1.8s", coreVitals: "Pass", owner: "Chat UX", status: "Healthy" },
+      { surface: "Premium plans", p95: "2.1s", coreVitals: "Watch", owner: "Growth", status: "Optimizing" },
+      { surface: "Admin console", p95: "2.6s", coreVitals: "Watch", owner: "Enterprise", status: "Splitting bundles" }
+    ],
+    browserCoverage: [
+      { browser: "Chrome / Edge", coverage: "96%", market: "Pan-African", owner: "QA", status: "Passing" },
+      { browser: "Safari", coverage: "89%", market: "iOS users", owner: "QA", status: "Watch" },
+      { browser: "Firefox", coverage: "84%", market: "Developers", owner: "QA", status: "Passing" },
+      { browser: "Low-end Android WebView", coverage: "76%", market: "West Africa", owner: "Mobile Web", status: "Needs run" }
+    ],
+    accessibility: [
+      { area: "Keyboard navigation", coverage: "93%", impact: "Admin + chat", owner: "Design Systems", status: "Healthy" },
+      { area: "Color contrast", coverage: "96%", impact: "Neon Baobab UI", owner: "Design", status: "Healthy" },
+      { area: "Screen reader labels", coverage: "88%", impact: "Composer/settings", owner: "Web", status: "Improving" },
+      { area: "Reduced motion", coverage: "91%", impact: "Transitions", owner: "Frontend", status: "Healthy" }
+    ],
+    featureFlags: [
+      { flag: "fresh_chat_centered", surface: "Onboarding", rollout: "100%", owner: "Growth", status: "On" },
+      { flag: "neon_gold_cta", surface: "Buttons", rollout: "100%", owner: "Design", status: "On" },
+      { flag: "admin_lazy_sections", surface: "Admin", rollout: "60%", owner: "Enterprise", status: "Watch" },
+      { flag: "offline_web_cache", surface: "Web app", rollout: "10%", owner: "Platform", status: "Beta" }
+    ],
+    guardrails: [
+      "Web releases should publish through preview, staging, canary, and monitored production rollout before broad exposure.",
+      "Core chat, auth, plans, profile, and admin surfaces need viewport checks across mobile, tablet, laptop, desktop, and wide desktop.",
+      "Performance budgets should protect low-bandwidth and low-memory African web users before adding heavy visual effects.",
+      "Feature flags must include owner, rollback criteria, market scope, and release notes before production rollout."
+    ]
+  };
+}
+
 function adminMobileOpsData() {
   return state.adminMobileOps || {
     summary: { activeBuilds: 4, crashFree: "99.42%", betaUsers: "3,840", storeReadiness: "86%", blockedDevices: 12 },
@@ -6040,6 +6105,26 @@ function secretRotationRow(item) {
   return `<div class="table-row"><strong>${item.secret}</strong><span>${item.owner}</span><span>${item.rotation}</span><span>${item.status}</span></div>`;
 }
 
+function webDeploymentRow(item) {
+  return `<div class="table-row"><strong>${item.release}</strong><span>${item.environment}</span><span>${item.rollout}</span><span>${item.status}</span></div>`;
+}
+
+function webPerformanceRow(item) {
+  return `<div class="table-row"><strong>${item.surface}</strong><span>${item.p95}</span><span>${item.coreVitals}</span><span>${item.status}</span></div>`;
+}
+
+function browserCoverageRow(item) {
+  return `<div class="table-row"><strong>${item.browser}</strong><span>${item.coverage}</span><span>${item.market}</span><span>${item.status}</span></div>`;
+}
+
+function webAccessibilityRow(item) {
+  return `<div class="table-row"><strong>${item.area}</strong><span>${item.coverage}</span><span>${item.impact}</span><span>${item.status}</span></div>`;
+}
+
+function webFeatureFlagRow(item) {
+  return `<div class="table-row"><strong>${item.flag}</strong><span>${item.surface}</span><span>${item.rollout}</span><span>${item.status}</span></div>`;
+}
+
 function experimentRowAdmin(item) {
   return `<div class="table-row"><strong>${item.test}</strong><span>${item.segment}</span><span>${item.lift}</span><span>${item.status}</span></div>`;
 }
@@ -7330,6 +7415,7 @@ function adminView() {
   if (state.adminSection === "dataRoom") loadAdminDataRoom();
   if (state.adminSection === "aiGovernance") loadAdminAiGovernance();
   if (state.adminSection === "modelRisk") loadAdminModelRisk();
+  if (state.adminSection === "webOps") loadAdminWebOps();
   if (state.adminSection === "mobileOps") loadAdminMobileOps();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "notifications") loadAdminNotificationDelivery();
@@ -7457,6 +7543,7 @@ function adminSectionView(section, readiness) {
     dataRoom: adminDataRoom,
     aiGovernance: adminAiGovernance,
     modelRisk: adminModelRisk,
+    webOps: adminWebOps,
     mobileOps: adminMobileOps,
     communications: adminCommunications,
     notifications: adminNotificationDelivery,
@@ -9543,6 +9630,55 @@ function adminMobileOps() {
         <h2>Mobile rollout guardrails</h2>
         <div class="admin-checklist">
           ${mobile.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function adminWebOps() {
+  const web = adminWebOpsData();
+  const summary = web.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active deployments", summary.activeDeployments || "5")}
+      ${metric("Web uptime", summary.webUptime || "99.97%")}
+      ${metric("P95 load", summary.p95Load || "1.8s")}
+      ${metric("A11y score", summary.accessibilityScore || "94%")}
+      <section class="admin-card full-admin">
+        <h2>Web deployments</h2>
+        <div class="table admin-table-4">
+          ${web.deployments.map(webDeploymentRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Frontend performance</h2>
+        <div class="table admin-table-4">
+          ${web.performance.map(webPerformanceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Browser and device coverage</h2>
+        <div class="table admin-table-4">
+          ${web.browserCoverage.map(browserCoverageRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Accessibility readiness</h2>
+        <div class="table admin-table-4">
+          ${web.accessibility.map(webAccessibilityRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Web feature flags</h2>
+        <div class="table admin-table-4">
+          ${web.featureFlags.map(webFeatureFlagRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Web rollout guardrails</h2>
+        <div class="admin-checklist">
+          ${web.guardrails.map(item => `<span>${item}</span>`).join("")}
         </div>
       </section>
     </div>
@@ -11654,6 +11790,7 @@ function bindEvents() {
       loadAdminDataRoom(true);
       loadAdminAiGovernance(true);
       loadAdminModelRisk(true);
+      loadAdminWebOps(true);
       loadAdminMobileOps(true);
       loadAdminCommunications(true);
       loadAdminNotificationDelivery(true);
