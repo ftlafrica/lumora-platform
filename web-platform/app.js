@@ -116,6 +116,7 @@ const ADMIN_SECTIONS = [
   { id: "culture", label: "Culture", desc: "Tone quality, dialect parity, cultural review queues, reviewer calibration, and sensitive context guardrails." },
   { id: "reviewers", label: "Reviewers", desc: "Human QA reviewer network, calibration, review queues, workload, onboarding, and quality guardrails." },
   { id: "improvement", label: "Improve", desc: "Correction feedback loops, consent gates, reviewer decisions, eval impact, and training handoffs." },
+  { id: "voiceOps", label: "Voice Ops", desc: "African speech routes, accent coverage, mobile capture, consent, latency, and voice review queues." },
   { id: "localization", label: "Localize", desc: "UI copy localization, translation QA, glossary control, reviewer workflow, and release guardrails." },
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
   { id: "memory", label: "Memory", desc: "Personalization memory, language passport controls, consent, deletion/export, and safe remembered context." },
@@ -299,6 +300,8 @@ const DEFAULT_STATE = {
   adminReviewerNetworkLoadedAt: null,
   adminCorrectionImprovement: null,
   adminCorrectionImprovementLoadedAt: null,
+  adminVoiceSpeech: null,
+  adminVoiceSpeechLoadedAt: null,
   adminLocalizationContent: null,
   adminLocalizationContentLoadedAt: null,
   adminDataGovernance: null,
@@ -1205,6 +1208,26 @@ async function loadAdminCorrectionImprovement(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminVoiceSpeech(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminVoiceSpeechLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/voice-speech`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Voice speech operations unavailable.");
+    state.adminVoiceSpeech = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminVoiceSpeechLoadedAt = Date.now();
+  } catch {
+    state.adminVoiceSpeechLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminLocalizationContent(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminLocalizationContentLoadedAt || 0;
@@ -1953,7 +1976,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2673,6 +2696,54 @@ function adminCorrectionImprovementData() {
       "Rejected, unclear, sensitive, or private corrections should improve safety triage only when policy-approved.",
       "Correction loops should separate personal preference, broad quality signal, evaluation sample, and training candidate.",
       "Leadership dashboards should show aggregate improvement impact without exposing raw private prompts or identities."
+    ]
+  };
+}
+
+function adminVoiceSpeechData() {
+  return state.adminVoiceSpeech || {
+    summary: { voiceSessions: "42.8K", asrAccuracy: "84%", ttsNaturalness: "81%", p95Latency: "1.1s", consentCoverage: "64%" },
+    speechRoutes: [
+      { route: "Meta MMS ASR", source: "huggingface.co/facebook/mms-1b-all", languages: "1000+ coverage", use: "Fallback transcription", status: "License review" },
+      { route: "Simba-H voice stack", source: "huggingface.co/UBC-NLP/Simba-H", languages: "39 listed languages", use: "African ASR/TTS benchmarks", status: "Testing" },
+      { route: "Lumora tone layer", source: "Internal orchestration", languages: "Priority markets", use: "Tone + bridge language reply", status: "Live" },
+      { route: "General speech fallback", source: "Provider fallback", languages: "Low-confidence routes", use: "Graceful fallback", status: "Guarded" }
+    ],
+    accentCoverage: [
+      { market: "Nigeria", languages: "Yoruba, Hausa, Igbo, Pidgin", noisyAccuracy: "86%", gap: "Regional Pidgin", status: "Improving" },
+      { market: "East Africa", languages: "Swahili, Sheng, Amharic", noisyAccuracy: "83%", gap: "Street noise", status: "Testing" },
+      { market: "Southern Africa", languages: "Zulu, Xhosa, Shona", noisyAccuracy: "79%", gap: "Code-switching", status: "Watch" },
+      { market: "North Africa", languages: "Arabic/French bridge", noisyAccuracy: "72%", gap: "Dialect spread", status: "Building" }
+    ],
+    mobileCapture: [
+      { surface: "iOS Voice Circle", readiness: "76%", blocker: "Audio permission loop", owner: "iOS QA", status: "Investigating" },
+      { surface: "Android Voice Circle", readiness: "82%", blocker: "Noisy market audio", owner: "Android QA", status: "Testing" },
+      { surface: "Mobile web voice", readiness: "68%", blocker: "Browser permission variance", owner: "Web Platform", status: "Watch" },
+      { surface: "Offline retry", readiness: "54%", blocker: "Queue sync", owner: "Mobile", status: "Design" }
+    ],
+    consentRetention: [
+      { control: "Voice capture consent", coverage: "92%", surface: "Mobile/Web", owner: "Privacy", status: "Live" },
+      { control: "Voice retention consent", coverage: "64%", surface: "Mobile beta", owner: "Voice Ops", status: "Review" },
+      { control: "Reviewer audio access", coverage: "Scoped", surface: "Admin", owner: "Language QA", status: "Guarded" },
+      { control: "Training reuse consent", coverage: "41%", surface: "Voice beta", owner: "Data Governance", status: "Blocked" }
+    ],
+    latencyQuality: [
+      { metric: "ASR p95 latency", value: "1.1s", target: "<900ms", owner: "Voice Ops", status: "Blocked" },
+      { metric: "TTS first audio", value: "740ms", target: "<700ms", owner: "Speech Platform", status: "Watch" },
+      { metric: "Noisy audio word error", value: "16%", target: "<12%", owner: "AI QA", status: "Mitigating" },
+      { metric: "Voice handoff failure", value: "0.38%", target: "<0.25%", owner: "Mobile", status: "Watch" }
+    ],
+    reviewQueues: [
+      { queue: "High-risk voice samples", count: 148, language: "Swahili/Yoruba/Pidgin", reviewer: "Voice QA", status: "Needs capacity" },
+      { queue: "Accent mismatch reports", count: 96, language: "Multi-market", reviewer: "Native reviewers", status: "Busy" },
+      { queue: "TTS pronunciation fixes", count: 72, language: "Yoruba/Hausa/Zulu", reviewer: "Language QA", status: "Review" },
+      { queue: "Consent exception checks", count: 24, language: "Voice beta", reviewer: "Privacy", status: "Urgent" }
+    ],
+    guardrails: [
+      "Voice samples require explicit capture consent, retention consent, reviewer access limits, and training reuse approval.",
+      "Low-confidence speech routes should disclose uncertainty and offer text fallback instead of pretending accuracy.",
+      "Voice quality must be measured by language, accent, noise condition, device class, and code-switching behavior.",
+      "Admin views should show aggregate voice operations without exposing raw audio, transcripts, or speaker identity broadly."
     ]
   };
 }
@@ -5113,6 +5184,30 @@ function releaseHandoffRow(item) {
   return `<div class="table-row"><strong>${item.handoff}</strong><span>${item.target}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
 }
 
+function speechRouteRow(item) {
+  return `<div class="table-row"><strong>${item.route}</strong><span>${item.languages}</span><span>${item.use}</span><span>${item.status}</span></div>`;
+}
+
+function accentCoverageRow(item) {
+  return `<div class="table-row"><strong>${item.market}</strong><span>${item.languages}</span><span>${item.noisyAccuracy}</span><span>${item.status}</span></div>`;
+}
+
+function mobileCaptureRow(item) {
+  return `<div class="table-row"><strong>${item.surface}</strong><span>${item.readiness}</span><span>${item.blocker}</span><span>${item.status}</span></div>`;
+}
+
+function voiceConsentRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.coverage}</span><span>${item.surface}</span><span>${item.status}</span></div>`;
+}
+
+function voiceQualityMetricRow(item) {
+  return `<div class="table-row"><strong>${item.metric}</strong><span>${item.value}</span><span>${item.target}</span><span>${item.status}</span></div>`;
+}
+
+function voiceReviewQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.language}</span><span>${item.status}</span></div>`;
+}
+
 function localizationReadinessRow(item) {
   return `<div class="table-row"><strong>${item.locale}</strong><span>${item.surface}</span><span>${item.completion}</span><span>${item.status}</span></div>`;
 }
@@ -6481,6 +6576,7 @@ function adminView() {
   if (state.adminSection === "culture") loadAdminCulturalQuality();
   if (state.adminSection === "reviewers") loadAdminReviewerNetwork();
   if (state.adminSection === "improvement") loadAdminCorrectionImprovement();
+  if (state.adminSection === "voiceOps") loadAdminVoiceSpeech();
   if (state.adminSection === "localization") loadAdminLocalizationContent();
   if (state.adminSection === "data") loadAdminDataGovernance();
   if (state.adminSection === "memory") loadAdminMemoryPersonalization();
@@ -6673,6 +6769,7 @@ function adminSectionView(section, readiness) {
     culture: adminCulturalQuality,
     reviewers: adminReviewerNetwork,
     improvement: adminCorrectionImprovement,
+    voiceOps: adminVoiceSpeech,
     localization: adminLocalizationContent,
     data: adminDataGovernance,
     memory: adminMemoryPersonalization,
@@ -9020,6 +9117,61 @@ function adminCorrectionImprovement() {
   `;
 }
 
+function adminVoiceSpeech() {
+  const voice = adminVoiceSpeechData();
+  const summary = voice.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Voice sessions", summary.voiceSessions || "42.8K")}
+      ${metric("ASR accuracy", summary.asrAccuracy || "84%")}
+      ${metric("TTS naturalness", summary.ttsNaturalness || "81%")}
+      ${metric("P95 latency", summary.p95Latency || "1.1s")}
+      <section class="admin-card full-admin">
+        <h2>Speech model routes</h2>
+        <div class="table admin-table-4">
+          ${voice.speechRoutes.map(speechRouteRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Accent and noise coverage</h2>
+        <div class="table admin-table-4">
+          ${voice.accentCoverage.map(accentCoverageRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Mobile capture readiness</h2>
+        <div class="table admin-table-4">
+          ${voice.mobileCapture.map(mobileCaptureRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Consent and retention</h2>
+        <div class="table admin-table-4">
+          ${voice.consentRetention.map(voiceConsentRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Latency and quality</h2>
+        <div class="table admin-table-4">
+          ${voice.latencyQuality.map(voiceQualityMetricRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Voice review queues</h2>
+        <div class="table admin-table-4">
+          ${voice.reviewQueues.map(voiceReviewQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Voice operations guardrails</h2>
+        <div class="admin-checklist">
+          ${voice.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminLocalizationContent() {
   const localization = adminLocalizationContentData();
   const summary = localization.summary || {};
@@ -10334,6 +10486,7 @@ function bindEvents() {
       loadAdminCulturalQuality(true);
       loadAdminReviewerNetwork(true);
       loadAdminCorrectionImprovement(true);
+      loadAdminVoiceSpeech(true);
       loadAdminLocalizationContent(true);
       loadAdminDataGovernance(true);
       loadAdminMemoryPersonalization(true);
