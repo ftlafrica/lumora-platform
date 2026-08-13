@@ -119,6 +119,7 @@ const ADMIN_SECTIONS = [
   { id: "voiceOps", label: "Voice Ops", desc: "African speech routes, accent coverage, mobile capture, consent, latency, and voice review queues." },
   { id: "translationOps", label: "Translate Ops", desc: "Translation route quality, meaning preservation, dialect drift, review queues, and enterprise controls." },
   { id: "creatorOps", label: "Creator Ops", desc: "Creator Studio content modes, template health, brand safety, monetization, and workflow queues." },
+  { id: "classroomOps", label: "Classroom Ops", desc: "Learning sessions, curriculum coverage, pedagogy signals, safety queues, and education partnerships." },
   { id: "passport", label: "Passport", desc: "Language Passport completion, field quality, language pairs, personalization surfaces, consent, and risk controls." },
   { id: "localization", label: "Localize", desc: "UI copy localization, translation QA, glossary control, reviewer workflow, and release guardrails." },
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
@@ -309,6 +310,8 @@ const DEFAULT_STATE = {
   adminTranslationOpsLoadedAt: null,
   adminCreatorStudio: null,
   adminCreatorStudioLoadedAt: null,
+  adminClassroomLearning: null,
+  adminClassroomLearningLoadedAt: null,
   adminLanguagePassport: null,
   adminLanguagePassportLoadedAt: null,
   adminLocalizationContent: null,
@@ -1277,6 +1280,26 @@ async function loadAdminCreatorStudio(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminClassroomLearning(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminClassroomLearningLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/classroom-learning`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Classroom learning operations unavailable.");
+    state.adminClassroomLearning = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminClassroomLearningLoadedAt = Date.now();
+  } catch {
+    state.adminClassroomLearningLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminLanguagePassport(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminLanguagePassportLoadedAt || 0;
@@ -2045,7 +2068,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2901,6 +2924,50 @@ function adminCreatorStudioData() {
       "Brand and campaign templates must separate factual product details from generated persuasive language.",
       "Community, faith, political, health, and finance content should use higher safety thresholds and clear uncertainty.",
       "Admin views should track aggregate creator quality, monetization, and safety signals without exposing private drafts."
+    ]
+  };
+}
+
+function adminClassroomLearningData() {
+  return state.adminClassroomLearning || {
+    summary: { learningSessions: "54.2K", explanationQuality: "90%", localExampleUse: "68%", safetyEscalations: 31, educatorRetention: "58%" },
+    learningModes: [
+      { mode: "Simple explanation", sessions: "18K", quality: "93%", audience: "Students", status: "Healthy" },
+      { mode: "Exam prep", sessions: "12K", quality: "88%", audience: "Secondary school", status: "Improving" },
+      { mode: "Homework guide", sessions: "9K", quality: "86%", audience: "Learners", status: "Guarded" },
+      { mode: "Teacher lesson plan", sessions: "8K", quality: "91%", audience: "Educators", status: "Healthy" },
+      { mode: "Local example explainer", sessions: "7K", quality: "89%", audience: "Mixed", status: "Testing" }
+    ],
+    curriculumCoverage: [
+      { subject: "English and language arts", coverage: "82%", markets: "West/East Africa", owner: "Learning", status: "Live" },
+      { subject: "Mathematics", coverage: "76%", markets: "Multi-market", owner: "Education QA", status: "Testing" },
+      { subject: "Science", coverage: "64%", markets: "Priority markets", owner: "Content QA", status: "Building" },
+      { subject: "Business basics", coverage: "58%", markets: "SMB learners", owner: "Market Mode", status: "Review" },
+      { subject: "Digital literacy", coverage: "54%", markets: "Youth/adult learning", owner: "Partnerships", status: "Roadmap" }
+    ],
+    pedagogySignals: [
+      { signal: "Age-appropriate explanation", score: "92%", owner: "Safety", action: "Grade-band prompts", status: "Healthy" },
+      { signal: "Step-by-step reasoning", score: "87%", owner: "Learning", action: "Worked examples", status: "Improving" },
+      { signal: "Local example relevance", score: "68%", owner: "Culture QA", action: "Reviewer examples", status: "Watch" },
+      { signal: "Answer-only risk", score: "5.8%", owner: "Policy", action: "Guide-don't-cheat mode", status: "Guarded" }
+    ],
+    safetyQueues: [
+      { queue: "Minors safety review", count: 31, subject: "Mixed", owner: "Trust", status: "Urgent" },
+      { queue: "Medical/health learning", count: 22, subject: "Science", owner: "Policy", status: "Guarded" },
+      { queue: "Exam misconduct risk", count: 44, subject: "Exam prep", owner: "Education QA", status: "Review" },
+      { queue: "Low-confidence subject answer", count: 67, subject: "STEM", owner: "AI QA", status: "Busy" }
+    ],
+    partnerships: [
+      { partner: "Community learning hubs", learners: "4,200", market: "Nigeria/Ghana", owner: "Partnerships", status: "Pilot" },
+      { partner: "Teacher ambassador program", learners: "1,800", market: "East Africa", owner: "Community", status: "Design" },
+      { partner: "After-school digital clubs", learners: "960", market: "Southern Africa", owner: "Growth", status: "Testing" },
+      { partner: "Adult literacy programs", learners: "740", market: "Multi-market", owner: "Impact", status: "Roadmap" }
+    ],
+    guardrails: [
+      "Classroom mode should teach and guide rather than simply provide answers for graded or exam-like work.",
+      "Age-sensitive learning experiences need stronger safety review, privacy protection, and clear escalation paths.",
+      "Local examples should improve understanding without stereotyping learners, regions, families, or communities.",
+      "Admin views should track aggregate learning quality and safety without exposing minors or private schoolwork."
     ]
   };
 }
@@ -5457,6 +5524,26 @@ function creatorQueueRow(item) {
   return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.priority}</span><span>${item.status}</span></div>`;
 }
 
+function classroomModeRow(item) {
+  return `<div class="table-row"><strong>${item.mode}</strong><span>${item.sessions}</span><span>${item.quality}</span><span>${item.status}</span></div>`;
+}
+
+function classroomCoverageRow(item) {
+  return `<div class="table-row"><strong>${item.subject}</strong><span>${item.coverage}</span><span>${item.markets}</span><span>${item.status}</span></div>`;
+}
+
+function classroomPedagogyRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.score}</span><span>${item.action}</span><span>${item.status}</span></div>`;
+}
+
+function classroomSafetyRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.subject}</span><span>${item.status}</span></div>`;
+}
+
+function classroomPartnershipRow(item) {
+  return `<div class="table-row"><strong>${item.partner}</strong><span>${item.learners}</span><span>${item.market}</span><span>${item.status}</span></div>`;
+}
+
 function passportFunnelRow(item) {
   return `<div class="table-row"><strong>${item.step}</strong><span>${item.users}</span><span>${item.conversion}</span><span>${item.owner}</span></div>`;
 }
@@ -6852,6 +6939,7 @@ function adminView() {
   if (state.adminSection === "voiceOps") loadAdminVoiceSpeech();
   if (state.adminSection === "translationOps") loadAdminTranslationOps();
   if (state.adminSection === "creatorOps") loadAdminCreatorStudio();
+  if (state.adminSection === "classroomOps") loadAdminClassroomLearning();
   if (state.adminSection === "passport") loadAdminLanguagePassport();
   if (state.adminSection === "localization") loadAdminLocalizationContent();
   if (state.adminSection === "data") loadAdminDataGovernance();
@@ -7048,6 +7136,7 @@ function adminSectionView(section, readiness) {
     voiceOps: adminVoiceSpeech,
     translationOps: adminTranslationOps,
     creatorOps: adminCreatorStudio,
+    classroomOps: adminClassroomLearning,
     passport: adminLanguagePassport,
     localization: adminLocalizationContent,
     data: adminDataGovernance,
@@ -9549,6 +9638,55 @@ function adminCreatorStudio() {
   `;
 }
 
+function adminClassroomLearning() {
+  const classroom = adminClassroomLearningData();
+  const summary = classroom.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Learning sessions", summary.learningSessions || "54.2K")}
+      ${metric("Explanation quality", summary.explanationQuality || "90%")}
+      ${metric("Local example use", summary.localExampleUse || "68%")}
+      ${metric("Safety escalations", summary.safetyEscalations || "31")}
+      <section class="admin-card full-admin">
+        <h2>Learning modes</h2>
+        <div class="table admin-table-4">
+          ${classroom.learningModes.map(classroomModeRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Curriculum coverage</h2>
+        <div class="table admin-table-4">
+          ${classroom.curriculumCoverage.map(classroomCoverageRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Pedagogy signals</h2>
+        <div class="table admin-table-4">
+          ${classroom.pedagogySignals.map(classroomPedagogyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Learning safety queues</h2>
+        <div class="table admin-table-4">
+          ${classroom.safetyQueues.map(classroomSafetyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Education partnerships</h2>
+        <div class="table admin-table-4">
+          ${classroom.partnerships.map(classroomPartnershipRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Classroom guardrails</h2>
+        <div class="admin-checklist">
+          ${classroom.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminLanguagePassport() {
   const passport = adminLanguagePassportData();
   const summary = passport.summary || {};
@@ -10921,6 +11059,7 @@ function bindEvents() {
       loadAdminVoiceSpeech(true);
       loadAdminTranslationOps(true);
       loadAdminCreatorStudio(true);
+      loadAdminClassroomLearning(true);
       loadAdminLanguagePassport(true);
       loadAdminLocalizationContent(true);
       loadAdminDataGovernance(true);

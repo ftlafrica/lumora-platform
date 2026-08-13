@@ -1650,6 +1650,48 @@ const creatorStudioOperations = {
   ]
 };
 
+const classroomLearningOperations = {
+  summary: { learningSessions: "54.2K", explanationQuality: "90%", localExampleUse: "68%", safetyEscalations: 31, educatorRetention: "58%" },
+  learningModes: [
+    { mode: "Simple explanation", sessions: "18K", quality: "93%", audience: "Students", status: "Healthy" },
+    { mode: "Exam prep", sessions: "12K", quality: "88%", audience: "Secondary school", status: "Improving" },
+    { mode: "Homework guide", sessions: "9K", quality: "86%", audience: "Learners", status: "Guarded" },
+    { mode: "Teacher lesson plan", sessions: "8K", quality: "91%", audience: "Educators", status: "Healthy" },
+    { mode: "Local example explainer", sessions: "7K", quality: "89%", audience: "Mixed", status: "Testing" }
+  ],
+  curriculumCoverage: [
+    { subject: "English and language arts", coverage: "82%", markets: "West/East Africa", owner: "Learning", status: "Live" },
+    { subject: "Mathematics", coverage: "76%", markets: "Multi-market", owner: "Education QA", status: "Testing" },
+    { subject: "Science", coverage: "64%", markets: "Priority markets", owner: "Content QA", status: "Building" },
+    { subject: "Business basics", coverage: "58%", markets: "SMB learners", owner: "Market Mode", status: "Review" },
+    { subject: "Digital literacy", coverage: "54%", markets: "Youth/adult learning", owner: "Partnerships", status: "Roadmap" }
+  ],
+  pedagogySignals: [
+    { signal: "Age-appropriate explanation", score: "92%", owner: "Safety", action: "Grade-band prompts", status: "Healthy" },
+    { signal: "Step-by-step reasoning", score: "87%", owner: "Learning", action: "Worked examples", status: "Improving" },
+    { signal: "Local example relevance", score: "68%", owner: "Culture QA", action: "Reviewer examples", status: "Watch" },
+    { signal: "Answer-only risk", score: "5.8%", owner: "Policy", action: "Guide-don't-cheat mode", status: "Guarded" }
+  ],
+  safetyQueues: [
+    { queue: "Minors safety review", count: 31, subject: "Mixed", owner: "Trust", status: "Urgent" },
+    { queue: "Medical/health learning", count: 22, subject: "Science", owner: "Policy", status: "Guarded" },
+    { queue: "Exam misconduct risk", count: 44, subject: "Exam prep", owner: "Education QA", status: "Review" },
+    { queue: "Low-confidence subject answer", count: 67, subject: "STEM", owner: "AI QA", status: "Busy" }
+  ],
+  partnerships: [
+    { partner: "Community learning hubs", learners: "4,200", market: "Nigeria/Ghana", owner: "Partnerships", status: "Pilot" },
+    { partner: "Teacher ambassador program", learners: "1,800", market: "East Africa", owner: "Community", status: "Design" },
+    { partner: "After-school digital clubs", learners: "960", market: "Southern Africa", owner: "Growth", status: "Testing" },
+    { partner: "Adult literacy programs", learners: "740", market: "Multi-market", owner: "Impact", status: "Roadmap" }
+  ],
+  guardrails: [
+    "Classroom mode should teach and guide rather than simply provide answers for graded or exam-like work.",
+    "Age-sensitive learning experiences need stronger safety review, privacy protection, and clear escalation paths.",
+    "Local examples should improve understanding without stereotyping learners, regions, families, or communities.",
+    "Admin views should track aggregate learning quality and safety without exposing minors or private schoolwork."
+  ]
+};
+
 const languagePassportOperations = {
   summary: { completionRate: "78.2%", activePassports: "14.4K", primaryLanguages: 54, bridgePairs: 128, consentHealth: "92%" },
   completionFunnel: [
@@ -3145,6 +3187,10 @@ function adminCreatorStudioOperations() {
   return creatorStudioOperations;
 }
 
+function adminClassroomLearningOperations() {
+  return classroomLearningOperations;
+}
+
 function adminLanguagePassportOperations() {
   return languagePassportOperations;
 }
@@ -3332,6 +3378,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "voice:operate",
       "translation:operate",
       "creator:operate",
+      "classroom:operate",
       "passport:operate",
       "localization:manage",
       "data:govern",
@@ -3785,6 +3832,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminCreatorStudioOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/classroom-learning") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("classroom_learning_viewed", "Classroom Ops", "Info", "Learning");
+      return sendJson(response, 200, adminClassroomLearningOperations());
+    }
+
     if (request.method === "GET" && url.pathname === "/v1/admin/language-passport") {
       if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
         return sendJson(response, 403, { error: "Seed admin access required" });
@@ -4065,4 +4120,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminTranslationOperations, adminCreatorStudioOperations, adminLanguagePassportOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminTranslationOperations, adminCreatorStudioOperations, adminClassroomLearningOperations, adminLanguagePassportOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

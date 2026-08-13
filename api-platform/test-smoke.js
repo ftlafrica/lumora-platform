@@ -53,6 +53,7 @@ const {
   adminVoiceSpeechOperations,
   adminTranslationOperations,
   adminCreatorStudioOperations,
+  adminClassroomLearningOperations,
   adminLanguagePassportOperations,
   adminLocalizationContentOperations,
   adminDataGovernanceOperations,
@@ -152,6 +153,7 @@ assert.ok(accessSession.scopes.includes("corrections:improve"));
 assert.ok(accessSession.scopes.includes("voice:operate"));
 assert.ok(accessSession.scopes.includes("translation:operate"));
 assert.ok(accessSession.scopes.includes("creator:operate"));
+assert.ok(accessSession.scopes.includes("classroom:operate"));
 assert.ok(accessSession.scopes.includes("passport:operate"));
 assert.ok(accessSession.scopes.includes("localization:manage"));
 assert.ok(accessSession.scopes.includes("data:govern"));
@@ -235,6 +237,7 @@ const adminContracts = [
   ["voice speech", adminVoiceSpeechOperations(), data => data.summary && Array.isArray(data.speechRoutes) && Array.isArray(data.accentCoverage) && Array.isArray(data.reviewQueues)],
   ["translation operations", adminTranslationOperations(), data => data.summary && Array.isArray(data.routeQuality) && Array.isArray(data.languagePairs) && Array.isArray(data.riskQueues)],
   ["creator studio", adminCreatorStudioOperations(), data => data.summary && Array.isArray(data.contentModes) && Array.isArray(data.templateHealth) && Array.isArray(data.workflowQueues)],
+  ["classroom learning", adminClassroomLearningOperations(), data => data.summary && Array.isArray(data.learningModes) && Array.isArray(data.curriculumCoverage) && Array.isArray(data.safetyQueues)],
   ["language passport", adminLanguagePassportOperations(), data => data.summary && Array.isArray(data.completionFunnel) && Array.isArray(data.fieldQuality) && Array.isArray(data.languagePairs)],
   ["localization content", adminLocalizationContentOperations(), data => data.summary && Array.isArray(data.localeReadiness) && Array.isArray(data.contentQueues) && Array.isArray(data.glossary)],
   ["data governance", adminDataGovernanceOperations(), data => data.summary && Array.isArray(data.retention) && Array.isArray(data.consent) && Array.isArray(data.requests)],
