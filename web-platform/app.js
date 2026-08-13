@@ -88,6 +88,7 @@ const ADMIN_SECTIONS = [
   { id: "telemetryOps", label: "Telemetry", desc: "Web, mobile, admin, and API event pipelines, schemas, privacy filters, and certified dashboards." },
   { id: "statusOps", label: "Status Ops", desc: "Public status, incidents, maintenance windows, subscriber alerts, and postmortem readiness." },
   { id: "dataQualityOps", label: "Data Quality", desc: "Certified metrics, freshness, reconciliation, lineage, quality incidents, and decision-grade data." },
+  { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
   { id: "mobileOps", label: "Mobile Ops", desc: "Android/iOS releases, crash health, store readiness, device labs, and rollout guardrails." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
@@ -306,6 +307,8 @@ const DEFAULT_STATE = {
   adminStatusOpsLoadedAt: null,
   adminDataQualityOps: null,
   adminDataQualityOpsLoadedAt: null,
+  adminSecretsOps: null,
+  adminSecretsOpsLoadedAt: null,
   adminMobileOps: null,
   adminMobileOpsLoadedAt: null,
   adminCommunications: null,
@@ -1179,6 +1182,26 @@ async function loadAdminDataQualityOps(force = false) {
     state.adminDataQualityOpsLoadedAt = Date.now();
   } catch {
     state.adminDataQualityOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminSecretsOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminSecretsOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/secrets`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Secrets operations unavailable.");
+    state.adminSecretsOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminSecretsOpsLoadedAt = Date.now();
+  } catch {
+    state.adminSecretsOpsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -2252,7 +2275,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "dataquality:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "dataquality:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -4700,6 +4723,48 @@ function adminDataQualityOpsData() {
   };
 }
 
+function adminSecretsOpsData() {
+  return state.adminSecretsOps || {
+    summary: { managedSecrets: 128, rotationHealth: "94%", expiringSoon: 6, leakAlerts: 2, kmsCoverage: "98%" },
+    secretInventory: [
+      { secret: "Model provider tokens", scope: "AI gateway", owner: "AI Ops", rotation: "14 days", status: "Scheduled" },
+      { secret: "Payment webhook keys", scope: "Billing", owner: "Revenue Ops", rotation: "30 days", status: "Healthy" },
+      { secret: "Mobile push certificates", scope: "iOS/Android", owner: "Mobile", rotation: "90 days", status: "Expiring" },
+      { secret: "Enterprise SSO metadata", scope: "Teams", owner: "Identity", rotation: "Customer managed", status: "Review" }
+    ],
+    rotations: [
+      { rotation: "Hugging Face token refresh", window: "Aug 14 01:00", owner: "AI Ops", blastRadius: "Model routing", status: "Approved" },
+      { rotation: "Payment signing key", window: "Aug 16 02:00", owner: "Finance/Security", blastRadius: "Billing webhooks", status: "Ready" },
+      { rotation: "Admin session signing key", window: "Aug 18 00:30", owner: "Security", blastRadius: "Admin console", status: "Testing" },
+      { rotation: "Push certificate renewal", window: "Aug 19 00:30", owner: "Mobile", blastRadius: "Notifications", status: "Queued" }
+    ],
+    kmsPosture: [
+      { store: "User profile DB", keyPolicy: "Managed KMS", coverage: "99%", owner: "Security", status: "Healthy" },
+      { store: "Conversation ledger", keyPolicy: "Tenant-ready keys", coverage: "96%", owner: "Platform", status: "Improving" },
+      { store: "Object storage", keyPolicy: "Envelope encryption", coverage: "98%", owner: "Infrastructure", status: "Healthy" },
+      { store: "Audit archive", keyPolicy: "Immutable key custody", coverage: "100%", owner: "Compliance", status: "Protected" }
+    ],
+    certificates: [
+      { certificate: "api.lumora.ai TLS", surface: "API", expires: "72 days", owner: "Platform", status: "Healthy" },
+      { certificate: "admin.lumora.ai TLS", surface: "Admin", expires: "48 days", owner: "Security", status: "Healthy" },
+      { certificate: "iOS push certificate", surface: "Mobile", expires: "11 days", owner: "Mobile", status: "Renewal queued" },
+      { certificate: "Partner webhook mTLS", surface: "Enterprise API", expires: "26 days", owner: "Integrations", status: "Review" }
+    ],
+    leakResponse: [
+      { signal: "Token committed to preview log", surface: "DevEx", severity: "High", owner: "Security", status: "Rotated" },
+      { signal: "Webhook key replay pattern", surface: "Billing", severity: "Medium", owner: "Revenue Ops", status: "Investigating" },
+      { signal: "Mobile cert expiry warning", surface: "Notifications", severity: "Medium", owner: "Mobile", status: "Queued" },
+      { signal: "Partner key over-permissioned", surface: "API", severity: "Low", owner: "Integrations", status: "Scope review" }
+    ],
+    guardrails: [
+      "Secrets must never appear in browser code, logs, reports, support tools, screenshots, or generated exports.",
+      "Every secret needs owner, scope, rotation cadence, storage location, blast radius, and emergency revocation path.",
+      "Key rotations should be tested in preview before production and coordinated with impacted product surfaces.",
+      "Leak response must revoke, rotate, audit, notify accountable owners, and document customer impact when needed."
+    ]
+  };
+}
+
 function adminMobileOpsData() {
   return state.adminMobileOps || {
     summary: { activeBuilds: 4, crashFree: "99.42%", betaUsers: "3,840", storeReadiness: "86%", blockedDevices: 12 },
@@ -6378,6 +6443,26 @@ function dataQualityIncidentRow(item) {
   return `<div class="table-row"><strong>${item.incident}</strong><span>${item.impact}</span><span>${item.eta}</span><span>${item.status}</span></div>`;
 }
 
+function secretInventoryRow(item) {
+  return `<div class="table-row"><strong>${item.secret}</strong><span>${item.scope}</span><span>${item.rotation}</span><span>${item.status}</span></div>`;
+}
+
+function secretRotationRowAdmin(item) {
+  return `<div class="table-row"><strong>${item.rotation}</strong><span>${item.window}</span><span>${item.blastRadius}</span><span>${item.status}</span></div>`;
+}
+
+function kmsPostureRow(item) {
+  return `<div class="table-row"><strong>${item.store}</strong><span>${item.keyPolicy}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
+function certificateRow(item) {
+  return `<div class="table-row"><strong>${item.certificate}</strong><span>${item.surface}</span><span>${item.expires}</span><span>${item.status}</span></div>`;
+}
+
+function leakResponseRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.surface}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
 function experimentRowAdmin(item) {
   return `<div class="table-row"><strong>${item.test}</strong><span>${item.segment}</span><span>${item.lift}</span><span>${item.status}</span></div>`;
 }
@@ -7672,6 +7757,7 @@ function adminView() {
   if (state.adminSection === "telemetryOps") loadAdminTelemetryOps();
   if (state.adminSection === "statusOps") loadAdminStatusOps();
   if (state.adminSection === "dataQualityOps") loadAdminDataQualityOps();
+  if (state.adminSection === "secretsOps") loadAdminSecretsOps();
   if (state.adminSection === "mobileOps") loadAdminMobileOps();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "notifications") loadAdminNotificationDelivery();
@@ -7803,6 +7889,7 @@ function adminSectionView(section, readiness) {
     telemetryOps: adminTelemetryOps,
     statusOps: adminStatusOps,
     dataQualityOps: adminDataQualityOps,
+    secretsOps: adminSecretsOps,
     mobileOps: adminMobileOps,
     communications: adminCommunications,
     notifications: adminNotificationDelivery,
@@ -10091,6 +10178,55 @@ function adminDataQualityOps() {
   `;
 }
 
+function adminSecretsOps() {
+  const secrets = adminSecretsOpsData();
+  const summary = secrets.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Managed secrets", summary.managedSecrets || "128")}
+      ${metric("Rotation health", summary.rotationHealth || "94%")}
+      ${metric("Expiring soon", summary.expiringSoon || "6")}
+      ${metric("KMS coverage", summary.kmsCoverage || "98%")}
+      <section class="admin-card full-admin">
+        <h2>Secret inventory</h2>
+        <div class="table admin-table-4">
+          ${secrets.secretInventory.map(secretInventoryRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Rotation calendar</h2>
+        <div class="table admin-table-4">
+          ${secrets.rotations.map(secretRotationRowAdmin).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>KMS posture</h2>
+        <div class="table admin-table-4">
+          ${secrets.kmsPosture.map(kmsPostureRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Certificate expiry</h2>
+        <div class="table admin-table-4">
+          ${secrets.certificates.map(certificateRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Leak response</h2>
+        <div class="table admin-table-4">
+          ${secrets.leakResponse.map(leakResponseRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Secrets guardrails</h2>
+        <div class="admin-checklist">
+          ${secrets.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminCommunications() {
   const communications = adminCommunicationsData();
   const summary = communications.summary || {};
@@ -12200,6 +12336,7 @@ function bindEvents() {
       loadAdminTelemetryOps(true);
       loadAdminStatusOps(true);
       loadAdminDataQualityOps(true);
+      loadAdminSecretsOps(true);
       loadAdminMobileOps(true);
       loadAdminCommunications(true);
       loadAdminNotificationDelivery(true);

@@ -50,6 +50,7 @@ This is the first backend foundation for connecting the Web Platform, Enterprise
 - `GET /v1/admin/telemetry`
 - `GET /v1/admin/status-ops`
 - `GET /v1/admin/data-quality`
+- `GET /v1/admin/secrets`
 - `GET /v1/admin/language-passport`
 - `GET /v1/admin/localization-content`
 - `GET /v1/admin/data-governance`
@@ -135,6 +136,8 @@ It also exposes `GET /v1/admin/telemetry` for web, mobile, admin, and API event 
 It also exposes `GET /v1/admin/status-ops` for public status, incidents, maintenance windows, subscriber communications, and postmortem readiness.
 
 It also exposes `GET /v1/admin/data-quality` for certified metrics, freshness monitors, reconciliation checks, lineage coverage, quality incidents, and decision-grade data guardrails.
+
+It also exposes `GET /v1/admin/secrets` for secret inventory, rotation calendar, KMS posture, certificate expiry, leak response, and secrets guardrails.
 
 ## Example Requests
 
