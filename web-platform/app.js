@@ -87,6 +87,7 @@ const ADMIN_SECTIONS = [
   { id: "webOps", label: "Web Ops", desc: "Deployments, frontend performance, browser coverage, accessibility, flags, and web rollout guardrails." },
   { id: "telemetryOps", label: "Telemetry", desc: "Web, mobile, admin, and API event pipelines, schemas, privacy filters, and certified dashboards." },
   { id: "statusOps", label: "Status Ops", desc: "Public status, incidents, maintenance windows, subscriber alerts, and postmortem readiness." },
+  { id: "dataQualityOps", label: "Data Quality", desc: "Certified metrics, freshness, reconciliation, lineage, quality incidents, and decision-grade data." },
   { id: "mobileOps", label: "Mobile Ops", desc: "Android/iOS releases, crash health, store readiness, device labs, and rollout guardrails." },
   { id: "risk", label: "Risk", desc: "Enterprise risk register, mitigations, board items, heatmap, owners, and review cadence." },
   { id: "legal", label: "Legal", desc: "Contracts, DPAs, policies, legal requests, approvals, and counsel-boundary guardrails." },
@@ -303,6 +304,8 @@ const DEFAULT_STATE = {
   adminTelemetryOpsLoadedAt: null,
   adminStatusOps: null,
   adminStatusOpsLoadedAt: null,
+  adminDataQualityOps: null,
+  adminDataQualityOpsLoadedAt: null,
   adminMobileOps: null,
   adminMobileOpsLoadedAt: null,
   adminCommunications: null,
@@ -1156,6 +1159,26 @@ async function loadAdminStatusOps(force = false) {
     state.adminStatusOpsLoadedAt = Date.now();
   } catch {
     state.adminStatusOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminDataQualityOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminDataQualityOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/data-quality`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Data quality operations unavailable.");
+    state.adminDataQualityOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminDataQualityOpsLoadedAt = Date.now();
+  } catch {
+    state.adminDataQualityOpsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -2229,7 +2252,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "dataquality:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -4635,6 +4658,48 @@ function adminStatusOpsData() {
   };
 }
 
+function adminDataQualityOpsData() {
+  return state.adminDataQualityOps || {
+    summary: { certifiedMetrics: 42, freshnessHealth: "96%", reconciliationGaps: 7, lineageCoverage: "89%", blockedReports: 3 },
+    metricHealth: [
+      { metric: "Daily active users", source: "Product events", freshness: "5m", owner: "Analytics", status: "Certified" },
+      { metric: "Paid conversion", source: "Billing + product", freshness: "10m", owner: "Revenue Ops", status: "Certified" },
+      { metric: "Language adoption", source: "Chat metadata", freshness: "12m", owner: "Language QA", status: "Watch" },
+      { metric: "Model route cost", source: "AI gateway", freshness: "8m", owner: "Finance/AI Ops", status: "Review" }
+    ],
+    freshnessMonitors: [
+      { pipeline: "Web event stream", target: "<2m", current: "45s", owner: "Data Platform", status: "Healthy" },
+      { pipeline: "Mobile event sync", target: "<5m", current: "4m", owner: "Mobile Data", status: "Watch" },
+      { pipeline: "Billing ledger sync", target: "<10m", current: "7m", owner: "Finance Data", status: "Healthy" },
+      { pipeline: "Reviewer quality exports", target: "<30m", current: "41m", owner: "Language QA", status: "Late" }
+    ],
+    reconciliation: [
+      { check: "Payments vs entitlements", gap: "11 accounts", owner: "Revenue Ops", severity: "High", status: "Investigating" },
+      { check: "Mobile installs vs signups", gap: "2.8%", owner: "Growth", severity: "Medium", status: "Sampling" },
+      { check: "API usage vs quota ledger", gap: "0.9%", owner: "API Platform", severity: "Medium", status: "Fix queued" },
+      { check: "Language corrections vs reviewer queue", gap: "18 items", owner: "Language QA", severity: "Low", status: "Review" }
+    ],
+    lineage: [
+      { dataset: "Executive KPIs", upstream: "Events, billing, API", coverage: "94%", owner: "Analytics", status: "Certified" },
+      { dataset: "Revenue dashboard", upstream: "Billing, entitlements", coverage: "91%", owner: "Finance Data", status: "Certified" },
+      { dataset: "Language quality", upstream: "Reviews, evals, corrections", coverage: "86%", owner: "AI QA", status: "Watch" },
+      { dataset: "Mobile release health", upstream: "Crashes, events, stores", coverage: "83%", owner: "Mobile Ops", status: "Improving" }
+    ],
+    qualityIncidents: [
+      { incident: "Reviewer export late", impact: "Language quality dashboard", owner: "Language QA", eta: "Today", status: "Open" },
+      { incident: "Signup attribution mismatch", impact: "Growth funnel", owner: "Growth Analytics", eta: "4h", status: "Investigating" },
+      { incident: "Quota meter lag", impact: "API dashboard", owner: "API Platform", eta: "2h", status: "Fix queued" },
+      { incident: "Duplicate mobile install events", impact: "Mobile launch readout", owner: "Mobile Data", eta: "Resolved", status: "Closed" }
+    ],
+    guardrails: [
+      "Leadership dashboards should label metrics as certified only when freshness, schema, lineage, and reconciliation checks pass.",
+      "Revenue, usage, model-cost, and language-quality numbers need source ownership and auditability before board or investor use.",
+      "Data incidents should block dependent reports when quality falls below decision-grade thresholds.",
+      "Data quality views must use aggregates and metadata, not raw prompts, private chats, payment secrets, or sensitive user records."
+    ]
+  };
+}
+
 function adminMobileOpsData() {
   return state.adminMobileOps || {
     summary: { activeBuilds: 4, crashFree: "99.42%", betaUsers: "3,840", storeReadiness: "86%", blockedDevices: 12 },
@@ -6293,6 +6358,26 @@ function postmortemRow(item) {
   return `<div class="table-row"><strong>${item.report}</strong><span>${item.incident}</span><span>${item.due}</span><span>${item.status}</span></div>`;
 }
 
+function metricHealthRow(item) {
+  return `<div class="table-row"><strong>${item.metric}</strong><span>${item.source}</span><span>${item.freshness}</span><span>${item.status}</span></div>`;
+}
+
+function freshnessMonitorRow(item) {
+  return `<div class="table-row"><strong>${item.pipeline}</strong><span>${item.target}</span><span>${item.current}</span><span>${item.status}</span></div>`;
+}
+
+function reconciliationRow(item) {
+  return `<div class="table-row"><strong>${item.check}</strong><span>${item.gap}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
+function lineageRow(item) {
+  return `<div class="table-row"><strong>${item.dataset}</strong><span>${item.upstream}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
+function dataQualityIncidentRow(item) {
+  return `<div class="table-row"><strong>${item.incident}</strong><span>${item.impact}</span><span>${item.eta}</span><span>${item.status}</span></div>`;
+}
+
 function experimentRowAdmin(item) {
   return `<div class="table-row"><strong>${item.test}</strong><span>${item.segment}</span><span>${item.lift}</span><span>${item.status}</span></div>`;
 }
@@ -7586,6 +7671,7 @@ function adminView() {
   if (state.adminSection === "webOps") loadAdminWebOps();
   if (state.adminSection === "telemetryOps") loadAdminTelemetryOps();
   if (state.adminSection === "statusOps") loadAdminStatusOps();
+  if (state.adminSection === "dataQualityOps") loadAdminDataQualityOps();
   if (state.adminSection === "mobileOps") loadAdminMobileOps();
   if (state.adminSection === "communications") loadAdminCommunications();
   if (state.adminSection === "notifications") loadAdminNotificationDelivery();
@@ -7716,6 +7802,7 @@ function adminSectionView(section, readiness) {
     webOps: adminWebOps,
     telemetryOps: adminTelemetryOps,
     statusOps: adminStatusOps,
+    dataQualityOps: adminDataQualityOps,
     mobileOps: adminMobileOps,
     communications: adminCommunications,
     notifications: adminNotificationDelivery,
@@ -9955,6 +10042,55 @@ function adminStatusOps() {
   `;
 }
 
+function adminDataQualityOps() {
+  const quality = adminDataQualityOpsData();
+  const summary = quality.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Certified metrics", summary.certifiedMetrics || "42")}
+      ${metric("Freshness health", summary.freshnessHealth || "96%")}
+      ${metric("Recon gaps", summary.reconciliationGaps || "7")}
+      ${metric("Lineage coverage", summary.lineageCoverage || "89%")}
+      <section class="admin-card full-admin">
+        <h2>Metric health</h2>
+        <div class="table admin-table-4">
+          ${quality.metricHealth.map(metricHealthRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Freshness monitors</h2>
+        <div class="table admin-table-4">
+          ${quality.freshnessMonitors.map(freshnessMonitorRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Reconciliation checks</h2>
+        <div class="table admin-table-4">
+          ${quality.reconciliation.map(reconciliationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Lineage coverage</h2>
+        <div class="table admin-table-4">
+          ${quality.lineage.map(lineageRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Data quality incidents</h2>
+        <div class="table admin-table-4">
+          ${quality.qualityIncidents.map(dataQualityIncidentRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Data quality guardrails</h2>
+        <div class="admin-checklist">
+          ${quality.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminCommunications() {
   const communications = adminCommunicationsData();
   const summary = communications.summary || {};
@@ -12063,6 +12199,7 @@ function bindEvents() {
       loadAdminWebOps(true);
       loadAdminTelemetryOps(true);
       loadAdminStatusOps(true);
+      loadAdminDataQualityOps(true);
       loadAdminMobileOps(true);
       loadAdminCommunications(true);
       loadAdminNotificationDelivery(true);
