@@ -1816,6 +1816,46 @@ const searchRetrievalOperations = {
   ]
 };
 
+const workspaceCollaborationOperations = {
+  summary: { activeWorkspaces: "3.8K", sharedProjects: "1.2K", fileAssets: "48K", permissionAlerts: 27, syncHealth: "96%" },
+  workspaceHealth: [
+    { workspace: "Solo creator projects", members: "1", projects: "18K", activity: "High", status: "Healthy" },
+    { workspace: "SMB teams", members: "2-12", projects: "4.4K", activity: "Growing", status: "Improving" },
+    { workspace: "Education cohorts", members: "10-80", projects: "1.1K", activity: "Seasonal", status: "Watch" },
+    { workspace: "Enterprise pilots", members: "25-400", projects: "320", activity: "Expanding", status: "Beta" }
+  ],
+  collaborationActivity: [
+    { activity: "Shared conversation", volume: "8.4K", owner: "Product", risk: "Wrong audience", status: "Live" },
+    { activity: "Project file upload", volume: "6.8K", owner: "Multimodal", risk: "Private data", status: "Guarded" },
+    { activity: "Prompt/template sharing", volume: "3.2K", owner: "Prompt Ops", risk: "Unsafe reuse", status: "Review" },
+    { activity: "Team member invite", volume: "1.7K", owner: "Identity", risk: "Unauthorized access", status: "Improving" }
+  ],
+  permissionControls: [
+    { control: "Workspace roles", coverage: "82%", owner: "Access", status: "Beta" },
+    { control: "Project-level sharing", coverage: "74%", owner: "Product", status: "Testing" },
+    { control: "File access inheritance", coverage: "68%", owner: "Security", status: "Watch" },
+    { control: "External link expiry", coverage: "91%", owner: "Trust", status: "Healthy" }
+  ],
+  fileGovernance: [
+    { class: "Chat attachments", count: "31K", retention: "Per user controls", owner: "Privacy", status: "Live" },
+    { class: "Project documents", count: "12K", retention: "Workspace policy", owner: "Product", status: "Beta" },
+    { class: "Shared templates", count: "4.2K", retention: "Versioned", owner: "Prompt Ops", status: "Live" },
+    { class: "Quarantined files", count: "86", retention: "Security hold", owner: "Security", status: "Guarded" }
+  ],
+  syncReliability: [
+    { surface: "Web projects", success: "98%", p95: "420ms", owner: "Web", status: "Healthy" },
+    { surface: "Mobile saved chats", success: "94%", p95: "820ms", owner: "Mobile", status: "Watch" },
+    { surface: "Workspace file index", success: "96%", p95: "1.2s", owner: "Knowledge", status: "Improving" },
+    { surface: "Enterprise audit sync", success: "99%", p95: "610ms", owner: "Compliance", status: "Healthy" }
+  ],
+  guardrails: [
+    "Workspace sharing should default to least privilege, clear membership, link expiry, and visible access state.",
+    "Project files must inherit retention, deletion, export, and privacy controls from user and workspace policy.",
+    "Shared prompts, templates, and conversations should preserve attribution and avoid leaking sensitive context.",
+    "Admin views should show aggregate collaboration and permission health without exposing private workspace content."
+  ]
+};
+
 const languagePassportOperations = {
   summary: { completionRate: "78.2%", activePassports: "14.4K", primaryLanguages: 54, bridgePairs: 128, consentHealth: "92%" },
   completionFunnel: [
@@ -3327,6 +3367,10 @@ function adminSearchRetrievalOperations() {
   return searchRetrievalOperations;
 }
 
+function adminWorkspaceCollaborationOperations() {
+  return workspaceCollaborationOperations;
+}
+
 function adminLanguagePassportOperations() {
   return languagePassportOperations;
 }
@@ -3518,6 +3562,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "market:operate",
       "multimodal:operate",
       "search:operate",
+      "workspace:operate",
       "passport:operate",
       "localization:manage",
       "data:govern",
@@ -4003,6 +4048,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminSearchRetrievalOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/workspace-collaboration") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("workspace_collaboration_viewed", "Workspace Ops", "Info", "Product");
+      return sendJson(response, 200, adminWorkspaceCollaborationOperations());
+    }
+
     if (request.method === "GET" && url.pathname === "/v1/admin/language-passport") {
       if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
         return sendJson(response, 403, { error: "Seed admin access required" });
@@ -4283,4 +4336,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminTranslationOperations, adminCreatorStudioOperations, adminClassroomLearningOperations, adminMarketCommerceOperations, adminMultimodalOperations, adminSearchRetrievalOperations, adminLanguagePassportOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminTranslationOperations, adminCreatorStudioOperations, adminClassroomLearningOperations, adminMarketCommerceOperations, adminMultimodalOperations, adminSearchRetrievalOperations, adminWorkspaceCollaborationOperations, adminLanguagePassportOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

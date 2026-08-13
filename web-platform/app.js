@@ -123,6 +123,7 @@ const ADMIN_SECTIONS = [
   { id: "marketOps", label: "Market Ops", desc: "SMB customer replies, pricing copy, commerce risks, market templates, and upgrade signals." },
   { id: "multimodalOps", label: "Multimodal Ops", desc: "Uploads, images, documents, OCR, attachment safety, retention, and device upload health." },
   { id: "searchOps", label: "Search Ops", desc: "Web lookup, RAG retrieval, citations, source freshness, hallucination controls, and search guardrails." },
+  { id: "workspaceOps", label: "Workspace Ops", desc: "Projects, shared workspaces, collaboration, file governance, permissions, and sync health." },
   { id: "passport", label: "Passport", desc: "Language Passport completion, field quality, language pairs, personalization surfaces, consent, and risk controls." },
   { id: "localization", label: "Localize", desc: "UI copy localization, translation QA, glossary control, reviewer workflow, and release guardrails." },
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
@@ -321,6 +322,8 @@ const DEFAULT_STATE = {
   adminMultimodalLoadedAt: null,
   adminSearchRetrieval: null,
   adminSearchRetrievalLoadedAt: null,
+  adminWorkspaceCollaboration: null,
+  adminWorkspaceCollaborationLoadedAt: null,
   adminLanguagePassport: null,
   adminLanguagePassportLoadedAt: null,
   adminLocalizationContent: null,
@@ -1369,6 +1372,26 @@ async function loadAdminSearchRetrieval(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminWorkspaceCollaboration(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminWorkspaceCollaborationLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/workspace-collaboration`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Workspace collaboration operations unavailable.");
+    state.adminWorkspaceCollaboration = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminWorkspaceCollaborationLoadedAt = Date.now();
+  } catch {
+    state.adminWorkspaceCollaborationLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminLanguagePassport(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminLanguagePassportLoadedAt || 0;
@@ -2137,7 +2160,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -3167,6 +3190,48 @@ function adminSearchRetrievalData() {
       "High-stakes legal, medical, financial, safety, or government queries should require fresh and reliable sources.",
       "Retrieval should respect document permissions, tenant boundaries, deletion/export controls, and source licenses.",
       "Admin views should measure search quality and citation health without exposing private queries or documents."
+    ]
+  };
+}
+
+function adminWorkspaceCollaborationData() {
+  return state.adminWorkspaceCollaboration || {
+    summary: { activeWorkspaces: "3.8K", sharedProjects: "1.2K", fileAssets: "48K", permissionAlerts: 27, syncHealth: "96%" },
+    workspaceHealth: [
+      { workspace: "Solo creator projects", members: "1", projects: "18K", activity: "High", status: "Healthy" },
+      { workspace: "SMB teams", members: "2-12", projects: "4.4K", activity: "Growing", status: "Improving" },
+      { workspace: "Education cohorts", members: "10-80", projects: "1.1K", activity: "Seasonal", status: "Watch" },
+      { workspace: "Enterprise pilots", members: "25-400", projects: "320", activity: "Expanding", status: "Beta" }
+    ],
+    collaborationActivity: [
+      { activity: "Shared conversation", volume: "8.4K", owner: "Product", risk: "Wrong audience", status: "Live" },
+      { activity: "Project file upload", volume: "6.8K", owner: "Multimodal", risk: "Private data", status: "Guarded" },
+      { activity: "Prompt/template sharing", volume: "3.2K", owner: "Prompt Ops", risk: "Unsafe reuse", status: "Review" },
+      { activity: "Team member invite", volume: "1.7K", owner: "Identity", risk: "Unauthorized access", status: "Improving" }
+    ],
+    permissionControls: [
+      { control: "Workspace roles", coverage: "82%", owner: "Access", status: "Beta" },
+      { control: "Project-level sharing", coverage: "74%", owner: "Product", status: "Testing" },
+      { control: "File access inheritance", coverage: "68%", owner: "Security", status: "Watch" },
+      { control: "External link expiry", coverage: "91%", owner: "Trust", status: "Healthy" }
+    ],
+    fileGovernance: [
+      { class: "Chat attachments", count: "31K", retention: "Per user controls", owner: "Privacy", status: "Live" },
+      { class: "Project documents", count: "12K", retention: "Workspace policy", owner: "Product", status: "Beta" },
+      { class: "Shared templates", count: "4.2K", retention: "Versioned", owner: "Prompt Ops", status: "Live" },
+      { class: "Quarantined files", count: "86", retention: "Security hold", owner: "Security", status: "Guarded" }
+    ],
+    syncReliability: [
+      { surface: "Web projects", success: "98%", p95: "420ms", owner: "Web", status: "Healthy" },
+      { surface: "Mobile saved chats", success: "94%", p95: "820ms", owner: "Mobile", status: "Watch" },
+      { surface: "Workspace file index", success: "96%", p95: "1.2s", owner: "Knowledge", status: "Improving" },
+      { surface: "Enterprise audit sync", success: "99%", p95: "610ms", owner: "Compliance", status: "Healthy" }
+    ],
+    guardrails: [
+      "Workspace sharing should default to least privilege, clear membership, link expiry, and visible access state.",
+      "Project files must inherit retention, deletion, export, and privacy controls from user and workspace policy.",
+      "Shared prompts, templates, and conversations should preserve attribution and avoid leaking sensitive context.",
+      "Admin views should show aggregate collaboration and permission health without exposing private workspace content."
     ]
   };
 }
@@ -5803,6 +5868,26 @@ function searchFreshnessRow(item) {
   return `<div class="table-row"><strong>${item.queue}</strong><span>${item.count} items</span><span>${item.priority}</span><span>${item.status}</span></div>`;
 }
 
+function workspaceHealthRow(item) {
+  return `<div class="table-row"><strong>${item.workspace}</strong><span>${item.members}</span><span>${item.projects}</span><span>${item.status}</span></div>`;
+}
+
+function workspaceActivityRow(item) {
+  return `<div class="table-row"><strong>${item.activity}</strong><span>${item.volume}</span><span>${item.risk}</span><span>${item.status}</span></div>`;
+}
+
+function workspacePermissionRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.coverage}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
+function workspaceFileRow(item) {
+  return `<div class="table-row"><strong>${item.class}</strong><span>${item.count}</span><span>${item.retention}</span><span>${item.status}</span></div>`;
+}
+
+function workspaceSyncRow(item) {
+  return `<div class="table-row"><strong>${item.surface}</strong><span>${item.success}</span><span>${item.p95}</span><span>${item.status}</span></div>`;
+}
+
 function passportFunnelRow(item) {
   return `<div class="table-row"><strong>${item.step}</strong><span>${item.users}</span><span>${item.conversion}</span><span>${item.owner}</span></div>`;
 }
@@ -7202,6 +7287,7 @@ function adminView() {
   if (state.adminSection === "marketOps") loadAdminMarketCommerce();
   if (state.adminSection === "multimodalOps") loadAdminMultimodal();
   if (state.adminSection === "searchOps") loadAdminSearchRetrieval();
+  if (state.adminSection === "workspaceOps") loadAdminWorkspaceCollaboration();
   if (state.adminSection === "passport") loadAdminLanguagePassport();
   if (state.adminSection === "localization") loadAdminLocalizationContent();
   if (state.adminSection === "data") loadAdminDataGovernance();
@@ -7402,6 +7488,7 @@ function adminSectionView(section, readiness) {
     marketOps: adminMarketCommerce,
     multimodalOps: adminMultimodal,
     searchOps: adminSearchRetrieval,
+    workspaceOps: adminWorkspaceCollaboration,
     passport: adminLanguagePassport,
     localization: adminLocalizationContent,
     data: adminDataGovernance,
@@ -10099,6 +10186,55 @@ function adminSearchRetrieval() {
   `;
 }
 
+function adminWorkspaceCollaboration() {
+  const workspace = adminWorkspaceCollaborationData();
+  const summary = workspace.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active workspaces", summary.activeWorkspaces || "3.8K")}
+      ${metric("Shared projects", summary.sharedProjects || "1.2K")}
+      ${metric("File assets", summary.fileAssets || "48K")}
+      ${metric("Sync health", summary.syncHealth || "96%")}
+      <section class="admin-card full-admin">
+        <h2>Workspace health</h2>
+        <div class="table admin-table-4">
+          ${workspace.workspaceHealth.map(workspaceHealthRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Collaboration activity</h2>
+        <div class="table admin-table-4">
+          ${workspace.collaborationActivity.map(workspaceActivityRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Permission controls</h2>
+        <div class="table admin-table-4">
+          ${workspace.permissionControls.map(workspacePermissionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>File governance</h2>
+        <div class="table admin-table-4">
+          ${workspace.fileGovernance.map(workspaceFileRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Sync reliability</h2>
+        <div class="table admin-table-4">
+          ${workspace.syncReliability.map(workspaceSyncRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Workspace guardrails</h2>
+        <div class="admin-checklist">
+          ${workspace.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminLanguagePassport() {
   const passport = adminLanguagePassportData();
   const summary = passport.summary || {};
@@ -11475,6 +11611,7 @@ function bindEvents() {
       loadAdminMarketCommerce(true);
       loadAdminMultimodal(true);
       loadAdminSearchRetrieval(true);
+      loadAdminWorkspaceCollaboration(true);
       loadAdminLanguagePassport(true);
       loadAdminLocalizationContent(true);
       loadAdminDataGovernance(true);

@@ -57,6 +57,7 @@ const {
   adminMarketCommerceOperations,
   adminMultimodalOperations,
   adminSearchRetrievalOperations,
+  adminWorkspaceCollaborationOperations,
   adminLanguagePassportOperations,
   adminLocalizationContentOperations,
   adminDataGovernanceOperations,
@@ -160,6 +161,7 @@ assert.ok(accessSession.scopes.includes("classroom:operate"));
 assert.ok(accessSession.scopes.includes("market:operate"));
 assert.ok(accessSession.scopes.includes("multimodal:operate"));
 assert.ok(accessSession.scopes.includes("search:operate"));
+assert.ok(accessSession.scopes.includes("workspace:operate"));
 assert.ok(accessSession.scopes.includes("passport:operate"));
 assert.ok(accessSession.scopes.includes("localization:manage"));
 assert.ok(accessSession.scopes.includes("data:govern"));
@@ -247,6 +249,7 @@ const adminContracts = [
   ["market commerce", adminMarketCommerceOperations(), data => data.summary && Array.isArray(data.businessModes) && Array.isArray(data.conversionSignals) && Array.isArray(data.commerceRisks)],
   ["multimodal operations", adminMultimodalOperations(), data => data.summary && Array.isArray(data.modalityRoutes) && Array.isArray(data.attachmentSafety) && Array.isArray(data.processingQueues)],
   ["search retrieval", adminSearchRetrievalOperations(), data => data.summary && Array.isArray(data.retrievalRoutes) && Array.isArray(data.sourceHealth) && Array.isArray(data.citationQuality)],
+  ["workspace collaboration", adminWorkspaceCollaborationOperations(), data => data.summary && Array.isArray(data.workspaceHealth) && Array.isArray(data.collaborationActivity) && Array.isArray(data.permissionControls)],
   ["language passport", adminLanguagePassportOperations(), data => data.summary && Array.isArray(data.completionFunnel) && Array.isArray(data.fieldQuality) && Array.isArray(data.languagePairs)],
   ["localization content", adminLocalizationContentOperations(), data => data.summary && Array.isArray(data.localeReadiness) && Array.isArray(data.contentQueues) && Array.isArray(data.glossary)],
   ["data governance", adminDataGovernanceOperations(), data => data.summary && Array.isArray(data.retention) && Array.isArray(data.consent) && Array.isArray(data.requests)],
