@@ -1692,6 +1692,48 @@ const classroomLearningOperations = {
   ]
 };
 
+const marketCommerceOperations = {
+  summary: { marketSessions: "72.8K", customerReplyQuality: "92%", pricingCopyRisk: "2.4%", smbConversions: "11.8%", escalationBacklog: 86 },
+  businessModes: [
+    { mode: "Customer replies", sessions: "24K", quality: "94%", segment: "SMB support", status: "Healthy" },
+    { mode: "Product descriptions", sessions: "17K", quality: "91%", segment: "Retail sellers", status: "Healthy" },
+    { mode: "Pricing explanation", sessions: "12K", quality: "87%", segment: "Services", status: "Watch" },
+    { mode: "Negotiation helper", sessions: "10K", quality: "84%", segment: "Informal commerce", status: "Guarded" },
+    { mode: "WhatsApp campaign", sessions: "9K", quality: "89%", segment: "Creators/SMBs", status: "Improving" }
+  ],
+  conversionSignals: [
+    { signal: "Draft sent to customer", rate: "41%", owner: "Growth", lever: "One-tap copy", status: "Live" },
+    { signal: "Repeat Market Mode use", rate: "34%", owner: "Product", lever: "Saved business tone", status: "Improving" },
+    { signal: "Free to Plus from business user", rate: "9.6%", owner: "Revenue", lever: "More customer replies", status: "Live" },
+    { signal: "Team workspace invite", rate: "4.2%", owner: "Sales", lever: "Shared templates", status: "Testing" }
+  ],
+  commerceRisks: [
+    { risk: "Unsupported pricing claim", rate: "1.1%", owner: "Policy", mitigation: "Claim check prompts", status: "Controlled" },
+    { risk: "Aggressive negotiation tone", rate: "2.8%", owner: "CX", mitigation: "Respectful tone default", status: "Watch" },
+    { risk: "Regulated product copy", rate: "0.9%", owner: "Trust", mitigation: "High-risk category review", status: "Guarded" },
+    { risk: "Currency/tax ambiguity", rate: "3.4%", owner: "Payments", mitigation: "Country-aware disclaimer", status: "Improving" }
+  ],
+  marketTemplates: [
+    { template: "Polite customer apology", usage: "19%", outcome: "High CSAT", owner: "Support", status: "Live" },
+    { template: "Price increase message", usage: "14%", outcome: "Low complaint rate", owner: "Market Ops", status: "Review" },
+    { template: "New product announcement", usage: "13%", outcome: "High copy rate", owner: "Creator Ops", status: "Live" },
+    { template: "Delivery delay update", usage: "11%", outcome: "Reduced escalation", owner: "CX", status: "Healthy" },
+    { template: "Bulk order negotiation", usage: "8%", outcome: "Needs tone QA", owner: "Culture QA", status: "Watch" }
+  ],
+  paymentUpgradeSignals: [
+    { plan: "Free", businessUsers: "9,420", upgradeIntent: "8.7%", blocker: "Daily reply limit", status: "Convert" },
+    { plan: "Plus", businessUsers: "2,180", upgradeIntent: "14.3%", blocker: "Team approvals", status: "Nurture" },
+    { plan: "Pro", businessUsers: "684", upgradeIntent: "18.9%", blocker: "API/bulk workflows", status: "Sales" },
+    { plan: "Teams", businessUsers: "126", upgradeIntent: "24.1%", blocker: "Procurement", status: "Enterprise" }
+  ],
+  guardrails: [
+    "Market Mode should help users communicate clearly without inventing prices, claims, guarantees, stock, tax, or legal terms.",
+    "Business copy should preserve respectful local tone and avoid manipulative pressure or discriminatory targeting.",
+    "Regulated products, financial advice, medical claims, and government services should trigger stricter policy checks.",
+    "Admin views should monitor aggregate commerce quality and conversion without exposing private customer messages."
+  ]
+};
+
 const languagePassportOperations = {
   summary: { completionRate: "78.2%", activePassports: "14.4K", primaryLanguages: 54, bridgePairs: 128, consentHealth: "92%" },
   completionFunnel: [
@@ -3191,6 +3233,10 @@ function adminClassroomLearningOperations() {
   return classroomLearningOperations;
 }
 
+function adminMarketCommerceOperations() {
+  return marketCommerceOperations;
+}
+
 function adminLanguagePassportOperations() {
   return languagePassportOperations;
 }
@@ -3379,6 +3425,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "translation:operate",
       "creator:operate",
       "classroom:operate",
+      "market:operate",
       "passport:operate",
       "localization:manage",
       "data:govern",
@@ -3840,6 +3887,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminClassroomLearningOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/market-commerce") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("market_commerce_viewed", "Market Ops", "Info", "Growth");
+      return sendJson(response, 200, adminMarketCommerceOperations());
+    }
+
     if (request.method === "GET" && url.pathname === "/v1/admin/language-passport") {
       if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
         return sendJson(response, 403, { error: "Seed admin access required" });
@@ -4120,4 +4175,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminTranslationOperations, adminCreatorStudioOperations, adminClassroomLearningOperations, adminLanguagePassportOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminTranslationOperations, adminCreatorStudioOperations, adminClassroomLearningOperations, adminMarketCommerceOperations, adminLanguagePassportOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

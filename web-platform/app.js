@@ -120,6 +120,7 @@ const ADMIN_SECTIONS = [
   { id: "translationOps", label: "Translate Ops", desc: "Translation route quality, meaning preservation, dialect drift, review queues, and enterprise controls." },
   { id: "creatorOps", label: "Creator Ops", desc: "Creator Studio content modes, template health, brand safety, monetization, and workflow queues." },
   { id: "classroomOps", label: "Classroom Ops", desc: "Learning sessions, curriculum coverage, pedagogy signals, safety queues, and education partnerships." },
+  { id: "marketOps", label: "Market Ops", desc: "SMB customer replies, pricing copy, commerce risks, market templates, and upgrade signals." },
   { id: "passport", label: "Passport", desc: "Language Passport completion, field quality, language pairs, personalization surfaces, consent, and risk controls." },
   { id: "localization", label: "Localize", desc: "UI copy localization, translation QA, glossary control, reviewer workflow, and release guardrails." },
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
@@ -312,6 +313,8 @@ const DEFAULT_STATE = {
   adminCreatorStudioLoadedAt: null,
   adminClassroomLearning: null,
   adminClassroomLearningLoadedAt: null,
+  adminMarketCommerce: null,
+  adminMarketCommerceLoadedAt: null,
   adminLanguagePassport: null,
   adminLanguagePassportLoadedAt: null,
   adminLocalizationContent: null,
@@ -1300,6 +1303,26 @@ async function loadAdminClassroomLearning(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminMarketCommerce(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminMarketCommerceLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/market-commerce`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Market commerce operations unavailable.");
+    state.adminMarketCommerce = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminMarketCommerceLoadedAt = Date.now();
+  } catch {
+    state.adminMarketCommerceLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminLanguagePassport(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminLanguagePassportLoadedAt || 0;
@@ -2068,7 +2091,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2968,6 +2991,50 @@ function adminClassroomLearningData() {
       "Age-sensitive learning experiences need stronger safety review, privacy protection, and clear escalation paths.",
       "Local examples should improve understanding without stereotyping learners, regions, families, or communities.",
       "Admin views should track aggregate learning quality and safety without exposing minors or private schoolwork."
+    ]
+  };
+}
+
+function adminMarketCommerceData() {
+  return state.adminMarketCommerce || {
+    summary: { marketSessions: "72.8K", customerReplyQuality: "92%", pricingCopyRisk: "2.4%", smbConversions: "11.8%", escalationBacklog: 86 },
+    businessModes: [
+      { mode: "Customer replies", sessions: "24K", quality: "94%", segment: "SMB support", status: "Healthy" },
+      { mode: "Product descriptions", sessions: "17K", quality: "91%", segment: "Retail sellers", status: "Healthy" },
+      { mode: "Pricing explanation", sessions: "12K", quality: "87%", segment: "Services", status: "Watch" },
+      { mode: "Negotiation helper", sessions: "10K", quality: "84%", segment: "Informal commerce", status: "Guarded" },
+      { mode: "WhatsApp campaign", sessions: "9K", quality: "89%", segment: "Creators/SMBs", status: "Improving" }
+    ],
+    conversionSignals: [
+      { signal: "Draft sent to customer", rate: "41%", owner: "Growth", lever: "One-tap copy", status: "Live" },
+      { signal: "Repeat Market Mode use", rate: "34%", owner: "Product", lever: "Saved business tone", status: "Improving" },
+      { signal: "Free to Plus from business user", rate: "9.6%", owner: "Revenue", lever: "More customer replies", status: "Live" },
+      { signal: "Team workspace invite", rate: "4.2%", owner: "Sales", lever: "Shared templates", status: "Testing" }
+    ],
+    commerceRisks: [
+      { risk: "Unsupported pricing claim", rate: "1.1%", owner: "Policy", mitigation: "Claim check prompts", status: "Controlled" },
+      { risk: "Aggressive negotiation tone", rate: "2.8%", owner: "CX", mitigation: "Respectful tone default", status: "Watch" },
+      { risk: "Regulated product copy", rate: "0.9%", owner: "Trust", mitigation: "High-risk category review", status: "Guarded" },
+      { risk: "Currency/tax ambiguity", rate: "3.4%", owner: "Payments", mitigation: "Country-aware disclaimer", status: "Improving" }
+    ],
+    marketTemplates: [
+      { template: "Polite customer apology", usage: "19%", outcome: "High CSAT", owner: "Support", status: "Live" },
+      { template: "Price increase message", usage: "14%", outcome: "Low complaint rate", owner: "Market Ops", status: "Review" },
+      { template: "New product announcement", usage: "13%", outcome: "High copy rate", owner: "Creator Ops", status: "Live" },
+      { template: "Delivery delay update", usage: "11%", outcome: "Reduced escalation", owner: "CX", status: "Healthy" },
+      { template: "Bulk order negotiation", usage: "8%", outcome: "Needs tone QA", owner: "Culture QA", status: "Watch" }
+    ],
+    paymentUpgradeSignals: [
+      { plan: "Free", businessUsers: "9,420", upgradeIntent: "8.7%", blocker: "Daily reply limit", status: "Convert" },
+      { plan: "Plus", businessUsers: "2,180", upgradeIntent: "14.3%", blocker: "Team approvals", status: "Nurture" },
+      { plan: "Pro", businessUsers: "684", upgradeIntent: "18.9%", blocker: "API/bulk workflows", status: "Sales" },
+      { plan: "Teams", businessUsers: "126", upgradeIntent: "24.1%", blocker: "Procurement", status: "Enterprise" }
+    ],
+    guardrails: [
+      "Market Mode should help users communicate clearly without inventing prices, claims, guarantees, stock, tax, or legal terms.",
+      "Business copy should preserve respectful local tone and avoid manipulative pressure or discriminatory targeting.",
+      "Regulated products, financial advice, medical claims, and government services should trigger stricter policy checks.",
+      "Admin views should monitor aggregate commerce quality and conversion without exposing private customer messages."
     ]
   };
 }
@@ -5544,6 +5611,26 @@ function classroomPartnershipRow(item) {
   return `<div class="table-row"><strong>${item.partner}</strong><span>${item.learners}</span><span>${item.market}</span><span>${item.status}</span></div>`;
 }
 
+function marketBusinessModeRow(item) {
+  return `<div class="table-row"><strong>${item.mode}</strong><span>${item.sessions}</span><span>${item.quality}</span><span>${item.status}</span></div>`;
+}
+
+function marketConversionRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.rate}</span><span>${item.lever}</span><span>${item.status}</span></div>`;
+}
+
+function marketRiskRow(item) {
+  return `<div class="table-row"><strong>${item.risk}</strong><span>${item.rate}</span><span>${item.mitigation}</span><span>${item.status}</span></div>`;
+}
+
+function marketTemplateRow(item) {
+  return `<div class="table-row"><strong>${item.template}</strong><span>${item.usage}</span><span>${item.outcome}</span><span>${item.status}</span></div>`;
+}
+
+function marketUpgradeRow(item) {
+  return `<div class="table-row"><strong>${item.plan}</strong><span>${item.businessUsers}</span><span>${item.upgradeIntent}</span><span>${item.status}</span></div>`;
+}
+
 function passportFunnelRow(item) {
   return `<div class="table-row"><strong>${item.step}</strong><span>${item.users}</span><span>${item.conversion}</span><span>${item.owner}</span></div>`;
 }
@@ -6940,6 +7027,7 @@ function adminView() {
   if (state.adminSection === "translationOps") loadAdminTranslationOps();
   if (state.adminSection === "creatorOps") loadAdminCreatorStudio();
   if (state.adminSection === "classroomOps") loadAdminClassroomLearning();
+  if (state.adminSection === "marketOps") loadAdminMarketCommerce();
   if (state.adminSection === "passport") loadAdminLanguagePassport();
   if (state.adminSection === "localization") loadAdminLocalizationContent();
   if (state.adminSection === "data") loadAdminDataGovernance();
@@ -7137,6 +7225,7 @@ function adminSectionView(section, readiness) {
     translationOps: adminTranslationOps,
     creatorOps: adminCreatorStudio,
     classroomOps: adminClassroomLearning,
+    marketOps: adminMarketCommerce,
     passport: adminLanguagePassport,
     localization: adminLocalizationContent,
     data: adminDataGovernance,
@@ -9687,6 +9776,55 @@ function adminClassroomLearning() {
   `;
 }
 
+function adminMarketCommerce() {
+  const market = adminMarketCommerceData();
+  const summary = market.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Market sessions", summary.marketSessions || "72.8K")}
+      ${metric("Reply quality", summary.customerReplyQuality || "92%")}
+      ${metric("Pricing risk", summary.pricingCopyRisk || "2.4%")}
+      ${metric("SMB conversion", summary.smbConversions || "11.8%")}
+      <section class="admin-card full-admin">
+        <h2>Business modes</h2>
+        <div class="table admin-table-4">
+          ${market.businessModes.map(marketBusinessModeRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Conversion signals</h2>
+        <div class="table admin-table-4">
+          ${market.conversionSignals.map(marketConversionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Commerce risks</h2>
+        <div class="table admin-table-4">
+          ${market.commerceRisks.map(marketRiskRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Market templates</h2>
+        <div class="table admin-table-4">
+          ${market.marketTemplates.map(marketTemplateRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Payment upgrade signals</h2>
+        <div class="table admin-table-4">
+          ${market.paymentUpgradeSignals.map(marketUpgradeRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Market guardrails</h2>
+        <div class="admin-checklist">
+          ${market.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminLanguagePassport() {
   const passport = adminLanguagePassportData();
   const summary = passport.summary || {};
@@ -11060,6 +11198,7 @@ function bindEvents() {
       loadAdminTranslationOps(true);
       loadAdminCreatorStudio(true);
       loadAdminClassroomLearning(true);
+      loadAdminMarketCommerce(true);
       loadAdminLanguagePassport(true);
       loadAdminLocalizationContent(true);
       loadAdminDataGovernance(true);
