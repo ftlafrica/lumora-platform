@@ -49,6 +49,7 @@ const {
   adminLanguageOperations,
   adminCulturalQualityOperations,
   adminReviewerNetworkOperations,
+  adminCorrectionImprovementOperations,
   adminLocalizationContentOperations,
   adminDataGovernanceOperations,
   adminMemoryPersonalizationOperations,
@@ -143,6 +144,7 @@ assert.ok(accessSession.scopes.includes("notifications:operate"));
 assert.ok(accessSession.scopes.includes("language:review"));
 assert.ok(accessSession.scopes.includes("culture:review"));
 assert.ok(accessSession.scopes.includes("reviewers:manage"));
+assert.ok(accessSession.scopes.includes("corrections:improve"));
 assert.ok(accessSession.scopes.includes("localization:manage"));
 assert.ok(accessSession.scopes.includes("data:govern"));
 assert.ok(accessSession.scopes.includes("memory:govern"));
@@ -221,6 +223,7 @@ const adminContracts = [
   ["languages", adminLanguageOperations(), data => data.summary && Array.isArray(data.coverage) && Array.isArray(data.dialectQueues) && Array.isArray(data.benchmarks)],
   ["cultural quality", adminCulturalQualityOperations(), data => data.summary && Array.isArray(data.toneSegments) && Array.isArray(data.dialectParity) && Array.isArray(data.culturalReviewQueues)],
   ["reviewer network", adminReviewerNetworkOperations(), data => data.summary && Array.isArray(data.reviewerRegions) && Array.isArray(data.reviewQueues) && Array.isArray(data.calibrationPanels)],
+  ["correction improvement", adminCorrectionImprovementOperations(), data => data.summary && Array.isArray(data.intakeSources) && Array.isArray(data.correctionPipeline) && Array.isArray(data.improvementImpact)],
   ["localization content", adminLocalizationContentOperations(), data => data.summary && Array.isArray(data.localeReadiness) && Array.isArray(data.contentQueues) && Array.isArray(data.glossary)],
   ["data governance", adminDataGovernanceOperations(), data => data.summary && Array.isArray(data.retention) && Array.isArray(data.consent) && Array.isArray(data.requests)],
   ["memory personalization", adminMemoryPersonalizationOperations(), data => data.summary && Array.isArray(data.memorySurfaces) && Array.isArray(data.userControls) && Array.isArray(data.riskReviews)],

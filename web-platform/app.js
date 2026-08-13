@@ -115,6 +115,7 @@ const ADMIN_SECTIONS = [
   { id: "languages", label: "Languages", desc: "Country coverage, dialect readiness, reviewer queues, benchmarks, and expansion quality." },
   { id: "culture", label: "Culture", desc: "Tone quality, dialect parity, cultural review queues, reviewer calibration, and sensitive context guardrails." },
   { id: "reviewers", label: "Reviewers", desc: "Human QA reviewer network, calibration, review queues, workload, onboarding, and quality guardrails." },
+  { id: "improvement", label: "Improve", desc: "Correction feedback loops, consent gates, reviewer decisions, eval impact, and training handoffs." },
   { id: "localization", label: "Localize", desc: "UI copy localization, translation QA, glossary control, reviewer workflow, and release guardrails." },
   { id: "data", label: "Data Gov", desc: "Retention, consent, residency, deletion/export workflows, PII handling, and tenant boundaries." },
   { id: "memory", label: "Memory", desc: "Personalization memory, language passport controls, consent, deletion/export, and safe remembered context." },
@@ -296,6 +297,8 @@ const DEFAULT_STATE = {
   adminCulturalQualityLoadedAt: null,
   adminReviewerNetwork: null,
   adminReviewerNetworkLoadedAt: null,
+  adminCorrectionImprovement: null,
+  adminCorrectionImprovementLoadedAt: null,
   adminLocalizationContent: null,
   adminLocalizationContentLoadedAt: null,
   adminDataGovernance: null,
@@ -1182,6 +1185,26 @@ async function loadAdminReviewerNetwork(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminCorrectionImprovement(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminCorrectionImprovementLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/correction-improvement`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Correction improvement unavailable.");
+    state.adminCorrectionImprovement = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminCorrectionImprovementLoadedAt = Date.now();
+  } catch {
+    state.adminCorrectionImprovementLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminLocalizationContent(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminLocalizationContentLoadedAt || 0;
@@ -1930,7 +1953,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -2601,6 +2624,55 @@ function adminReviewerNetworkData() {
       "Human QA should measure agreement, drift, cultural fit, safety handling, and reviewer wellbeing across regions.",
       "Reviewer onboarding requires language assessment, policy training, calibration, and shadow review before production queues.",
       "Reviewer dashboards should track aggregate quality and workload without exposing unnecessary private user content."
+    ]
+  };
+}
+
+function adminCorrectionImprovementData() {
+  return state.adminCorrectionImprovement || {
+    summary: { weeklyCorrections: 1284, consentReady: "88%", reviewerAccepted: "71%", evalLift: "+4.8%", trainingBlocked: 94 },
+    intakeSources: [
+      { source: "In-chat tone correction", volume: "624/week", signal: "Tone and dialect", consent: "Explicit", status: "Live" },
+      { source: "Community correction form", volume: "312/week", signal: "Meaning changed", consent: "Explicit", status: "Live" },
+      { source: "Support language tickets", volume: "184/week", signal: "Confusing answer", consent: "Support scoped", status: "Review" },
+      { source: "Reviewer proactive samples", volume: "164/week", signal: "Model gap", consent: "Internal", status: "Live" }
+    ],
+    correctionPipeline: [
+      { stage: "Capture", items: 1284, owner: "Product", gate: "User consent", status: "Healthy" },
+      { stage: "Redact and classify", items: 1098, owner: "Privacy", gate: "PII minimization", status: "Healthy" },
+      { stage: "Native review", items: 860, owner: "Language QA", gate: "Reviewer agreement", status: "Busy" },
+      { stage: "Eval conversion", items: 412, owner: "AI QA", gate: "Benchmark coverage", status: "Sampling" },
+      { stage: "Training eligibility", items: 318, owner: "Data Governance", gate: "License + consent", status: "Controlled" }
+    ],
+    reviewerDecisions: [
+      { decision: "Accepted correction", share: "71%", action: "Add to eval/training candidates", owner: "Language QA", status: "Healthy" },
+      { decision: "Style preference only", share: "14%", action: "Personalization signal", owner: "Product AI", status: "Review" },
+      { decision: "Unsafe or sensitive", share: "5%", action: "Route to Trust/Policy", owner: "Trust", status: "Guarded" },
+      { decision: "Rejected or unclear", share: "10%", action: "Do not reuse", owner: "Reviewer Lead", status: "Healthy" }
+    ],
+    improvementImpact: [
+      { language: "Yoruba + Pidgin", evalLift: "+6.2%", correctedIssues: "Tone mismatch", release: "Next web/mobile", status: "Ready" },
+      { language: "Swahili", evalLift: "+4.9%", correctedIssues: "Classroom clarity", release: "Weekly model route", status: "Testing" },
+      { language: "Hausa", evalLift: "+3.8%", correctedIssues: "Business phrasing", release: "Needs samples", status: "Watch" },
+      { language: "Arabic/French bridge", evalLift: "+2.1%", correctedIssues: "Code-switch nuance", release: "Blocked by coverage", status: "Building" }
+    ],
+    trainingEligibility: [
+      { bucket: "Eval-only samples", count: 412, rule: "Redacted + sampled", owner: "AI QA", status: "Approved" },
+      { bucket: "Fine-tune candidates", count: 318, rule: "Explicit consent + license", owner: "Data Governance", status: "Controlled" },
+      { bucket: "Reviewer guidance examples", count: 276, rule: "Anonymized + policy reviewed", owner: "Language QA", status: "Approved" },
+      { bucket: "Blocked samples", count: 94, rule: "Missing consent or sensitive data", owner: "Privacy", status: "Blocked" }
+    ],
+    releaseHandoffs: [
+      { handoff: "Prompt/tone template update", target: "Prompt workflows", owner: "Prompt Ops", status: "Ready" },
+      { handoff: "Benchmark refresh", target: "Evals", owner: "AI QA", status: "Weekly" },
+      { handoff: "Dataset eligibility update", target: "Datasets", owner: "Data Governance", status: "Controlled" },
+      { handoff: "Reviewer guide update", target: "Policy + Reviewers", owner: "Language QA", status: "Queued" }
+    ],
+    guardrails: [
+      "Corrections must not be reused for model improvement unless consent, provenance, privacy, and license checks pass.",
+      "Rejected, unclear, sensitive, or private corrections should improve safety triage only when policy-approved.",
+      "Correction loops should separate personal preference, broad quality signal, evaluation sample, and training candidate.",
+      "Leadership dashboards should show aggregate improvement impact without exposing raw private prompts or identities."
     ]
   };
 }
@@ -5017,6 +5089,30 @@ function reviewerOnboardingRow(item) {
   return `<div class="table-row"><strong>${item.stage}</strong><span>${item.candidates} candidates</span><span>${item.owner}</span><span>${item.status}</span></div>`;
 }
 
+function correctionIntakeRow(item) {
+  return `<div class="table-row"><strong>${item.source}</strong><span>${item.volume}</span><span>${item.signal}</span><span>${item.status}</span></div>`;
+}
+
+function correctionPipelineRow(item) {
+  return `<div class="table-row"><strong>${item.stage}</strong><span>${item.items} items</span><span>${item.gate}</span><span>${item.status}</span></div>`;
+}
+
+function correctionDecisionRow(item) {
+  return `<div class="table-row"><strong>${item.decision}</strong><span>${item.share}</span><span>${item.action}</span><span>${item.status}</span></div>`;
+}
+
+function improvementImpactRow(item) {
+  return `<div class="table-row"><strong>${item.language}</strong><span>${item.evalLift}</span><span>${item.correctedIssues}</span><span>${item.status}</span></div>`;
+}
+
+function trainingEligibilityRow(item) {
+  return `<div class="table-row"><strong>${item.bucket}</strong><span>${item.count} samples</span><span>${item.rule}</span><span>${item.status}</span></div>`;
+}
+
+function releaseHandoffRow(item) {
+  return `<div class="table-row"><strong>${item.handoff}</strong><span>${item.target}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
 function localizationReadinessRow(item) {
   return `<div class="table-row"><strong>${item.locale}</strong><span>${item.surface}</span><span>${item.completion}</span><span>${item.status}</span></div>`;
 }
@@ -6384,6 +6480,7 @@ function adminView() {
   if (state.adminSection === "languages") loadAdminLanguages();
   if (state.adminSection === "culture") loadAdminCulturalQuality();
   if (state.adminSection === "reviewers") loadAdminReviewerNetwork();
+  if (state.adminSection === "improvement") loadAdminCorrectionImprovement();
   if (state.adminSection === "localization") loadAdminLocalizationContent();
   if (state.adminSection === "data") loadAdminDataGovernance();
   if (state.adminSection === "memory") loadAdminMemoryPersonalization();
@@ -6575,6 +6672,7 @@ function adminSectionView(section, readiness) {
     languages: adminLanguages,
     culture: adminCulturalQuality,
     reviewers: adminReviewerNetwork,
+    improvement: adminCorrectionImprovement,
     localization: adminLocalizationContent,
     data: adminDataGovernance,
     memory: adminMemoryPersonalization,
@@ -8867,6 +8965,61 @@ function adminReviewerNetwork() {
   `;
 }
 
+function adminCorrectionImprovement() {
+  const improvement = adminCorrectionImprovementData();
+  const summary = improvement.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Weekly corrections", summary.weeklyCorrections || "1,284")}
+      ${metric("Consent ready", summary.consentReady || "88%")}
+      ${metric("Reviewer accepted", summary.reviewerAccepted || "71%")}
+      ${metric("Eval lift", summary.evalLift || "+4.8%")}
+      <section class="admin-card full-admin">
+        <h2>Correction intake sources</h2>
+        <div class="table admin-table-4">
+          ${improvement.intakeSources.map(correctionIntakeRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Correction pipeline</h2>
+        <div class="table admin-table-4">
+          ${improvement.correctionPipeline.map(correctionPipelineRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Reviewer decisions</h2>
+        <div class="table admin-table-4">
+          ${improvement.reviewerDecisions.map(correctionDecisionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Improvement impact</h2>
+        <div class="table admin-table-4">
+          ${improvement.improvementImpact.map(improvementImpactRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Training eligibility</h2>
+        <div class="table admin-table-4">
+          ${improvement.trainingEligibility.map(trainingEligibilityRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Release handoffs</h2>
+        <div class="table admin-table-4">
+          ${improvement.releaseHandoffs.map(releaseHandoffRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Correction loop guardrails</h2>
+        <div class="admin-checklist">
+          ${improvement.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminLocalizationContent() {
   const localization = adminLocalizationContentData();
   const summary = localization.summary || {};
@@ -10180,6 +10333,7 @@ function bindEvents() {
       loadAdminLanguages(true);
       loadAdminCulturalQuality(true);
       loadAdminReviewerNetwork(true);
+      loadAdminCorrectionImprovement(true);
       loadAdminLocalizationContent(true);
       loadAdminDataGovernance(true);
       loadAdminMemoryPersonalization(true);

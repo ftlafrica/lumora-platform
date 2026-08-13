@@ -1473,6 +1473,53 @@ const reviewerNetworkOperations = {
   ]
 };
 
+const correctionImprovementOperations = {
+  summary: { weeklyCorrections: 1284, consentReady: "88%", reviewerAccepted: "71%", evalLift: "+4.8%", trainingBlocked: 94 },
+  intakeSources: [
+    { source: "In-chat tone correction", volume: "624/week", signal: "Tone and dialect", consent: "Explicit", status: "Live" },
+    { source: "Community correction form", volume: "312/week", signal: "Meaning changed", consent: "Explicit", status: "Live" },
+    { source: "Support language tickets", volume: "184/week", signal: "Confusing answer", consent: "Support scoped", status: "Review" },
+    { source: "Reviewer proactive samples", volume: "164/week", signal: "Model gap", consent: "Internal", status: "Live" }
+  ],
+  correctionPipeline: [
+    { stage: "Capture", items: 1284, owner: "Product", gate: "User consent", status: "Healthy" },
+    { stage: "Redact and classify", items: 1098, owner: "Privacy", gate: "PII minimization", status: "Healthy" },
+    { stage: "Native review", items: 860, owner: "Language QA", gate: "Reviewer agreement", status: "Busy" },
+    { stage: "Eval conversion", items: 412, owner: "AI QA", gate: "Benchmark coverage", status: "Sampling" },
+    { stage: "Training eligibility", items: 318, owner: "Data Governance", gate: "License + consent", status: "Controlled" }
+  ],
+  reviewerDecisions: [
+    { decision: "Accepted correction", share: "71%", action: "Add to eval/training candidates", owner: "Language QA", status: "Healthy" },
+    { decision: "Style preference only", share: "14%", action: "Personalization signal", owner: "Product AI", status: "Review" },
+    { decision: "Unsafe or sensitive", share: "5%", action: "Route to Trust/Policy", owner: "Trust", status: "Guarded" },
+    { decision: "Rejected or unclear", share: "10%", action: "Do not reuse", owner: "Reviewer Lead", status: "Healthy" }
+  ],
+  improvementImpact: [
+    { language: "Yoruba + Pidgin", evalLift: "+6.2%", correctedIssues: "Tone mismatch", release: "Next web/mobile", status: "Ready" },
+    { language: "Swahili", evalLift: "+4.9%", correctedIssues: "Classroom clarity", release: "Weekly model route", status: "Testing" },
+    { language: "Hausa", evalLift: "+3.8%", correctedIssues: "Business phrasing", release: "Needs samples", status: "Watch" },
+    { language: "Arabic/French bridge", evalLift: "+2.1%", correctedIssues: "Code-switch nuance", release: "Blocked by coverage", status: "Building" }
+  ],
+  trainingEligibility: [
+    { bucket: "Eval-only samples", count: 412, rule: "Redacted + sampled", owner: "AI QA", status: "Approved" },
+    { bucket: "Fine-tune candidates", count: 318, rule: "Explicit consent + license", owner: "Data Governance", status: "Controlled" },
+    { bucket: "Reviewer guidance examples", count: 276, rule: "Anonymized + policy reviewed", owner: "Language QA", status: "Approved" },
+    { bucket: "Blocked samples", count: 94, rule: "Missing consent or sensitive data", owner: "Privacy", status: "Blocked" }
+  ],
+  releaseHandoffs: [
+    { handoff: "Prompt/tone template update", target: "Prompt workflows", owner: "Prompt Ops", status: "Ready" },
+    { handoff: "Benchmark refresh", target: "Evals", owner: "AI QA", status: "Weekly" },
+    { handoff: "Dataset eligibility update", target: "Datasets", owner: "Data Governance", status: "Controlled" },
+    { handoff: "Reviewer guide update", target: "Policy + Reviewers", owner: "Language QA", status: "Queued" }
+  ],
+  guardrails: [
+    "Corrections must not be reused for model improvement unless consent, provenance, privacy, and license checks pass.",
+    "Rejected, unclear, sensitive, or private corrections should improve safety triage only when policy-approved.",
+    "Correction loops should separate personal preference, broad quality signal, evaluation sample, and training candidate.",
+    "Leadership dashboards should show aggregate improvement impact without exposing raw private prompts or identities."
+  ]
+};
+
 const localizationContentOperations = {
   summary: { localesInProgress: 18, stringsReady: "84%", glossaryTerms: 420, reviewerBacklog: 96, releaseBlockers: 3 },
   localeReadiness: [
@@ -2902,6 +2949,10 @@ function adminReviewerNetworkOperations() {
   return reviewerNetworkOperations;
 }
 
+function adminCorrectionImprovementOperations() {
+  return correctionImprovementOperations;
+}
+
 function adminLocalizationContentOperations() {
   return localizationContentOperations;
 }
@@ -3081,6 +3132,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "language:review",
       "culture:review",
       "reviewers:manage",
+      "corrections:improve",
       "localization:manage",
       "data:govern",
       "memory:govern",
@@ -3501,6 +3553,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminReviewerNetworkOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/correction-improvement") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("correction_improvement_viewed", "Improve", "Info", "Language QA");
+      return sendJson(response, 200, adminCorrectionImprovementOperations());
+    }
+
     if (request.method === "GET" && url.pathname === "/v1/admin/localization-content") {
       if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
         return sendJson(response, 403, { error: "Seed admin access required" });
@@ -3773,4 +3833,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
