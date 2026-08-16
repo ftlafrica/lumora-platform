@@ -97,6 +97,7 @@ const {
   adminBackupOpsOperations,
   adminAssetOpsOperations,
   adminTenantOpsOperations,
+  adminCostOpsOperations,
   adminDataQualityOpsOperations,
   adminConsentOpsOperations,
   adminSecretsOpsOperations,
@@ -213,6 +214,7 @@ assert.ok(accessSession.scopes.includes("change:manage"));
 assert.ok(accessSession.scopes.includes("backup:operate"));
 assert.ok(accessSession.scopes.includes("asset:manage"));
 assert.ok(accessSession.scopes.includes("tenant:operate"));
+assert.ok(accessSession.scopes.includes("cost:operate"));
 assert.ok(accessSession.scopes.includes("dataquality:operate"));
 assert.ok(accessSession.scopes.includes("consent:operate"));
 assert.ok(accessSession.scopes.includes("secrets:operate"));
@@ -313,6 +315,7 @@ const adminContracts = [
   ["backup ops", adminBackupOpsOperations(), data => data.summary && Array.isArray(data.backupCoverage) && Array.isArray(data.restoreDrills) && Array.isArray(data.recoveryRunbooks)],
   ["asset ops", adminAssetOpsOperations(), data => data.summary && Array.isArray(data.serviceInventory) && Array.isArray(data.dataAssets) && Array.isArray(data.dependencyMap)],
   ["tenant ops", adminTenantOpsOperations(), data => data.summary && Array.isArray(data.tenantInventory) && Array.isArray(data.domains) && Array.isArray(data.ssoScim)],
+  ["cost ops", adminCostOpsOperations(), data => data.summary && Array.isArray(data.budgets) && Array.isArray(data.modelSpend) && Array.isArray(data.anomalies)],
   ["data quality ops", adminDataQualityOpsOperations(), data => data.summary && Array.isArray(data.metricHealth) && Array.isArray(data.freshnessMonitors) && Array.isArray(data.reconciliation)],
   ["consent ops", adminConsentOpsOperations(), data => data.summary && Array.isArray(data.consentSurfaces) && Array.isArray(data.trainingEligibility) && Array.isArray(data.withdrawals)],
   ["secrets ops", adminSecretsOpsOperations(), data => data.summary && Array.isArray(data.secretInventory) && Array.isArray(data.rotations) && Array.isArray(data.kmsPosture)],

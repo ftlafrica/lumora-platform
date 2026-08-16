@@ -93,6 +93,7 @@ const ADMIN_SECTIONS = [
   { id: "backupOps", label: "Backup Ops", desc: "Backup coverage, restore drills, immutable vaults, failures, recovery runbooks, and RPO/RTO." },
   { id: "assetOps", label: "Asset Ops", desc: "Service inventory, data assets, ownership gaps, dependencies, lifecycle queues, and asset guardrails." },
   { id: "tenantOps", label: "Tenant Ops", desc: "Enterprise tenants, domains, SSO/SCIM, workspace policies, seats, and tenant boundaries." },
+  { id: "costOps", label: "Cost Ops", desc: "Real-time spend, model/cloud budgets, vendor cost, anomalies, and optimization guardrails." },
   { id: "dataQualityOps", label: "Data Quality", desc: "Certified metrics, freshness, reconciliation, lineage, quality incidents, and decision-grade data." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
@@ -324,6 +325,8 @@ const DEFAULT_STATE = {
   adminAssetOpsLoadedAt: null,
   adminTenantOps: null,
   adminTenantOpsLoadedAt: null,
+  adminCostOps: null,
+  adminCostOpsLoadedAt: null,
   adminDataQualityOps: null,
   adminDataQualityOpsLoadedAt: null,
   adminConsentOps: null,
@@ -1303,6 +1306,26 @@ async function loadAdminTenantOps(force = false) {
     state.adminTenantOpsLoadedAt = Date.now();
   } catch {
     state.adminTenantOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminCostOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminCostOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/cost-ops`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Cost operations unavailable.");
+    state.adminCostOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminCostOpsLoadedAt = Date.now();
+  } catch {
+    state.adminCostOpsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -2436,7 +2459,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "dataquality:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -5098,6 +5121,48 @@ function adminTenantOpsData() {
   };
 }
 
+function adminCostOpsData() {
+  return state.adminCostOps || {
+    summary: { dailySpend: "$18.6K", modelSpend: "$9.4K", cloudSpend: "$6.8K", budgetRisk: 4, savingsQueued: "$42K/mo" },
+    budgets: [
+      { budget: "AI inference", owner: "AI Ops", monthlyCap: "$180K", current: "$94K", status: "Watch" },
+      { budget: "Cloud compute", owner: "Infrastructure", monthlyCap: "$120K", current: "$63K", status: "Healthy" },
+      { budget: "Storage and vectors", owner: "Data Platform", monthlyCap: "$38K", current: "$24K", status: "Watch" },
+      { budget: "Messaging delivery", owner: "Communications", monthlyCap: "$22K", current: "$11K", status: "Healthy" }
+    ],
+    modelSpend: [
+      { route: "General chat fallback", provider: "General LLM", spend: "$3.8K/day", unitCost: "$0.0042", status: "Optimize" },
+      { route: "Translation", provider: "AfriNLLB/NLLB", spend: "$1.9K/day", unitCost: "$0.0021", status: "Healthy" },
+      { route: "Voice transcription", provider: "MMS/Simba-H", spend: "$2.4K/day", unitCost: "$0.0068", status: "Watch" },
+      { route: "RAG retrieval", provider: "Vector DB", spend: "$1.3K/day", unitCost: "$0.0014", status: "Healthy" }
+    ],
+    cloudSpend: [
+      { service: "GPU inference pool", vendor: "Cloud GPU Pool", spend: "$5.7K/day", trend: "+12%", status: "Watch" },
+      { service: "Object storage", vendor: "Storage", spend: "$640/day", trend: "+4%", status: "Healthy" },
+      { service: "Data warehouse", vendor: "Warehouse", spend: "$410/day", trend: "+18%", status: "Optimize" },
+      { service: "Edge delivery", vendor: "CDN", spend: "$190/day", trend: "-2%", status: "Healthy" }
+    ],
+    anomalies: [
+      { signal: "Voice route cost spike", surface: "Voice Circle", exposure: "$8.4K/mo", owner: "Voice Ops", status: "Investigating" },
+      { signal: "Warehouse query fanout", surface: "Analytics", exposure: "$4.2K/mo", owner: "Data Platform", status: "Optimizing" },
+      { signal: "Free-tier abuse load", surface: "Chat/API", exposure: "$5.1K/mo", owner: "Fraud/AI Ops", status: "Throttled" },
+      { signal: "Unused reserved GPU", surface: "Infrastructure", exposure: "$2.8K/mo", owner: "SRE", status: "Review" }
+    ],
+    optimizations: [
+      { action: "Cache repeated translation lookups", owner: "Translation Ops", savings: "$9K/mo", effort: "Medium", status: "Queued" },
+      { action: "Route low-risk prompts to smaller models", owner: "AI Ops", savings: "$18K/mo", effort: "High", status: "Testing" },
+      { action: "Warehouse dashboard pruning", owner: "Analytics", savings: "$6K/mo", effort: "Low", status: "Active" },
+      { action: "Storage lifecycle rules", owner: "Infrastructure", savings: "$9K/mo", effort: "Medium", status: "Approval" }
+    ],
+    guardrails: [
+      "Cost controls should preserve quality, safety, latency, and African-language coverage before cutting spend.",
+      "Every model route and vendor cost needs owner, unit economics, budget threshold, and customer-impact review.",
+      "Budget alerts should distinguish legitimate growth from fraud, inefficient routing, or runaway infrastructure.",
+      "Cost views must use aggregate financial metadata without exposing raw prompts, tenant files, payment secrets, or vendor credentials."
+    ]
+  };
+}
+
 function adminDataQualityOpsData() {
   return state.adminDataQualityOps || {
     summary: { certifiedMetrics: 42, freshnessHealth: "96%", reconciliationGaps: 7, lineageCoverage: "89%", blockedReports: 3 },
@@ -7006,6 +7071,26 @@ function seatControlRow(item) {
   return `<div class="table-row"><strong>${item.queue}</strong><span>${item.tenant}</span><span>${item.count}</span><span>${item.status}</span></div>`;
 }
 
+function costBudgetRow(item) {
+  return `<div class="table-row"><strong>${item.budget}</strong><span>${item.owner}</span><span>${item.current} / ${item.monthlyCap}</span><span>${item.status}</span></div>`;
+}
+
+function modelSpendRow(item) {
+  return `<div class="table-row"><strong>${item.route}</strong><span>${item.provider}</span><span>${item.unitCost}</span><span>${item.status}</span></div>`;
+}
+
+function cloudSpendRow(item) {
+  return `<div class="table-row"><strong>${item.service}</strong><span>${item.vendor}</span><span>${item.spend}</span><span>${item.status}</span></div>`;
+}
+
+function costAnomalyRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.surface}</span><span>${item.exposure}</span><span>${item.status}</span></div>`;
+}
+
+function optimizationQueueRow(item) {
+  return `<div class="table-row"><strong>${item.action}</strong><span>${item.owner}</span><span>${item.savings}</span><span>${item.status}</span></div>`;
+}
+
 function metricHealthRow(item) {
   return `<div class="table-row"><strong>${item.metric}</strong><span>${item.source}</span><span>${item.freshness}</span><span>${item.status}</span></div>`;
 }
@@ -8365,6 +8450,7 @@ function adminView() {
   if (state.adminSection === "backupOps") loadAdminBackupOps();
   if (state.adminSection === "assetOps") loadAdminAssetOps();
   if (state.adminSection === "tenantOps") loadAdminTenantOps();
+  if (state.adminSection === "costOps") loadAdminCostOps();
   if (state.adminSection === "dataQualityOps") loadAdminDataQualityOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
@@ -8504,6 +8590,7 @@ function adminSectionView(section, readiness) {
     backupOps: adminBackupOps,
     assetOps: adminAssetOps,
     tenantOps: adminTenantOps,
+    costOps: adminCostOps,
     dataQualityOps: adminDataQualityOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
@@ -11046,6 +11133,55 @@ function adminTenantOps() {
   `;
 }
 
+function adminCostOps() {
+  const costs = adminCostOpsData();
+  const summary = costs.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Daily spend", summary.dailySpend || "$18.6K")}
+      ${metric("Model spend", summary.modelSpend || "$9.4K")}
+      ${metric("Cloud spend", summary.cloudSpend || "$6.8K")}
+      ${metric("Savings queued", summary.savingsQueued || "$42K/mo")}
+      <section class="admin-card full-admin">
+        <h2>Budget controls</h2>
+        <div class="table admin-table-4">
+          ${costs.budgets.map(costBudgetRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Model route spend</h2>
+        <div class="table admin-table-4">
+          ${costs.modelSpend.map(modelSpendRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Cloud and vendor spend</h2>
+        <div class="table admin-table-4">
+          ${costs.cloudSpend.map(cloudSpendRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Cost anomalies</h2>
+        <div class="table admin-table-4">
+          ${costs.anomalies.map(costAnomalyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Optimization queue</h2>
+        <div class="table admin-table-4">
+          ${costs.optimizations.map(optimizationQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Cost guardrails</h2>
+        <div class="admin-checklist">
+          ${costs.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminDataQualityOps() {
   const quality = adminDataQualityOpsData();
   const summary = quality.summary || {};
@@ -13307,6 +13443,7 @@ function bindEvents() {
       loadAdminBackupOps(true);
       loadAdminAssetOps(true);
       loadAdminTenantOps(true);
+      loadAdminCostOps(true);
       loadAdminDataQualityOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);

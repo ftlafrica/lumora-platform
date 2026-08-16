@@ -55,6 +55,7 @@ This is the first backend foundation for connecting the Web Platform, Enterprise
 - `GET /v1/admin/backup-ops`
 - `GET /v1/admin/asset-ops`
 - `GET /v1/admin/tenant-ops`
+- `GET /v1/admin/cost-ops`
 - `GET /v1/admin/data-quality`
 - `GET /v1/admin/consent`
 - `GET /v1/admin/secrets`
@@ -153,6 +154,8 @@ It also exposes `GET /v1/admin/backup-ops` for backup coverage, restore drills, 
 It also exposes `GET /v1/admin/asset-ops` for service inventory, data assets, ownership gaps, dependency mapping, lifecycle queues, and asset guardrails.
 
 It also exposes `GET /v1/admin/tenant-ops` for enterprise tenants, verified domains, SSO/SCIM, workspace policies, seat controls, and tenant guardrails.
+
+It also exposes `GET /v1/admin/cost-ops` for real-time spend, model/cloud budgets, vendor cost, anomalies, optimization queues, and spend guardrails.
 
 It also exposes `GET /v1/admin/data-quality` for certified metrics, freshness monitors, reconciliation checks, lineage coverage, quality incidents, and decision-grade data guardrails.
 
