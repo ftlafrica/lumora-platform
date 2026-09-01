@@ -62,6 +62,7 @@ This is the first backend foundation for connecting the Web Platform, Enterprise
 - `GET /v1/admin/policy-exceptions`
 - `GET /v1/admin/access-reviews`
 - `GET /v1/admin/session-risk`
+- `GET /v1/admin/threat-intel`
 - `GET /v1/admin/consent`
 - `GET /v1/admin/secrets`
 - `GET /v1/admin/language-passport`
@@ -173,6 +174,8 @@ It also exposes `GET /v1/admin/policy-exceptions` for policy waivers, expiring a
 It also exposes `GET /v1/admin/access-reviews` for access certifications, privileged roles, stale permissions, reviewer assignments, remediation tracking, and access review guardrails.
 
 It also exposes `GET /v1/admin/session-risk` for live session risk, device trust, impossible travel, token revocation, step-up authentication queues, and session guardrails.
+
+It also exposes `GET /v1/admin/threat-intel` for threat campaigns, abuse signals, model/provider risk, infrastructure indicators, response briefings, and threat intelligence guardrails.
 
 It also exposes `GET /v1/admin/consent` for consent surfaces, training eligibility, withdrawals, policy coverage, audit trail, and consent guardrails.
 

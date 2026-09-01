@@ -100,6 +100,7 @@ const ADMIN_SECTIONS = [
   { id: "policyExceptions", label: "Exceptions", desc: "Policy waivers, risk acceptance, expiring approvals, compensating controls, and exception guardrails." },
   { id: "accessReviews", label: "Access Reviews", desc: "Access certifications, privileged roles, stale permissions, reviewer assignments, and remediation tracking." },
   { id: "sessionRisk", label: "Session Risk", desc: "Live session risk, device trust, impossible travel, token revocation, and step-up authentication queues." },
+  { id: "threatIntel", label: "Threat Intel", desc: "Threat campaigns, abuse signals, model/provider risk, infrastructure indicators, and response briefings." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
   { id: "mobileOps", label: "Mobile Ops", desc: "Android/iOS releases, crash health, store readiness, device labs, and rollout guardrails." },
@@ -344,6 +345,8 @@ const DEFAULT_STATE = {
   adminAccessReviewOpsLoadedAt: null,
   adminSessionRiskOps: null,
   adminSessionRiskOpsLoadedAt: null,
+  adminThreatIntelOps: null,
+  adminThreatIntelOpsLoadedAt: null,
   adminConsentOps: null,
   adminConsentOpsLoadedAt: null,
   adminSecretsOps: null,
@@ -1466,6 +1469,26 @@ async function loadAdminSessionRiskOps(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminThreatIntelOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminThreatIntelOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/threat-intel`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Threat intelligence unavailable.");
+    state.adminThreatIntelOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminThreatIntelOpsLoadedAt = Date.now();
+  } catch {
+    state.adminThreatIntelOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminConsentOps(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminConsentOpsLoadedAt || 0;
@@ -2574,7 +2597,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -5530,6 +5553,48 @@ function adminSessionRiskOpsData() {
   };
 }
 
+function adminThreatIntelOpsData() {
+  return state.adminThreatIntelOps || {
+    summary: { activeCampaigns: 9, blockedThreats: "14.8K", highRiskSignals: 17, modelAbuseWatch: 6, responsePlaybooks: 12 },
+    campaigns: [
+      { campaign: "Credential stuffing wave", vector: "Login", targets: "Free + Plus", owner: "Trust", status: "Contained" },
+      { campaign: "Prompt injection probes", vector: "RAG/Search", targets: "Knowledge", owner: "AI Safety", status: "Monitoring" },
+      { campaign: "Payment card testing", vector: "Checkout", targets: "Plans", owner: "Fraud Ops", status: "Blocked" },
+      { campaign: "Reviewer impersonation", vector: "Reviewer portal", targets: "Language QA", owner: "Security", status: "Investigating" }
+    ],
+    threatSignals: [
+      { signal: "Impossible travel cluster", source: "Identity", volume: 5, severity: "High", status: "Escalated" },
+      { signal: "Bot signup burst", source: "Web telemetry", volume: 842, severity: "Medium", status: "Throttled" },
+      { signal: "Suspicious API scraping", source: "API gateway", volume: 77, severity: "High", status: "Rate limited" },
+      { signal: "Unsafe model jailbreak trend", source: "Safety evals", volume: 23, severity: "Medium", status: "Review" }
+    ],
+    modelProviderRisk: [
+      { provider: "General LLM fallback", risk: "Jailbreak probes", exposure: "Public chat", owner: "AI Safety", status: "Watch" },
+      { provider: "Translation route", risk: "Meaning manipulation", exposure: "Translate Ops", owner: "Language QA", status: "Review" },
+      { provider: "Speech route", risk: "Voice spoof samples", exposure: "Voice Circle", owner: "Voice Ops", status: "Investigating" },
+      { provider: "Vector retrieval", risk: "Source poisoning", exposure: "Knowledge", owner: "RAG Ops", status: "Controlled" }
+    ],
+    infrastructureIndicators: [
+      { indicator: "Suspicious edge origin", surface: "CDN", count: 18, owner: "SRE", status: "Blocked" },
+      { indicator: "Unusual admin IP range", surface: "Admin Console", count: 4, owner: "Security", status: "Step-up" },
+      { indicator: "API token replay", surface: "Developer API", count: 2, owner: "DevEx", status: "Revoked" },
+      { indicator: "Storage enumeration attempt", surface: "Files", count: 6, owner: "Infrastructure", status: "Denied" }
+    ],
+    briefings: [
+      { briefing: "Weekly threat brief", audience: "Leadership", owner: "Security", due: "Friday", status: "Draft" },
+      { briefing: "Model abuse update", audience: "AI Governance", owner: "AI Safety", due: "Today", status: "Ready" },
+      { briefing: "Regional fraud patterns", audience: "Payments", owner: "Fraud Ops", due: "Tomorrow", status: "Draft" },
+      { briefing: "Reviewer network risk", audience: "Language QA", owner: "Security", due: "Sep 04", status: "Review" }
+    ],
+    guardrails: [
+      "Threat intelligence should connect signals from web, mobile, admin, API, payments, model routes, and reviewer operations.",
+      "Threat severity must consider user impact, privileged access, data exposure, payment exposure, and AI safety risk.",
+      "Response playbooks should be tied to owners, evidence, containment actions, customer comms, and post-incident learning.",
+      "Threat Intel Ops must expose indicators and aggregate signals without leaking raw prompts, private files, credentials, or sensitive investigation details."
+    ]
+  };
+}
+
 function adminConsentOpsData() {
   return state.adminConsentOps || {
     summary: { consentProfiles: "18.4K", trainingOptIn: "41%", voiceConsent: "64%", withdrawalQueue: 11, policyCoverage: "92%" },
@@ -7536,6 +7601,26 @@ function deviceTrustRow(item) {
   return `<div class="table-row"><strong>${item.deviceClass}</strong><span>${item.coverage}</span><span>${item.policy}</span><span>${item.status}</span></div>`;
 }
 
+function threatCampaignRow(item) {
+  return `<div class="table-row"><strong>${item.campaign}</strong><span>${item.vector}</span><span>${item.targets}</span><span>${item.status}</span></div>`;
+}
+
+function threatSignalRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.source}</span><span>${item.volume}</span><span>${item.status}</span></div>`;
+}
+
+function modelProviderRiskRow(item) {
+  return `<div class="table-row"><strong>${item.provider}</strong><span>${item.risk}</span><span>${item.exposure}</span><span>${item.status}</span></div>`;
+}
+
+function infrastructureIndicatorRow(item) {
+  return `<div class="table-row"><strong>${item.indicator}</strong><span>${item.surface}</span><span>${item.count}</span><span>${item.status}</span></div>`;
+}
+
+function threatBriefingRow(item) {
+  return `<div class="table-row"><strong>${item.briefing}</strong><span>${item.audience}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
 function consentSurfaceRow(item) {
   return `<div class="table-row"><strong>${item.surface}</strong><span>${item.audience}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
 }
@@ -8882,6 +8967,7 @@ function adminView() {
   if (state.adminSection === "policyExceptions") loadAdminPolicyExceptionOps();
   if (state.adminSection === "accessReviews") loadAdminAccessReviewOps();
   if (state.adminSection === "sessionRisk") loadAdminSessionRiskOps();
+  if (state.adminSection === "threatIntel") loadAdminThreatIntelOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
   if (state.adminSection === "mobileOps") loadAdminMobileOps();
@@ -9027,6 +9113,7 @@ function adminSectionView(section, readiness) {
     policyExceptions: adminPolicyExceptionOps,
     accessReviews: adminAccessReviewOps,
     sessionRisk: adminSessionRiskOps,
+    threatIntel: adminThreatIntelOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
     mobileOps: adminMobileOps,
@@ -11911,6 +11998,55 @@ function adminSessionRiskOps() {
   `;
 }
 
+function adminThreatIntelOps() {
+  const threats = adminThreatIntelOpsData();
+  const summary = threats.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active campaigns", summary.activeCampaigns || "9")}
+      ${metric("Blocked threats", summary.blockedThreats || "14.8K")}
+      ${metric("High-risk signals", summary.highRiskSignals || "17")}
+      ${metric("Model abuse watch", summary.modelAbuseWatch || "6")}
+      <section class="admin-card full-admin">
+        <h2>Threat campaigns</h2>
+        <div class="table admin-table-4">
+          ${threats.campaigns.map(threatCampaignRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Threat signals</h2>
+        <div class="table admin-table-4">
+          ${threats.threatSignals.map(threatSignalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Model and provider risk</h2>
+        <div class="table admin-table-4">
+          ${threats.modelProviderRisk.map(modelProviderRiskRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Infrastructure indicators</h2>
+        <div class="table admin-table-4">
+          ${threats.infrastructureIndicators.map(infrastructureIndicatorRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Threat briefings</h2>
+        <div class="table admin-table-4">
+          ${threats.briefings.map(threatBriefingRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Threat intel guardrails</h2>
+        <div class="admin-checklist">
+          ${threats.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminConsentOps() {
   const consent = adminConsentOpsData();
   const summary = consent.summary || {};
@@ -14130,6 +14266,7 @@ function bindEvents() {
       loadAdminPolicyExceptionOps(true);
       loadAdminAccessReviewOps(true);
       loadAdminSessionRiskOps(true);
+      loadAdminThreatIntelOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);
       loadAdminMobileOps(true);
