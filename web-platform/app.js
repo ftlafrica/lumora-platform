@@ -96,6 +96,7 @@ const ADMIN_SECTIONS = [
   { id: "costOps", label: "Cost Ops", desc: "Real-time spend, model/cloud budgets, vendor cost, anomalies, and optimization guardrails." },
   { id: "dataQualityOps", label: "Data Quality", desc: "Certified metrics, freshness, reconciliation, lineage, quality incidents, and decision-grade data." },
   { id: "regulatoryOps", label: "Regulatory", desc: "African market regulation posture, filings, regulator requests, policy mappings, and launch approvals." },
+  { id: "complianceAutomation", label: "Compliance Auto", desc: "Automated controls, evidence jobs, exceptions, attestations, remediation queues, and compliance guardrails." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
   { id: "mobileOps", label: "Mobile Ops", desc: "Android/iOS releases, crash health, store readiness, device labs, and rollout guardrails." },
@@ -332,6 +333,8 @@ const DEFAULT_STATE = {
   adminDataQualityOpsLoadedAt: null,
   adminRegulatoryOps: null,
   adminRegulatoryOpsLoadedAt: null,
+  adminComplianceAutomationOps: null,
+  adminComplianceAutomationOpsLoadedAt: null,
   adminConsentOps: null,
   adminConsentOpsLoadedAt: null,
   adminSecretsOps: null,
@@ -1369,6 +1372,26 @@ async function loadAdminRegulatoryOps(force = false) {
     state.adminRegulatoryOpsLoadedAt = Date.now();
   } catch {
     state.adminRegulatoryOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminComplianceAutomationOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminComplianceAutomationOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/compliance-automation`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Compliance automation unavailable.");
+    state.adminComplianceAutomationOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminComplianceAutomationOpsLoadedAt = Date.now();
+  } catch {
+    state.adminComplianceAutomationOpsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -2482,7 +2505,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -5270,6 +5293,48 @@ function adminRegulatoryOpsData() {
   };
 }
 
+function adminComplianceAutomationOpsData() {
+  return state.adminComplianceAutomationOps || {
+    summary: { activeControls: 128, automatedChecks: 94, exceptionsOpen: 13, evidenceJobs: 27, remediationDue: 6 },
+    controlChecks: [
+      { control: "Enterprise training exclusion", cadence: "Hourly", source: "Tenant policy", owner: "Data Gov", status: "Passing" },
+      { control: "Admin MFA enforcement", cadence: "15m", source: "Identity logs", owner: "Security", status: "Passing" },
+      { control: "Voice retention limit", cadence: "Daily", source: "Storage lifecycle", owner: "Voice Ops", status: "Failing" },
+      { control: "Subprocessor evidence freshness", cadence: "Weekly", source: "Vendor register", owner: "Legal", status: "Watch" }
+    ],
+    evidenceJobs: [
+      { job: "SOC 2 access review pack", evidence: "Roles + audit logs", nextRun: "Tonight", owner: "Security", status: "Scheduled" },
+      { job: "Privacy consent export", evidence: "Consent events", nextRun: "2h", owner: "Privacy", status: "Running" },
+      { job: "Model release approval trail", evidence: "Eval gates + signoffs", nextRun: "Daily", owner: "AI Governance", status: "Healthy" },
+      { job: "Regional launch evidence", evidence: "Policies + filings", nextRun: "Aug 18", owner: "Regional", status: "Queued" }
+    ],
+    exceptions: [
+      { exception: "Voice deletion SLA coverage gap", control: "Voice retention", age: "3 days", owner: "Voice Ops", status: "Escalated" },
+      { exception: "Reviewer access recertification late", control: "Access review", age: "1 day", owner: "People Ops", status: "Queued" },
+      { exception: "Vendor security doc expired", control: "Subprocessor review", age: "6 days", owner: "Legal", status: "Waiting" },
+      { exception: "Mobile crash evidence missing", control: "Release readiness", age: "12h", owner: "Mobile Ops", status: "Fixing" }
+    ],
+    attestations: [
+      { attestation: "Seed admin access", audience: "Leadership", signer: "Security Lead", due: "Monthly", status: "Ready" },
+      { attestation: "Training data eligibility", audience: "AI Governance", signer: "Data Gov", due: "Weekly", status: "Review" },
+      { attestation: "Payment controls", audience: "Finance", signer: "Revenue Ops", due: "Monthly", status: "Ready" },
+      { attestation: "Country launch controls", audience: "Legal", signer: "Regional Lead", due: "Per launch", status: "Blocked" }
+    ],
+    remediations: [
+      { remediation: "Automate voice retention deletion proof", priority: "High", due: "Aug 19", owner: "Voice Ops", status: "In progress" },
+      { remediation: "Add vendor doc expiry alerts", priority: "Medium", due: "Aug 22", owner: "Legal Ops", status: "Queued" },
+      { remediation: "Bind mobile release evidence to QA gate", priority: "Medium", due: "Aug 20", owner: "Mobile Ops", status: "Testing" },
+      { remediation: "Tighten reviewer role recertification", priority: "High", due: "Aug 18", owner: "Security", status: "Approval" }
+    ],
+    guardrails: [
+      "Compliance automation should reduce manual evidence work without replacing legal, privacy, security, or AI governance accountability.",
+      "Automated checks need owners, source systems, cadence, failure thresholds, and explicit customer-impact review.",
+      "Exceptions should carry age, severity, remediation owner, and audit trail until closure.",
+      "Evidence jobs must collect metadata and proofs without exporting raw prompts, private files, payment secrets, or privileged credentials."
+    ]
+  };
+}
+
 function adminConsentOpsData() {
   return state.adminConsentOps || {
     summary: { consentProfiles: "18.4K", trainingOptIn: "41%", voiceConsent: "64%", withdrawalQueue: 11, policyCoverage: "92%" },
@@ -7196,6 +7261,26 @@ function launchApprovalRow(item) {
   return `<div class="table-row"><strong>${item.market}</strong><span>${item.requirement}</span><span>${item.blocker}</span><span>${item.status}</span></div>`;
 }
 
+function complianceControlRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.cadence}</span><span>${item.source}</span><span>${item.status}</span></div>`;
+}
+
+function complianceEvidenceJobRow(item) {
+  return `<div class="table-row"><strong>${item.job}</strong><span>${item.evidence}</span><span>${item.nextRun}</span><span>${item.status}</span></div>`;
+}
+
+function complianceExceptionRow(item) {
+  return `<div class="table-row"><strong>${item.exception}</strong><span>${item.control}</span><span>${item.age}</span><span>${item.status}</span></div>`;
+}
+
+function complianceAttestationRow(item) {
+  return `<div class="table-row"><strong>${item.attestation}</strong><span>${item.audience}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
+function complianceRemediationRow(item) {
+  return `<div class="table-row"><strong>${item.remediation}</strong><span>${item.priority}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
 function consentSurfaceRow(item) {
   return `<div class="table-row"><strong>${item.surface}</strong><span>${item.audience}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
 }
@@ -8538,6 +8623,7 @@ function adminView() {
   if (state.adminSection === "costOps") loadAdminCostOps();
   if (state.adminSection === "dataQualityOps") loadAdminDataQualityOps();
   if (state.adminSection === "regulatoryOps") loadAdminRegulatoryOps();
+  if (state.adminSection === "complianceAutomation") loadAdminComplianceAutomationOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
   if (state.adminSection === "mobileOps") loadAdminMobileOps();
@@ -8679,6 +8765,7 @@ function adminSectionView(section, readiness) {
     costOps: adminCostOps,
     dataQualityOps: adminDataQualityOps,
     regulatoryOps: adminRegulatoryOps,
+    complianceAutomation: adminComplianceAutomationOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
     mobileOps: adminMobileOps,
@@ -11367,6 +11454,55 @@ function adminRegulatoryOps() {
   `;
 }
 
+function adminComplianceAutomationOps() {
+  const compliance = adminComplianceAutomationOpsData();
+  const summary = compliance.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active controls", summary.activeControls || "128")}
+      ${metric("Automated checks", summary.automatedChecks || "94")}
+      ${metric("Open exceptions", summary.exceptionsOpen || "13")}
+      ${metric("Evidence jobs", summary.evidenceJobs || "27")}
+      <section class="admin-card full-admin">
+        <h2>Automated control checks</h2>
+        <div class="table admin-table-4">
+          ${compliance.controlChecks.map(complianceControlRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Evidence jobs</h2>
+        <div class="table admin-table-4">
+          ${compliance.evidenceJobs.map(complianceEvidenceJobRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Open exceptions</h2>
+        <div class="table admin-table-4">
+          ${compliance.exceptions.map(complianceExceptionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Attestations</h2>
+        <div class="table admin-table-4">
+          ${compliance.attestations.map(complianceAttestationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Remediation queue</h2>
+        <div class="table admin-table-4">
+          ${compliance.remediations.map(complianceRemediationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Automation guardrails</h2>
+        <div class="admin-checklist">
+          ${compliance.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminConsentOps() {
   const consent = adminConsentOpsData();
   const summary = consent.summary || {};
@@ -13582,6 +13718,7 @@ function bindEvents() {
       loadAdminCostOps(true);
       loadAdminDataQualityOps(true);
       loadAdminRegulatoryOps(true);
+      loadAdminComplianceAutomationOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);
       loadAdminMobileOps(true);

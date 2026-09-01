@@ -58,6 +58,7 @@ This is the first backend foundation for connecting the Web Platform, Enterprise
 - `GET /v1/admin/cost-ops`
 - `GET /v1/admin/data-quality`
 - `GET /v1/admin/regulatory-ops`
+- `GET /v1/admin/compliance-automation`
 - `GET /v1/admin/consent`
 - `GET /v1/admin/secrets`
 - `GET /v1/admin/language-passport`
@@ -161,6 +162,8 @@ It also exposes `GET /v1/admin/cost-ops` for real-time spend, model/cloud budget
 It also exposes `GET /v1/admin/data-quality` for certified metrics, freshness monitors, reconciliation checks, lineage coverage, quality incidents, and decision-grade data guardrails.
 
 It also exposes `GET /v1/admin/regulatory-ops` for African market regulation posture, filing calendars, regulator requests, policy mappings, launch approvals, and regulatory guardrails.
+
+It also exposes `GET /v1/admin/compliance-automation` for automated controls, evidence collection jobs, exceptions, attestations, remediation queues, and compliance automation guardrails.
 
 It also exposes `GET /v1/admin/consent` for consent surfaces, training eligibility, withdrawals, policy coverage, audit trail, and consent guardrails.
 
