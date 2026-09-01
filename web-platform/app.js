@@ -98,6 +98,7 @@ const ADMIN_SECTIONS = [
   { id: "regulatoryOps", label: "Regulatory", desc: "African market regulation posture, filings, regulator requests, policy mappings, and launch approvals." },
   { id: "complianceAutomation", label: "Compliance Auto", desc: "Automated controls, evidence jobs, exceptions, attestations, remediation queues, and compliance guardrails." },
   { id: "policyExceptions", label: "Exceptions", desc: "Policy waivers, risk acceptance, expiring approvals, compensating controls, and exception guardrails." },
+  { id: "accessReviews", label: "Access Reviews", desc: "Access certifications, privileged roles, stale permissions, reviewer assignments, and remediation tracking." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
   { id: "mobileOps", label: "Mobile Ops", desc: "Android/iOS releases, crash health, store readiness, device labs, and rollout guardrails." },
@@ -338,6 +339,8 @@ const DEFAULT_STATE = {
   adminComplianceAutomationOpsLoadedAt: null,
   adminPolicyExceptionOps: null,
   adminPolicyExceptionOpsLoadedAt: null,
+  adminAccessReviewOps: null,
+  adminAccessReviewOpsLoadedAt: null,
   adminConsentOps: null,
   adminConsentOpsLoadedAt: null,
   adminSecretsOps: null,
@@ -1415,6 +1418,26 @@ async function loadAdminPolicyExceptionOps(force = false) {
     state.adminPolicyExceptionOpsLoadedAt = Date.now();
   } catch {
     state.adminPolicyExceptionOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminAccessReviewOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminAccessReviewOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/access-reviews`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Access reviews unavailable.");
+    state.adminAccessReviewOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminAccessReviewOpsLoadedAt = Date.now();
+  } catch {
+    state.adminAccessReviewOpsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -2528,7 +2551,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -5400,6 +5423,48 @@ function adminPolicyExceptionOpsData() {
   };
 }
 
+function adminAccessReviewOpsData() {
+  return state.adminAccessReviewOps || {
+    summary: { activeReviews: 16, privilegedUsers: 34, staleAccess: 11, removalsQueued: 8, certificationRate: "91%" },
+    reviewCampaigns: [
+      { campaign: "Seed admin quarterly review", scope: "Admin Console", reviewers: 4, due: "Sep 05", status: "In progress" },
+      { campaign: "Reviewer network access", scope: "Language QA", reviewers: 12, due: "Sep 08", status: "Queued" },
+      { campaign: "Enterprise support roles", scope: "Customer Success", reviewers: 6, due: "Sep 12", status: "Ready" },
+      { campaign: "API key owner certification", scope: "Developer Platform", reviewers: 9, due: "Sep 15", status: "Draft" }
+    ],
+    privilegedRoles: [
+      { role: "Seed Admin", users: 5, lastReviewed: "Aug 01", owner: "Security", status: "Current" },
+      { role: "Finance Operator", users: 8, lastReviewed: "Jul 28", owner: "Finance", status: "Review" },
+      { role: "Model Release Approver", users: 11, lastReviewed: "Aug 04", owner: "AI Governance", status: "Current" },
+      { role: "Support Escalation", users: 10, lastReviewed: "Jul 20", owner: "Support", status: "Watch" }
+    ],
+    stalePermissions: [
+      { permission: "Legacy export access", holder: "2 users", age: "41 days", owner: "Security", status: "Remove" },
+      { permission: "Old beta analytics role", holder: "4 users", age: "27 days", owner: "Analytics", status: "Review" },
+      { permission: "Dormant API key owner", holder: "3 keys", age: "63 days", owner: "DevEx", status: "Rotate" },
+      { permission: "Expired contractor access", holder: "2 users", age: "9 days", owner: "People Ops", status: "Disable" }
+    ],
+    reviewerAssignments: [
+      { reviewer: "Security Lead", area: "Admin + API", assigned: 14, completed: 9, status: "On track" },
+      { reviewer: "Finance Ops", area: "Payments", assigned: 8, completed: 6, status: "On track" },
+      { reviewer: "Language QA Lead", area: "Reviewers", assigned: 18, completed: 11, status: "Watch" },
+      { reviewer: "Enterprise Lead", area: "Tenant Ops", assigned: 10, completed: 8, status: "Healthy" }
+    ],
+    remediationQueue: [
+      { remediation: "Disable expired contractor seats", area: "People Ops", due: "Today", owner: "Identity", status: "Queued" },
+      { remediation: "Rotate dormant API keys", area: "API", due: "Sep 03", owner: "DevEx", status: "In progress" },
+      { remediation: "Remove legacy export role", area: "Reports", due: "Sep 04", owner: "Security", status: "Approval" },
+      { remediation: "Tighten support elevation duration", area: "Support", due: "Sep 07", owner: "Support Ops", status: "Draft" }
+    ],
+    guardrails: [
+      "Access reviews must prove that every privileged user, API key, reviewer, and operator has a current business reason and named owner.",
+      "Expired, stale, or orphaned permissions should produce remediation tasks, not silent dashboard warnings.",
+      "Certification campaigns should preserve separation of duties between requesters, approvers, reviewers, and auditors.",
+      "Access review views must show aggregate control metadata without exposing credentials, private user content, payment secrets, or sensitive legal records."
+    ]
+  };
+}
+
 function adminConsentOpsData() {
   return state.adminConsentOps || {
     summary: { consentProfiles: "18.4K", trainingOptIn: "41%", voiceConsent: "64%", withdrawalQueue: 11, policyCoverage: "92%" },
@@ -7366,6 +7431,26 @@ function exceptionEscalationRow(item) {
   return `<div class="table-row"><strong>${item.escalation}</strong><span>${item.area}</span><span>${item.age}</span><span>${item.status}</span></div>`;
 }
 
+function accessReviewCampaignRow(item) {
+  return `<div class="table-row"><strong>${item.campaign}</strong><span>${item.scope}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
+function privilegedRoleRow(item) {
+  return `<div class="table-row"><strong>${item.role}</strong><span>${item.users}</span><span>${item.lastReviewed}</span><span>${item.status}</span></div>`;
+}
+
+function stalePermissionRow(item) {
+  return `<div class="table-row"><strong>${item.permission}</strong><span>${item.holder}</span><span>${item.age}</span><span>${item.status}</span></div>`;
+}
+
+function reviewerAssignmentRow(item) {
+  return `<div class="table-row"><strong>${item.reviewer}</strong><span>${item.area}</span><span>${item.completed} / ${item.assigned}</span><span>${item.status}</span></div>`;
+}
+
+function accessReviewRemediationRow(item) {
+  return `<div class="table-row"><strong>${item.remediation}</strong><span>${item.area}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
 function consentSurfaceRow(item) {
   return `<div class="table-row"><strong>${item.surface}</strong><span>${item.audience}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
 }
@@ -8710,6 +8795,7 @@ function adminView() {
   if (state.adminSection === "regulatoryOps") loadAdminRegulatoryOps();
   if (state.adminSection === "complianceAutomation") loadAdminComplianceAutomationOps();
   if (state.adminSection === "policyExceptions") loadAdminPolicyExceptionOps();
+  if (state.adminSection === "accessReviews") loadAdminAccessReviewOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
   if (state.adminSection === "mobileOps") loadAdminMobileOps();
@@ -8853,6 +8939,7 @@ function adminSectionView(section, readiness) {
     regulatoryOps: adminRegulatoryOps,
     complianceAutomation: adminComplianceAutomationOps,
     policyExceptions: adminPolicyExceptionOps,
+    accessReviews: adminAccessReviewOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
     mobileOps: adminMobileOps,
@@ -11639,6 +11726,55 @@ function adminPolicyExceptionOps() {
   `;
 }
 
+function adminAccessReviewOps() {
+  const accessReviews = adminAccessReviewOpsData();
+  const summary = accessReviews.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active reviews", summary.activeReviews || "16")}
+      ${metric("Privileged users", summary.privilegedUsers || "34")}
+      ${metric("Stale access", summary.staleAccess || "11")}
+      ${metric("Certification rate", summary.certificationRate || "91%")}
+      <section class="admin-card full-admin">
+        <h2>Review campaigns</h2>
+        <div class="table admin-table-4">
+          ${accessReviews.reviewCampaigns.map(accessReviewCampaignRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Privileged roles</h2>
+        <div class="table admin-table-4">
+          ${accessReviews.privilegedRoles.map(privilegedRoleRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Stale permissions</h2>
+        <div class="table admin-table-4">
+          ${accessReviews.stalePermissions.map(stalePermissionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Reviewer assignments</h2>
+        <div class="table admin-table-4">
+          ${accessReviews.reviewerAssignments.map(reviewerAssignmentRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Remediation queue</h2>
+        <div class="table admin-table-4">
+          ${accessReviews.remediationQueue.map(accessReviewRemediationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Access review guardrails</h2>
+        <div class="admin-checklist">
+          ${accessReviews.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminConsentOps() {
   const consent = adminConsentOpsData();
   const summary = consent.summary || {};
@@ -13856,6 +13992,7 @@ function bindEvents() {
       loadAdminRegulatoryOps(true);
       loadAdminComplianceAutomationOps(true);
       loadAdminPolicyExceptionOps(true);
+      loadAdminAccessReviewOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);
       loadAdminMobileOps(true);

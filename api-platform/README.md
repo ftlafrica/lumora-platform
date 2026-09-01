@@ -60,6 +60,7 @@ This is the first backend foundation for connecting the Web Platform, Enterprise
 - `GET /v1/admin/regulatory-ops`
 - `GET /v1/admin/compliance-automation`
 - `GET /v1/admin/policy-exceptions`
+- `GET /v1/admin/access-reviews`
 - `GET /v1/admin/consent`
 - `GET /v1/admin/secrets`
 - `GET /v1/admin/language-passport`
@@ -167,6 +168,8 @@ It also exposes `GET /v1/admin/regulatory-ops` for African market regulation pos
 It also exposes `GET /v1/admin/compliance-automation` for automated controls, evidence collection jobs, exceptions, attestations, remediation queues, and compliance automation guardrails.
 
 It also exposes `GET /v1/admin/policy-exceptions` for policy waivers, expiring approvals, risk acceptance, compensating controls, escalation owners, and exception guardrails.
+
+It also exposes `GET /v1/admin/access-reviews` for access certifications, privileged roles, stale permissions, reviewer assignments, remediation tracking, and access review guardrails.
 
 It also exposes `GET /v1/admin/consent` for consent surfaces, training eligibility, withdrawals, policy coverage, audit trail, and consent guardrails.
 
