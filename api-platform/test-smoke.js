@@ -103,6 +103,7 @@ const {
   adminComplianceAutomationOpsOperations,
   adminPolicyExceptionOpsOperations,
   adminAccessReviewOpsOperations,
+  adminSessionRiskOpsOperations,
   adminConsentOpsOperations,
   adminSecretsOpsOperations,
   adminMobileOpsOperations,
@@ -224,6 +225,7 @@ assert.ok(accessSession.scopes.includes("regulatory:operate"));
 assert.ok(accessSession.scopes.includes("compliance:automate"));
 assert.ok(accessSession.scopes.includes("exceptions:manage"));
 assert.ok(accessSession.scopes.includes("access:review"));
+assert.ok(accessSession.scopes.includes("sessions:risk"));
 assert.ok(accessSession.scopes.includes("consent:operate"));
 assert.ok(accessSession.scopes.includes("secrets:operate"));
 assert.ok(accessSession.scopes.includes("mobile:operate"));
@@ -329,6 +331,7 @@ const adminContracts = [
   ["compliance automation", adminComplianceAutomationOpsOperations(), data => data.summary && Array.isArray(data.controlChecks) && Array.isArray(data.evidenceJobs) && Array.isArray(data.exceptions)],
   ["policy exceptions", adminPolicyExceptionOpsOperations(), data => data.summary && Array.isArray(data.exceptionRegister) && Array.isArray(data.expiryCalendar) && Array.isArray(data.riskAcceptance)],
   ["access reviews", adminAccessReviewOpsOperations(), data => data.summary && Array.isArray(data.reviewCampaigns) && Array.isArray(data.privilegedRoles) && Array.isArray(data.stalePermissions)],
+  ["session risk", adminSessionRiskOpsOperations(), data => data.summary && Array.isArray(data.liveSessions) && Array.isArray(data.riskSignals) && Array.isArray(data.revocations)],
   ["consent ops", adminConsentOpsOperations(), data => data.summary && Array.isArray(data.consentSurfaces) && Array.isArray(data.trainingEligibility) && Array.isArray(data.withdrawals)],
   ["secrets ops", adminSecretsOpsOperations(), data => data.summary && Array.isArray(data.secretInventory) && Array.isArray(data.rotations) && Array.isArray(data.kmsPosture)],
   ["mobile ops", adminMobileOpsOperations(), data => data.summary && Array.isArray(data.releases) && Array.isArray(data.crashHealth) && Array.isArray(data.storeReadiness)],

@@ -99,6 +99,7 @@ const ADMIN_SECTIONS = [
   { id: "complianceAutomation", label: "Compliance Auto", desc: "Automated controls, evidence jobs, exceptions, attestations, remediation queues, and compliance guardrails." },
   { id: "policyExceptions", label: "Exceptions", desc: "Policy waivers, risk acceptance, expiring approvals, compensating controls, and exception guardrails." },
   { id: "accessReviews", label: "Access Reviews", desc: "Access certifications, privileged roles, stale permissions, reviewer assignments, and remediation tracking." },
+  { id: "sessionRisk", label: "Session Risk", desc: "Live session risk, device trust, impossible travel, token revocation, and step-up authentication queues." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
   { id: "mobileOps", label: "Mobile Ops", desc: "Android/iOS releases, crash health, store readiness, device labs, and rollout guardrails." },
@@ -341,6 +342,8 @@ const DEFAULT_STATE = {
   adminPolicyExceptionOpsLoadedAt: null,
   adminAccessReviewOps: null,
   adminAccessReviewOpsLoadedAt: null,
+  adminSessionRiskOps: null,
+  adminSessionRiskOpsLoadedAt: null,
   adminConsentOps: null,
   adminConsentOpsLoadedAt: null,
   adminSecretsOps: null,
@@ -1438,6 +1441,26 @@ async function loadAdminAccessReviewOps(force = false) {
     state.adminAccessReviewOpsLoadedAt = Date.now();
   } catch {
     state.adminAccessReviewOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminSessionRiskOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminSessionRiskOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/session-risk`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Session risk unavailable.");
+    state.adminSessionRiskOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminSessionRiskOpsLoadedAt = Date.now();
+  } catch {
+    state.adminSessionRiskOpsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -2551,7 +2574,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -5465,6 +5488,48 @@ function adminAccessReviewOpsData() {
   };
 }
 
+function adminSessionRiskOpsData() {
+  return state.adminSessionRiskOps || {
+    summary: { riskySessions: 23, stepUpsQueued: 14, revokedTokens: 38, trustedDevices: "89%", impossibleTravel: 5 },
+    liveSessions: [
+      { session: "Seed admin console", actor: "Security Lead", device: "Managed Windows", region: "Nigeria", status: "Trusted" },
+      { session: "Finance export", actor: "Revenue Ops", device: "Managed Mac", region: "Ghana", status: "Step-up" },
+      { session: "Reviewer portal", actor: "Language QA", device: "Personal Android", region: "Kenya", status: "Watch" },
+      { session: "API key console", actor: "Developer", device: "Unknown browser", region: "Diaspora", status: "Risky" }
+    ],
+    riskSignals: [
+      { signal: "Impossible travel", surface: "Admin Console", count: 5, owner: "Security", status: "Investigating" },
+      { signal: "New device for privileged role", surface: "Payments", count: 7, owner: "Identity", status: "Step-up" },
+      { signal: "Dormant account reactivation", surface: "Support", count: 9, owner: "Trust", status: "Watch" },
+      { signal: "Token reuse anomaly", surface: "API", count: 2, owner: "DevEx", status: "Revoked" }
+    ],
+    stepUpQueue: [
+      { queue: "Finance operator MFA", actorType: "Privileged user", due: "Immediate", owner: "Identity", status: "Queued" },
+      { queue: "Unknown admin browser", actorType: "Seed admin", due: "Immediate", owner: "Security", status: "Blocked" },
+      { queue: "Reviewer device challenge", actorType: "Reviewer", due: "Next login", owner: "Language QA", status: "Active" },
+      { queue: "Enterprise admin recovery", actorType: "Tenant admin", due: "4h", owner: "Enterprise", status: "Review" }
+    ],
+    revocations: [
+      { token: "Dormant API token", surface: "Developer API", count: 12, owner: "DevEx", status: "Revoked" },
+      { token: "Expired support elevation", surface: "Support", count: 8, owner: "Support Ops", status: "Revoked" },
+      { token: "Suspicious mobile refresh", surface: "Mobile", count: 14, owner: "Trust", status: "Rotating" },
+      { token: "Legacy export session", surface: "Reports", count: 4, owner: "Security", status: "Queued" }
+    ],
+    deviceTrust: [
+      { deviceClass: "Managed desktop", coverage: "93%", policy: "Passkey + MFA", owner: "Security", status: "Healthy" },
+      { deviceClass: "Mobile app", coverage: "87%", policy: "Device binding", owner: "Mobile Ops", status: "Watch" },
+      { deviceClass: "Reviewer devices", coverage: "74%", policy: "Challenge required", owner: "Language QA", status: "Improving" },
+      { deviceClass: "Unknown browser", coverage: "6%", policy: "Restricted", owner: "Identity", status: "Controlled" }
+    ],
+    guardrails: [
+      "Session risk controls should protect privileged surfaces without making everyday multilingual chat feel heavy for normal users.",
+      "Risk scoring must combine device trust, location signals, role sensitivity, behavior, and recent auth history before forcing step-up.",
+      "Token revocation should immediately invalidate risky sessions and create audit evidence for admin, API, mobile, and web surfaces.",
+      "Session Risk Ops must expose security metadata without revealing raw prompts, private chats, passwords, payment secrets, or recovery codes."
+    ]
+  };
+}
+
 function adminConsentOpsData() {
   return state.adminConsentOps || {
     summary: { consentProfiles: "18.4K", trainingOptIn: "41%", voiceConsent: "64%", withdrawalQueue: 11, policyCoverage: "92%" },
@@ -7451,6 +7516,26 @@ function accessReviewRemediationRow(item) {
   return `<div class="table-row"><strong>${item.remediation}</strong><span>${item.area}</span><span>${item.due}</span><span>${item.status}</span></div>`;
 }
 
+function liveSessionRow(item) {
+  return `<div class="table-row"><strong>${item.session}</strong><span>${item.actor}</span><span>${item.region}</span><span>${item.status}</span></div>`;
+}
+
+function sessionRiskSignalRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.surface}</span><span>${item.count}</span><span>${item.status}</span></div>`;
+}
+
+function stepUpQueueRow(item) {
+  return `<div class="table-row"><strong>${item.queue}</strong><span>${item.actorType}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
+function tokenRevocationRow(item) {
+  return `<div class="table-row"><strong>${item.token}</strong><span>${item.surface}</span><span>${item.count}</span><span>${item.status}</span></div>`;
+}
+
+function deviceTrustRow(item) {
+  return `<div class="table-row"><strong>${item.deviceClass}</strong><span>${item.coverage}</span><span>${item.policy}</span><span>${item.status}</span></div>`;
+}
+
 function consentSurfaceRow(item) {
   return `<div class="table-row"><strong>${item.surface}</strong><span>${item.audience}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
 }
@@ -8796,6 +8881,7 @@ function adminView() {
   if (state.adminSection === "complianceAutomation") loadAdminComplianceAutomationOps();
   if (state.adminSection === "policyExceptions") loadAdminPolicyExceptionOps();
   if (state.adminSection === "accessReviews") loadAdminAccessReviewOps();
+  if (state.adminSection === "sessionRisk") loadAdminSessionRiskOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
   if (state.adminSection === "mobileOps") loadAdminMobileOps();
@@ -8940,6 +9026,7 @@ function adminSectionView(section, readiness) {
     complianceAutomation: adminComplianceAutomationOps,
     policyExceptions: adminPolicyExceptionOps,
     accessReviews: adminAccessReviewOps,
+    sessionRisk: adminSessionRiskOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
     mobileOps: adminMobileOps,
@@ -11775,6 +11862,55 @@ function adminAccessReviewOps() {
   `;
 }
 
+function adminSessionRiskOps() {
+  const sessions = adminSessionRiskOpsData();
+  const summary = sessions.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Risky sessions", summary.riskySessions || "23")}
+      ${metric("Step-ups queued", summary.stepUpsQueued || "14")}
+      ${metric("Revoked tokens", summary.revokedTokens || "38")}
+      ${metric("Trusted devices", summary.trustedDevices || "89%")}
+      <section class="admin-card full-admin">
+        <h2>Live session posture</h2>
+        <div class="table admin-table-4">
+          ${sessions.liveSessions.map(liveSessionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Risk signals</h2>
+        <div class="table admin-table-4">
+          ${sessions.riskSignals.map(sessionRiskSignalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Step-up queue</h2>
+        <div class="table admin-table-4">
+          ${sessions.stepUpQueue.map(stepUpQueueRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Token revocations</h2>
+        <div class="table admin-table-4">
+          ${sessions.revocations.map(tokenRevocationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Device trust</h2>
+        <div class="table admin-table-4">
+          ${sessions.deviceTrust.map(deviceTrustRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Session risk guardrails</h2>
+        <div class="admin-checklist">
+          ${sessions.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminConsentOps() {
   const consent = adminConsentOpsData();
   const summary = consent.summary || {};
@@ -13993,6 +14129,7 @@ function bindEvents() {
       loadAdminComplianceAutomationOps(true);
       loadAdminPolicyExceptionOps(true);
       loadAdminAccessReviewOps(true);
+      loadAdminSessionRiskOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);
       loadAdminMobileOps(true);
