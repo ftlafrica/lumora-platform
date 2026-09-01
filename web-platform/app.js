@@ -95,6 +95,7 @@ const ADMIN_SECTIONS = [
   { id: "tenantOps", label: "Tenant Ops", desc: "Enterprise tenants, domains, SSO/SCIM, workspace policies, seats, and tenant boundaries." },
   { id: "costOps", label: "Cost Ops", desc: "Real-time spend, model/cloud budgets, vendor cost, anomalies, and optimization guardrails." },
   { id: "dataQualityOps", label: "Data Quality", desc: "Certified metrics, freshness, reconciliation, lineage, quality incidents, and decision-grade data." },
+  { id: "regulatoryOps", label: "Regulatory", desc: "African market regulation posture, filings, regulator requests, policy mappings, and launch approvals." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
   { id: "mobileOps", label: "Mobile Ops", desc: "Android/iOS releases, crash health, store readiness, device labs, and rollout guardrails." },
@@ -329,6 +330,8 @@ const DEFAULT_STATE = {
   adminCostOpsLoadedAt: null,
   adminDataQualityOps: null,
   adminDataQualityOpsLoadedAt: null,
+  adminRegulatoryOps: null,
+  adminRegulatoryOpsLoadedAt: null,
   adminConsentOps: null,
   adminConsentOpsLoadedAt: null,
   adminSecretsOps: null,
@@ -1346,6 +1349,26 @@ async function loadAdminDataQualityOps(force = false) {
     state.adminDataQualityOpsLoadedAt = Date.now();
   } catch {
     state.adminDataQualityOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminRegulatoryOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminRegulatoryOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/regulatory-ops`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Regulatory operations unavailable.");
+    state.adminRegulatoryOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminRegulatoryOpsLoadedAt = Date.now();
+  } catch {
+    state.adminRegulatoryOpsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -2459,7 +2482,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -5205,6 +5228,48 @@ function adminDataQualityOpsData() {
   };
 }
 
+function adminRegulatoryOpsData() {
+  return state.adminRegulatoryOps || {
+    summary: { activeMarkets: 12, regulatoryWatch: 18, filingDue: 5, launchBlocks: 4, policyCoverage: "87%" },
+    countryPosture: [
+      { country: "Nigeria", framework: "NDPR/NDP Act", coverage: "91%", owner: "Privacy", status: "Watch" },
+      { country: "Kenya", framework: "Data Protection Act", coverage: "88%", owner: "Legal", status: "Healthy" },
+      { country: "South Africa", framework: "POPIA", coverage: "84%", owner: "Privacy", status: "Review" },
+      { country: "Ghana", framework: "Data Protection Act", coverage: "86%", owner: "Regional", status: "Healthy" }
+    ],
+    filingCalendar: [
+      { filing: "Data processing register update", market: "Nigeria", due: "Aug 28", owner: "Privacy Ops", status: "Queued" },
+      { filing: "Subprocessor review pack", market: "South Africa", due: "Sep 04", owner: "Legal", status: "Drafting" },
+      { filing: "Cross-border transfer memo", market: "Kenya", due: "Sep 09", owner: "DPIA", status: "Review" },
+      { filing: "Youth safety attestation", market: "Pan-African", due: "Sep 14", owner: "Safety", status: "Scoped" }
+    ],
+    regulatorRequests: [
+      { request: "Clarify AI training exclusions", market: "Nigeria", responseBy: "5 days", owner: "Data Gov", status: "Preparing" },
+      { request: "Voice retention policy evidence", market: "Kenya", responseBy: "8 days", owner: "Voice Ops", status: "Collecting" },
+      { request: "Security questionnaire", market: "South Africa", responseBy: "12 days", owner: "Security", status: "Review" },
+      { request: "Children and education safeguards", market: "Ghana", responseBy: "15 days", owner: "Safety", status: "Draft" }
+    ],
+    policyMappings: [
+      { policy: "Training exclusion", mappedTo: "Consent + tenant policy", coverage: "100%", owner: "Data Gov", status: "Enforced" },
+      { policy: "Voice retention", mappedTo: "Consent + deletion SLA", coverage: "78%", owner: "Voice Ops", status: "Blocked" },
+      { policy: "Data residency", mappedTo: "Storage region + transfer review", coverage: "82%", owner: "Infrastructure", status: "Review" },
+      { policy: "User rights", mappedTo: "Export/delete/correct flows", coverage: "93%", owner: "Privacy", status: "Healthy" }
+    ],
+    launchApprovals: [
+      { market: "Rwanda", requirement: "Privacy notice localization", blocker: "Kinyarwanda review", owner: "Localization", status: "Blocked" },
+      { market: "Senegal", requirement: "French consent copy", blocker: "Legal review", owner: "Legal", status: "Review" },
+      { market: "Egypt", requirement: "Arabic data notice", blocker: "Transfer memo", owner: "DPIA", status: "Queued" },
+      { market: "Tanzania", requirement: "Mobile store compliance", blocker: "Policy screenshots", owner: "Mobile Ops", status: "Ready" }
+    ],
+    guardrails: [
+      "Regulatory posture must be market-specific because African privacy, data, AI, youth-safety, payments, and telecom expectations vary by country.",
+      "Launch approvals should block product rollout when consent, residency, language accessibility, safety, or payment requirements are incomplete.",
+      "Regulator responses need evidence links, owner accountability, legal review, and immutable audit trails before submission.",
+      "Regulatory Ops should expose posture, deadlines, owners, and evidence status without leaking private user data, prompts, payment secrets, or legal strategy."
+    ]
+  };
+}
+
 function adminConsentOpsData() {
   return state.adminConsentOps || {
     summary: { consentProfiles: "18.4K", trainingOptIn: "41%", voiceConsent: "64%", withdrawalQueue: 11, policyCoverage: "92%" },
@@ -7111,6 +7176,26 @@ function dataQualityIncidentRow(item) {
   return `<div class="table-row"><strong>${item.incident}</strong><span>${item.impact}</span><span>${item.eta}</span><span>${item.status}</span></div>`;
 }
 
+function regulatoryCountryRow(item) {
+  return `<div class="table-row"><strong>${item.country}</strong><span>${item.framework}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
+function regulatoryFilingRow(item) {
+  return `<div class="table-row"><strong>${item.filing}</strong><span>${item.market}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
+function regulatorRequestRow(item) {
+  return `<div class="table-row"><strong>${item.request}</strong><span>${item.market}</span><span>${item.responseBy}</span><span>${item.status}</span></div>`;
+}
+
+function regulatoryPolicyRow(item) {
+  return `<div class="table-row"><strong>${item.policy}</strong><span>${item.mappedTo}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
+function launchApprovalRow(item) {
+  return `<div class="table-row"><strong>${item.market}</strong><span>${item.requirement}</span><span>${item.blocker}</span><span>${item.status}</span></div>`;
+}
+
 function consentSurfaceRow(item) {
   return `<div class="table-row"><strong>${item.surface}</strong><span>${item.audience}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
 }
@@ -8452,6 +8537,7 @@ function adminView() {
   if (state.adminSection === "tenantOps") loadAdminTenantOps();
   if (state.adminSection === "costOps") loadAdminCostOps();
   if (state.adminSection === "dataQualityOps") loadAdminDataQualityOps();
+  if (state.adminSection === "regulatoryOps") loadAdminRegulatoryOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
   if (state.adminSection === "mobileOps") loadAdminMobileOps();
@@ -8592,6 +8678,7 @@ function adminSectionView(section, readiness) {
     tenantOps: adminTenantOps,
     costOps: adminCostOps,
     dataQualityOps: adminDataQualityOps,
+    regulatoryOps: adminRegulatoryOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
     mobileOps: adminMobileOps,
@@ -11231,6 +11318,55 @@ function adminDataQualityOps() {
   `;
 }
 
+function adminRegulatoryOps() {
+  const regulatory = adminRegulatoryOpsData();
+  const summary = regulatory.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active markets", summary.activeMarkets || "12")}
+      ${metric("Regulatory watch", summary.regulatoryWatch || "18")}
+      ${metric("Filings due", summary.filingDue || "5")}
+      ${metric("Policy coverage", summary.policyCoverage || "87%")}
+      <section class="admin-card full-admin">
+        <h2>Country posture</h2>
+        <div class="table admin-table-4">
+          ${regulatory.countryPosture.map(regulatoryCountryRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Filing calendar</h2>
+        <div class="table admin-table-4">
+          ${regulatory.filingCalendar.map(regulatoryFilingRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Regulator requests</h2>
+        <div class="table admin-table-4">
+          ${regulatory.regulatorRequests.map(regulatorRequestRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Policy mappings</h2>
+        <div class="table admin-table-4">
+          ${regulatory.policyMappings.map(regulatoryPolicyRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Launch approvals</h2>
+        <div class="table admin-table-4">
+          ${regulatory.launchApprovals.map(launchApprovalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Regulatory guardrails</h2>
+        <div class="admin-checklist">
+          ${regulatory.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminConsentOps() {
   const consent = adminConsentOpsData();
   const summary = consent.summary || {};
@@ -13445,6 +13581,7 @@ function bindEvents() {
       loadAdminTenantOps(true);
       loadAdminCostOps(true);
       loadAdminDataQualityOps(true);
+      loadAdminRegulatoryOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);
       loadAdminMobileOps(true);
