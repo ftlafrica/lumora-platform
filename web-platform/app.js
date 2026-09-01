@@ -97,6 +97,7 @@ const ADMIN_SECTIONS = [
   { id: "dataQualityOps", label: "Data Quality", desc: "Certified metrics, freshness, reconciliation, lineage, quality incidents, and decision-grade data." },
   { id: "regulatoryOps", label: "Regulatory", desc: "African market regulation posture, filings, regulator requests, policy mappings, and launch approvals." },
   { id: "complianceAutomation", label: "Compliance Auto", desc: "Automated controls, evidence jobs, exceptions, attestations, remediation queues, and compliance guardrails." },
+  { id: "policyExceptions", label: "Exceptions", desc: "Policy waivers, risk acceptance, expiring approvals, compensating controls, and exception guardrails." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
   { id: "mobileOps", label: "Mobile Ops", desc: "Android/iOS releases, crash health, store readiness, device labs, and rollout guardrails." },
@@ -335,6 +336,8 @@ const DEFAULT_STATE = {
   adminRegulatoryOpsLoadedAt: null,
   adminComplianceAutomationOps: null,
   adminComplianceAutomationOpsLoadedAt: null,
+  adminPolicyExceptionOps: null,
+  adminPolicyExceptionOpsLoadedAt: null,
   adminConsentOps: null,
   adminConsentOpsLoadedAt: null,
   adminSecretsOps: null,
@@ -1392,6 +1395,26 @@ async function loadAdminComplianceAutomationOps(force = false) {
     state.adminComplianceAutomationOpsLoadedAt = Date.now();
   } catch {
     state.adminComplianceAutomationOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminPolicyExceptionOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminPolicyExceptionOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/policy-exceptions`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Policy exceptions unavailable.");
+    state.adminPolicyExceptionOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminPolicyExceptionOpsLoadedAt = Date.now();
+  } catch {
+    state.adminPolicyExceptionOpsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -2505,7 +2528,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -5335,6 +5358,48 @@ function adminComplianceAutomationOpsData() {
   };
 }
 
+function adminPolicyExceptionOpsData() {
+  return state.adminPolicyExceptionOps || {
+    summary: { openExceptions: 21, expiringSoon: 7, highRisk: 4, compensatingControls: 18, overdueRenewals: 3 },
+    exceptionRegister: [
+      { exception: "Voice retention waiver", area: "Voice Ops", risk: "High", owner: "Privacy", status: "Expiring" },
+      { exception: "Reviewer device access", area: "Language QA", risk: "Medium", owner: "Security", status: "Approved" },
+      { exception: "Regional analytics delay", area: "Analytics", risk: "Low", owner: "Data Platform", status: "Review" },
+      { exception: "Enterprise SSO grace period", area: "Tenant Ops", risk: "Medium", owner: "Enterprise", status: "Approved" }
+    ],
+    expiryCalendar: [
+      { item: "Voice retention waiver", expires: "Aug 21", renewalOwner: "Privacy", decision: "Renew with deletion proof", status: "Urgent" },
+      { item: "Subprocessor evidence gap", expires: "Aug 25", renewalOwner: "Legal", decision: "Await vendor docs", status: "Watch" },
+      { item: "Reviewer laptop exception", expires: "Sep 01", renewalOwner: "Security", decision: "Replace with managed devices", status: "Queued" },
+      { item: "SSO grace period", expires: "Sep 08", renewalOwner: "Enterprise", decision: "Customer migration", status: "Healthy" }
+    ],
+    riskAcceptance: [
+      { decision: "Accept short-term voice retention risk", acceptedBy: "Privacy Lead", duration: "14 days", evidence: "DPIA addendum", status: "Approved" },
+      { decision: "Allow temporary SSO bypass", acceptedBy: "Security Lead", duration: "21 days", evidence: "Customer contract", status: "Approved" },
+      { decision: "Delay localization evidence", acceptedBy: "Regional Lead", duration: "7 days", evidence: "Launch review", status: "Review" },
+      { decision: "Restrict reviewer export access", acceptedBy: "Data Gov", duration: "30 days", evidence: "Access log", status: "Approved" }
+    ],
+    compensatingControls: [
+      { control: "Daily deletion report", exception: "Voice retention waiver", owner: "Voice Ops", strength: "Strong", status: "Active" },
+      { control: "Manual access review", exception: "Reviewer device access", owner: "Security", strength: "Medium", status: "Active" },
+      { control: "Tenant audit export", exception: "SSO grace period", owner: "Enterprise", strength: "Medium", status: "Active" },
+      { control: "Launch gate hold", exception: "Localization evidence delay", owner: "Regional", strength: "Strong", status: "Ready" }
+    ],
+    escalations: [
+      { escalation: "Overdue exception renewal", area: "Voice Ops", age: "2 days", owner: "Privacy", status: "Escalated" },
+      { escalation: "Missing vendor response", area: "Legal", age: "4 days", owner: "Vendor Mgmt", status: "Waiting" },
+      { escalation: "Customer SSO delay", area: "Enterprise", age: "1 day", owner: "Success", status: "Active" },
+      { escalation: "Reviewer export access", area: "Security", age: "8h", owner: "Security", status: "Review" }
+    ],
+    guardrails: [
+      "Policy exceptions must be time-bound, owner-approved, risk-rated, and tied to compensating controls.",
+      "High-risk exceptions require leadership visibility, legal/privacy review, and explicit renewal or closure dates.",
+      "Exception renewals should not become permanent policy drift without a product, process, or engineering remediation plan.",
+      "Policy exception views must show decision metadata without exposing raw prompts, private files, legal advice, or confidential customer data."
+    ]
+  };
+}
+
 function adminConsentOpsData() {
   return state.adminConsentOps || {
     summary: { consentProfiles: "18.4K", trainingOptIn: "41%", voiceConsent: "64%", withdrawalQueue: 11, policyCoverage: "92%" },
@@ -7281,6 +7346,26 @@ function complianceRemediationRow(item) {
   return `<div class="table-row"><strong>${item.remediation}</strong><span>${item.priority}</span><span>${item.due}</span><span>${item.status}</span></div>`;
 }
 
+function policyExceptionRow(item) {
+  return `<div class="table-row"><strong>${item.exception}</strong><span>${item.area}</span><span>${item.risk}</span><span>${item.status}</span></div>`;
+}
+
+function policyExceptionExpiryRow(item) {
+  return `<div class="table-row"><strong>${item.item}</strong><span>${item.expires}</span><span>${item.renewalOwner}</span><span>${item.status}</span></div>`;
+}
+
+function riskAcceptanceRow(item) {
+  return `<div class="table-row"><strong>${item.decision}</strong><span>${item.acceptedBy}</span><span>${item.duration}</span><span>${item.status}</span></div>`;
+}
+
+function compensatingControlRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.exception}</span><span>${item.strength}</span><span>${item.status}</span></div>`;
+}
+
+function exceptionEscalationRow(item) {
+  return `<div class="table-row"><strong>${item.escalation}</strong><span>${item.area}</span><span>${item.age}</span><span>${item.status}</span></div>`;
+}
+
 function consentSurfaceRow(item) {
   return `<div class="table-row"><strong>${item.surface}</strong><span>${item.audience}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
 }
@@ -8624,6 +8709,7 @@ function adminView() {
   if (state.adminSection === "dataQualityOps") loadAdminDataQualityOps();
   if (state.adminSection === "regulatoryOps") loadAdminRegulatoryOps();
   if (state.adminSection === "complianceAutomation") loadAdminComplianceAutomationOps();
+  if (state.adminSection === "policyExceptions") loadAdminPolicyExceptionOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
   if (state.adminSection === "mobileOps") loadAdminMobileOps();
@@ -8766,6 +8852,7 @@ function adminSectionView(section, readiness) {
     dataQualityOps: adminDataQualityOps,
     regulatoryOps: adminRegulatoryOps,
     complianceAutomation: adminComplianceAutomationOps,
+    policyExceptions: adminPolicyExceptionOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
     mobileOps: adminMobileOps,
@@ -11503,6 +11590,55 @@ function adminComplianceAutomationOps() {
   `;
 }
 
+function adminPolicyExceptionOps() {
+  const exceptions = adminPolicyExceptionOpsData();
+  const summary = exceptions.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Open exceptions", summary.openExceptions || "21")}
+      ${metric("Expiring soon", summary.expiringSoon || "7")}
+      ${metric("High risk", summary.highRisk || "4")}
+      ${metric("Compensating controls", summary.compensatingControls || "18")}
+      <section class="admin-card full-admin">
+        <h2>Exception register</h2>
+        <div class="table admin-table-4">
+          ${exceptions.exceptionRegister.map(policyExceptionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Expiry calendar</h2>
+        <div class="table admin-table-4">
+          ${exceptions.expiryCalendar.map(policyExceptionExpiryRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Risk acceptance</h2>
+        <div class="table admin-table-4">
+          ${exceptions.riskAcceptance.map(riskAcceptanceRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Compensating controls</h2>
+        <div class="table admin-table-4">
+          ${exceptions.compensatingControls.map(compensatingControlRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Escalations</h2>
+        <div class="table admin-table-4">
+          ${exceptions.escalations.map(exceptionEscalationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Exception guardrails</h2>
+        <div class="admin-checklist">
+          ${exceptions.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminConsentOps() {
   const consent = adminConsentOpsData();
   const summary = consent.summary || {};
@@ -13719,6 +13855,7 @@ function bindEvents() {
       loadAdminDataQualityOps(true);
       loadAdminRegulatoryOps(true);
       loadAdminComplianceAutomationOps(true);
+      loadAdminPolicyExceptionOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);
       loadAdminMobileOps(true);
