@@ -106,6 +106,7 @@ const ADMIN_SECTIONS = [
   { id: "securityValidation", label: "Security Tests", desc: "Penetration tests, attack simulations, bug bounty, remediation retests, and release gates." },
   { id: "securityArchitecture", label: "Security Architecture", desc: "Threat models, architecture reviews, approved control patterns, cryptography, and design decisions." },
   { id: "insiderRisk", label: "Insider Risk", desc: "Privileged behavior signals, case triage, workforce access events, and privacy-preserving controls." },
+  { id: "securityAwareness", label: "Security Awareness", desc: "Role-based learning, simulations, attestations, risk cohorts, and incident-driven education." },
   { id: "dlpOps", label: "DLP Ops", desc: "Sensitive-data detection, export controls, redaction health, violations, and containment guardrails." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
@@ -363,6 +364,8 @@ const DEFAULT_STATE = {
   adminSecurityArchitectureOpsLoadedAt: null,
   adminInsiderRiskOps: null,
   adminInsiderRiskOpsLoadedAt: null,
+  adminSecurityAwarenessOps: null,
+  adminSecurityAwarenessOpsLoadedAt: null,
   adminDlpOps: null,
   adminDlpOpsLoadedAt: null,
   adminConsentOps: null,
@@ -1607,6 +1610,26 @@ async function loadAdminInsiderRiskOps(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminSecurityAwarenessOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminSecurityAwarenessOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/security-awareness`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Security awareness operations unavailable.");
+    state.adminSecurityAwarenessOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminSecurityAwarenessOpsLoadedAt = Date.now();
+  } catch {
+    state.adminSecurityAwarenessOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminDlpOps(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminDlpOpsLoadedAt || 0;
@@ -2735,7 +2758,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "soc:operate", "vulnerability:operate", "security:validate", "security:architecture", "insider:risk", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "soc:operate", "vulnerability:operate", "security:validate", "security:architecture", "insider:risk", "awareness:manage", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -5943,6 +5966,48 @@ function adminInsiderRiskOpsData() {
   };
 }
 
+function adminSecurityAwarenessOpsData() {
+  return state.adminSecurityAwarenessOps || {
+    summary: { trainingCompletion: "93%", overdueLearners: 18, simulationReportRate: "71%", highRiskCohorts: 4, localizedModules: 16 },
+    trainingPrograms: [
+      { program: "Security foundations", audience: "All workforce", completion: "96%", cadence: "Annual", status: "Healthy" },
+      { program: "Privileged access safety", audience: "Admins + engineers", completion: "91%", cadence: "Quarterly", status: "Watch" },
+      { program: "Safe language review", audience: "Reviewer network", completion: "88%", cadence: "Biannual", status: "Improving" },
+      { program: "Payment and fraud response", audience: "Revenue + Support", completion: "94%", cadence: "Quarterly", status: "Healthy" }
+    ],
+    phishingSimulations: [
+      { simulation: "Admin access alert", audience: "Privileged users", reportRate: "82%", interactionRate: "3%", status: "Passed" },
+      { simulation: "Reviewer payout update", audience: "Language reviewers", reportRate: "64%", interactionRate: "8%", status: "Coach" },
+      { simulation: "Shared document request", audience: "All workforce", reportRate: "73%", interactionRate: "5%", status: "Improving" },
+      { simulation: "Vendor invoice change", audience: "Finance + Procurement", reportRate: "78%", interactionRate: "2%", status: "Passed" }
+    ],
+    roleTracks: [
+      { track: "Secure development", cohort: "Engineering", modules: "8/8", owner: "DevEx", status: "Current" },
+      { track: "AI safety operations", cohort: "AI + Data", modules: "7/8", owner: "AI Governance", status: "Due" },
+      { track: "Privacy-safe support", cohort: "Support", modules: "6/6", owner: "Privacy", status: "Current" },
+      { track: "Mobile release security", cohort: "Mobile", modules: "5/6", owner: "Security", status: "In progress" }
+    ],
+    attestations: [
+      { attestation: "Acceptable use policy", population: "All workforce", signed: "98%", owner: "People", status: "Healthy" },
+      { attestation: "Privileged access standard", population: "42 privileged users", signed: "95%", owner: "Identity", status: "2 overdue" },
+      { attestation: "Reviewer confidentiality", population: "Reviewer network", signed: "92%", owner: "Language QA", status: "Review" },
+      { attestation: "Secure supplier handling", population: "Vendor owners", signed: "89%", owner: "Procurement", status: "Overdue" }
+    ],
+    learningActions: [
+      { lesson: "Credential stuffing response", source: "SOC case", audience: "Support + Identity", due: "Sep 25", status: "Assigned" },
+      { lesson: "Prompt injection handling", source: "Security test", audience: "AI + Knowledge", due: "Sep 27", status: "Draft" },
+      { lesson: "Sensitive export controls", source: "DLP violation", audience: "Admin operators", due: "Sep 24", status: "Live" },
+      { lesson: "Mobile certificate hygiene", source: "Vulnerability Ops", audience: "Mobile", due: "Sep 29", status: "Assigned" }
+    ],
+    guardrails: [
+      "Security learning should be role based, practical, accessible on low bandwidth, and available in clear language for regional teams and reviewers.",
+      "Simulation results must improve coaching and controls, not shame individuals; leadership views should use cohorts and trends rather than names.",
+      "Privileged, payment, support, reviewer, AI, and engineering roles require targeted learning tied to the real risks and incidents they handle.",
+      "Awareness data must follow purpose limitation, retention limits, accessibility standards, and fair treatment across countries, languages, and employment types."
+    ]
+  };
+}
+
 function adminDlpOpsData() {
   return state.adminDlpOps || {
     summary: { detectionsToday: 284, blockedExports: 19, redactionHealth: "96%", openViolations: 11, containmentSla: "22m" },
@@ -8111,6 +8176,26 @@ function insiderPrivacyControlRow(item) {
   return `<div class="table-row"><strong>${item.control}</strong><span>${item.coverage}</span><span>${item.reviewer}</span><span>${item.status}</span></div>`;
 }
 
+function awarenessProgramRow(item) {
+  return `<div class="table-row"><strong>${item.program}</strong><span>${item.audience}</span><span>${item.completion}</span><span>${item.status}</span></div>`;
+}
+
+function phishingSimulationRow(item) {
+  return `<div class="table-row"><strong>${item.simulation}</strong><span>${item.audience}</span><span>${item.reportRate}</span><span>${item.status}</span></div>`;
+}
+
+function securityRoleTrackRow(item) {
+  return `<div class="table-row"><strong>${item.track}</strong><span>${item.cohort}</span><span>${item.modules}</span><span>${item.status}</span></div>`;
+}
+
+function securityAttestationRow(item) {
+  return `<div class="table-row"><strong>${item.attestation}</strong><span>${item.population}</span><span>${item.signed}</span><span>${item.status}</span></div>`;
+}
+
+function learningActionRow(item) {
+  return `<div class="table-row"><strong>${item.lesson}</strong><span>${item.source}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
 function sensitiveDataSignalRow(item) {
   return `<div class="table-row"><strong>${item.signal}</strong><span>${item.surface}</span><span>${item.count}</span><span>${item.status}</span></div>`;
 }
@@ -9483,6 +9568,7 @@ function adminView() {
   if (state.adminSection === "securityValidation") loadAdminSecurityValidationOps();
   if (state.adminSection === "securityArchitecture") loadAdminSecurityArchitectureOps();
   if (state.adminSection === "insiderRisk") loadAdminInsiderRiskOps();
+  if (state.adminSection === "securityAwareness") loadAdminSecurityAwarenessOps();
   if (state.adminSection === "dlpOps") loadAdminDlpOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
@@ -9635,6 +9721,7 @@ function adminSectionView(section, readiness) {
     securityValidation: adminSecurityValidationOps,
     securityArchitecture: adminSecurityArchitectureOps,
     insiderRisk: adminInsiderRiskOps,
+    securityAwareness: adminSecurityAwarenessOps,
     dlpOps: adminDlpOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
@@ -12814,6 +12901,55 @@ function adminInsiderRiskOps() {
   `;
 }
 
+function adminSecurityAwarenessOps() {
+  const awareness = adminSecurityAwarenessOpsData();
+  const summary = awareness.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Training completion", summary.trainingCompletion || "93%")}
+      ${metric("Overdue learners", summary.overdueLearners || "18")}
+      ${metric("Simulation report rate", summary.simulationReportRate || "71%")}
+      ${metric("Localized modules", summary.localizedModules || "16")}
+      <section class="admin-card full-admin">
+        <h2>Training programs</h2>
+        <div class="table admin-table-4">
+          ${awareness.trainingPrograms.map(awarenessProgramRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Phishing simulations</h2>
+        <div class="table admin-table-4">
+          ${awareness.phishingSimulations.map(phishingSimulationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Role-based learning</h2>
+        <div class="table admin-table-4">
+          ${awareness.roleTracks.map(securityRoleTrackRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Policy attestations</h2>
+        <div class="table admin-table-4">
+          ${awareness.attestations.map(securityAttestationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Incident-driven learning</h2>
+        <div class="table admin-table-4">
+          ${awareness.learningActions.map(learningActionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Awareness guardrails</h2>
+        <div class="admin-checklist">
+          ${awareness.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminDlpOps() {
   const dlp = adminDlpOpsData();
   const summary = dlp.summary || {};
@@ -15088,6 +15224,7 @@ function bindEvents() {
       loadAdminSecurityValidationOps(true);
       loadAdminSecurityArchitectureOps(true);
       loadAdminInsiderRiskOps(true);
+      loadAdminSecurityAwarenessOps(true);
       loadAdminDlpOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);
