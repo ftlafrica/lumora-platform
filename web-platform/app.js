@@ -101,6 +101,7 @@ const ADMIN_SECTIONS = [
   { id: "accessReviews", label: "Access Reviews", desc: "Access certifications, privileged roles, stale permissions, reviewer assignments, and remediation tracking." },
   { id: "sessionRisk", label: "Session Risk", desc: "Live session risk, device trust, impossible travel, token revocation, and step-up authentication queues." },
   { id: "threatIntel", label: "Threat Intel", desc: "Threat campaigns, abuse signals, model/provider risk, infrastructure indicators, and response briefings." },
+  { id: "dlpOps", label: "DLP Ops", desc: "Sensitive-data detection, export controls, redaction health, violations, and containment guardrails." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
   { id: "mobileOps", label: "Mobile Ops", desc: "Android/iOS releases, crash health, store readiness, device labs, and rollout guardrails." },
@@ -347,6 +348,8 @@ const DEFAULT_STATE = {
   adminSessionRiskOpsLoadedAt: null,
   adminThreatIntelOps: null,
   adminThreatIntelOpsLoadedAt: null,
+  adminDlpOps: null,
+  adminDlpOpsLoadedAt: null,
   adminConsentOps: null,
   adminConsentOpsLoadedAt: null,
   adminSecretsOps: null,
@@ -1489,6 +1492,26 @@ async function loadAdminThreatIntelOps(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminDlpOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminDlpOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/dlp`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("DLP operations unavailable.");
+    state.adminDlpOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminDlpOpsLoadedAt = Date.now();
+  } catch {
+    state.adminDlpOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminConsentOps(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminConsentOpsLoadedAt || 0;
@@ -2597,7 +2620,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -5595,6 +5618,48 @@ function adminThreatIntelOpsData() {
   };
 }
 
+function adminDlpOpsData() {
+  return state.adminDlpOps || {
+    summary: { detectionsToday: 284, blockedExports: 19, redactionHealth: "96%", openViolations: 11, containmentSla: "22m" },
+    sensitiveDataSignals: [
+      { signal: "Payment data in prompt", surface: "Chat", count: 42, owner: "Trust", status: "Redacted" },
+      { signal: "Private document share", surface: "Workspace", count: 18, owner: "Security", status: "Blocked" },
+      { signal: "Recovery code mention", surface: "Support", count: 7, owner: "Identity", status: "Escalated" },
+      { signal: "Raw phone list upload", surface: "Files", count: 13, owner: "Privacy", status: "Review" }
+    ],
+    exportControls: [
+      { control: "Admin CSV export redaction", surface: "Reports", coverage: "98%", owner: "Security", status: "Healthy" },
+      { control: "Conversation export filter", surface: "User dashboard", coverage: "94%", owner: "Privacy", status: "Watch" },
+      { control: "Reviewer sample masking", surface: "Language QA", coverage: "91%", owner: "Data Gov", status: "Improving" },
+      { control: "Enterprise file egress", surface: "Tenant Ops", coverage: "100%", owner: "Enterprise", status: "Enforced" }
+    ],
+    redactionPipelines: [
+      { pipeline: "Prompt PII masking", latency: "38ms", accuracy: "96%", owner: "AI Safety", status: "Healthy" },
+      { pipeline: "Payment secret scrubbing", latency: "22ms", accuracy: "99%", owner: "Security", status: "Healthy" },
+      { pipeline: "Voice transcript masking", latency: "110ms", accuracy: "92%", owner: "Voice Ops", status: "Watch" },
+      { pipeline: "Attachment OCR redaction", latency: "430ms", accuracy: "89%", owner: "Multimodal", status: "Review" }
+    ],
+    violationQueue: [
+      { violation: "Unmasked customer phone list", severity: "High", age: "41m", owner: "Privacy", status: "Contained" },
+      { violation: "Support note with recovery code", severity: "High", age: "18m", owner: "Identity", status: "Escalated" },
+      { violation: "Reviewer export PII drift", severity: "Medium", age: "2h", owner: "Language QA", status: "Fix queued" },
+      { violation: "Analytics query over-selection", severity: "Medium", age: "4h", owner: "Analytics", status: "Review" }
+    ],
+    containmentActions: [
+      { action: "Quarantine risky attachment", trigger: "PII confidence > 0.92", owner: "Privacy", status: "Active" },
+      { action: "Block admin export", trigger: "Sensitive field present", owner: "Security", status: "Active" },
+      { action: "Force transcript masking", trigger: "Voice consent missing", owner: "Voice Ops", status: "Testing" },
+      { action: "Escalate prompt leak", trigger: "Payment secret detected", owner: "Trust", status: "Active" }
+    ],
+    guardrails: [
+      "DLP should prevent data leakage while preserving useful African-language chat, translation, voice, and workspace experiences.",
+      "Sensitive-data controls need detection confidence, owner, containment action, audit trail, and user-impact review.",
+      "Redaction quality must be measured across languages, scripts, dialect spellings, voice transcripts, OCR, and mixed-language prompts.",
+      "DLP views must show aggregate signals and containment posture without exposing the sensitive content that triggered detection."
+    ]
+  };
+}
+
 function adminConsentOpsData() {
   return state.adminConsentOps || {
     summary: { consentProfiles: "18.4K", trainingOptIn: "41%", voiceConsent: "64%", withdrawalQueue: 11, policyCoverage: "92%" },
@@ -7621,6 +7686,26 @@ function threatBriefingRow(item) {
   return `<div class="table-row"><strong>${item.briefing}</strong><span>${item.audience}</span><span>${item.due}</span><span>${item.status}</span></div>`;
 }
 
+function sensitiveDataSignalRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.surface}</span><span>${item.count}</span><span>${item.status}</span></div>`;
+}
+
+function exportControlRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.surface}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
+function redactionPipelineRow(item) {
+  return `<div class="table-row"><strong>${item.pipeline}</strong><span>${item.latency}</span><span>${item.accuracy}</span><span>${item.status}</span></div>`;
+}
+
+function dlpViolationRow(item) {
+  return `<div class="table-row"><strong>${item.violation}</strong><span>${item.severity}</span><span>${item.age}</span><span>${item.status}</span></div>`;
+}
+
+function containmentActionRow(item) {
+  return `<div class="table-row"><strong>${item.action}</strong><span>${item.trigger}</span><span>${item.owner}</span><span>${item.status}</span></div>`;
+}
+
 function consentSurfaceRow(item) {
   return `<div class="table-row"><strong>${item.surface}</strong><span>${item.audience}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
 }
@@ -8968,6 +9053,7 @@ function adminView() {
   if (state.adminSection === "accessReviews") loadAdminAccessReviewOps();
   if (state.adminSection === "sessionRisk") loadAdminSessionRiskOps();
   if (state.adminSection === "threatIntel") loadAdminThreatIntelOps();
+  if (state.adminSection === "dlpOps") loadAdminDlpOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
   if (state.adminSection === "mobileOps") loadAdminMobileOps();
@@ -9114,6 +9200,7 @@ function adminSectionView(section, readiness) {
     accessReviews: adminAccessReviewOps,
     sessionRisk: adminSessionRiskOps,
     threatIntel: adminThreatIntelOps,
+    dlpOps: adminDlpOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
     mobileOps: adminMobileOps,
@@ -12047,6 +12134,55 @@ function adminThreatIntelOps() {
   `;
 }
 
+function adminDlpOps() {
+  const dlp = adminDlpOpsData();
+  const summary = dlp.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Detections today", summary.detectionsToday || "284")}
+      ${metric("Blocked exports", summary.blockedExports || "19")}
+      ${metric("Redaction health", summary.redactionHealth || "96%")}
+      ${metric("Containment SLA", summary.containmentSla || "22m")}
+      <section class="admin-card full-admin">
+        <h2>Sensitive-data signals</h2>
+        <div class="table admin-table-4">
+          ${dlp.sensitiveDataSignals.map(sensitiveDataSignalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Export controls</h2>
+        <div class="table admin-table-4">
+          ${dlp.exportControls.map(exportControlRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Redaction pipelines</h2>
+        <div class="table admin-table-4">
+          ${dlp.redactionPipelines.map(redactionPipelineRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Violation queue</h2>
+        <div class="table admin-table-4">
+          ${dlp.violationQueue.map(dlpViolationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Containment actions</h2>
+        <div class="table admin-table-4">
+          ${dlp.containmentActions.map(containmentActionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>DLP guardrails</h2>
+        <div class="admin-checklist">
+          ${dlp.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminConsentOps() {
   const consent = adminConsentOpsData();
   const summary = consent.summary || {};
@@ -14267,6 +14403,7 @@ function bindEvents() {
       loadAdminAccessReviewOps(true);
       loadAdminSessionRiskOps(true);
       loadAdminThreatIntelOps(true);
+      loadAdminDlpOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);
       loadAdminMobileOps(true);
