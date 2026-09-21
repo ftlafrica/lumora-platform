@@ -103,6 +103,7 @@ const ADMIN_SECTIONS = [
   { id: "threatIntel", label: "Threat Intel", desc: "Threat campaigns, abuse signals, model/provider risk, infrastructure indicators, and response briefings." },
   { id: "socOps", label: "SOC Ops", desc: "Live alert triage, detection coverage, active cases, response automation, and analyst workload." },
   { id: "vulnerabilityOps", label: "Vulnerability Ops", desc: "Exposure inventory, scan coverage, remediation SLAs, patch campaigns, and risk exceptions." },
+  { id: "securityValidation", label: "Security Tests", desc: "Penetration tests, attack simulations, bug bounty, remediation retests, and release gates." },
   { id: "dlpOps", label: "DLP Ops", desc: "Sensitive-data detection, export controls, redaction health, violations, and containment guardrails." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
@@ -354,6 +355,8 @@ const DEFAULT_STATE = {
   adminSocOpsLoadedAt: null,
   adminVulnerabilityOps: null,
   adminVulnerabilityOpsLoadedAt: null,
+  adminSecurityValidationOps: null,
+  adminSecurityValidationOpsLoadedAt: null,
   adminDlpOps: null,
   adminDlpOpsLoadedAt: null,
   adminConsentOps: null,
@@ -1538,6 +1541,26 @@ async function loadAdminVulnerabilityOps(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminSecurityValidationOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminSecurityValidationOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/security-validation`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Security validation unavailable.");
+    state.adminSecurityValidationOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminSecurityValidationOpsLoadedAt = Date.now();
+  } catch {
+    state.adminSecurityValidationOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminDlpOps(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminDlpOpsLoadedAt || 0;
@@ -2666,7 +2689,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "soc:operate", "vulnerability:operate", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "soc:operate", "vulnerability:operate", "security:validate", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -5748,6 +5771,48 @@ function adminVulnerabilityOpsData() {
   };
 }
 
+function adminSecurityValidationOpsData() {
+  return state.adminSecurityValidationOps || {
+    summary: { activeAssessments: 8, criticalFindings: 3, retestPassRate: "88%", bountyReportsOpen: 12, releaseGatesBlocked: 2 },
+    assessments: [
+      { assessment: "Admin privilege escalation", scope: "Admin Console", partner: "Internal red team", owner: "Security", status: "In progress" },
+      { assessment: "Mobile API authorization", scope: "Android + iOS", partner: "External assessor", owner: "Mobile", status: "Fieldwork" },
+      { assessment: "Model gateway abuse", scope: "Prompt + tool routes", partner: "AI red team", owner: "AI Safety", status: "Review" },
+      { assessment: "Payment flow penetration test", scope: "Checkout + webhooks", partner: "PCI assessor", owner: "Revenue Ops", status: "Scheduled" }
+    ],
+    attackSimulations: [
+      { simulation: "Credential stuffing exercise", surface: "Identity", detection: "4m", containment: "Automated", status: "Passed" },
+      { simulation: "Prompt injection campaign", surface: "Knowledge/RAG", detection: "11m", containment: "Manual", status: "Improve" },
+      { simulation: "Sensitive export attempt", surface: "Admin Reports", detection: "2m", containment: "Blocked", status: "Passed" },
+      { simulation: "Reviewer account compromise", surface: "Language QA", detection: "18m", containment: "Step-up", status: "Retest" }
+    ],
+    bountyIntake: [
+      { report: "Authorization edge case", severity: "High", age: "6h", owner: "Platform", status: "Validated" },
+      { report: "Mobile deep-link handling", severity: "Medium", age: "1d", owner: "Mobile", status: "Triage" },
+      { report: "Public metadata exposure", severity: "Low", age: "2d", owner: "Web Ops", status: "Fix ready" },
+      { report: "Rate-limit bypass hypothesis", severity: "Medium", age: "3d", owner: "DevEx", status: "Reproducing" }
+    ],
+    remediationRetests: [
+      { finding: "Admin role boundary", fixOwner: "Identity", retest: "Passed", evidence: "VAL-881", status: "Closed" },
+      { finding: "API object authorization", fixOwner: "Platform", retest: "Partial", evidence: "VAL-884", status: "Open" },
+      { finding: "Voice upload validation", fixOwner: "Voice Ops", retest: "Passed", evidence: "VAL-877", status: "Closed" },
+      { finding: "Mobile local storage", fixOwner: "Mobile", retest: "Scheduled", evidence: "VAL-889", status: "Queued" }
+    ],
+    releaseGates: [
+      { release: "Web 0.9.4", requiredTest: "Auth regression", owner: "Security", due: "Today", status: "Passed" },
+      { release: "API 0.8.7", requiredTest: "Authorization retest", owner: "Platform", due: "Today", status: "Blocked" },
+      { release: "Android beta 12", requiredTest: "Binary + API test", owner: "Mobile", due: "Tomorrow", status: "Testing" },
+      { release: "Admin 0.7.3", requiredTest: "Privilege escalation", owner: "Security", due: "Sep 24", status: "Blocked" }
+    ],
+    guardrails: [
+      "Security testing must be authorized, tightly scoped, time bounded, attributable, and isolated from real customer data wherever possible.",
+      "Critical findings on privileged, identity, payment, data, or model-control surfaces block release until remediation passes independent retest.",
+      "Bug-bounty reports require safe researcher communication, duplicate handling, severity validation, payout controls, and coordinated disclosure.",
+      "Validation views must show evidence and remediation posture without publishing exploit chains, credentials, private source code, or customer information."
+    ]
+  };
+}
+
 function adminDlpOpsData() {
   return state.adminDlpOps || {
     summary: { detectionsToday: 284, blockedExports: 19, redactionHealth: "96%", openViolations: 11, containmentSla: "22m" },
@@ -7856,6 +7921,26 @@ function vulnerabilityExceptionRow(item) {
   return `<div class="table-row"><strong>${item.exception}</strong><span>${item.reason}</span><span>${item.expires}</span><span>${item.status}</span></div>`;
 }
 
+function securityAssessmentRow(item) {
+  return `<div class="table-row"><strong>${item.assessment}</strong><span>${item.scope}</span><span>${item.partner}</span><span>${item.status}</span></div>`;
+}
+
+function attackSimulationRow(item) {
+  return `<div class="table-row"><strong>${item.simulation}</strong><span>${item.surface}</span><span>${item.detection}</span><span>${item.status}</span></div>`;
+}
+
+function bountyReportRow(item) {
+  return `<div class="table-row"><strong>${item.report}</strong><span>${item.severity}</span><span>${item.age}</span><span>${item.status}</span></div>`;
+}
+
+function remediationRetestRow(item) {
+  return `<div class="table-row"><strong>${item.finding}</strong><span>${item.fixOwner}</span><span>${item.retest}</span><span>${item.status}</span></div>`;
+}
+
+function securityReleaseGateRow(item) {
+  return `<div class="table-row"><strong>${item.release}</strong><span>${item.requiredTest}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
 function sensitiveDataSignalRow(item) {
   return `<div class="table-row"><strong>${item.signal}</strong><span>${item.surface}</span><span>${item.count}</span><span>${item.status}</span></div>`;
 }
@@ -9225,6 +9310,7 @@ function adminView() {
   if (state.adminSection === "threatIntel") loadAdminThreatIntelOps();
   if (state.adminSection === "socOps") loadAdminSocOps();
   if (state.adminSection === "vulnerabilityOps") loadAdminVulnerabilityOps();
+  if (state.adminSection === "securityValidation") loadAdminSecurityValidationOps();
   if (state.adminSection === "dlpOps") loadAdminDlpOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
@@ -9374,6 +9460,7 @@ function adminSectionView(section, readiness) {
     threatIntel: adminThreatIntelOps,
     socOps: adminSocOps,
     vulnerabilityOps: adminVulnerabilityOps,
+    securityValidation: adminSecurityValidationOps,
     dlpOps: adminDlpOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
@@ -12406,6 +12493,55 @@ function adminVulnerabilityOps() {
   `;
 }
 
+function adminSecurityValidationOps() {
+  const validation = adminSecurityValidationOpsData();
+  const summary = validation.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active assessments", summary.activeAssessments || "8")}
+      ${metric("Critical findings", summary.criticalFindings || "3")}
+      ${metric("Retest pass rate", summary.retestPassRate || "88%")}
+      ${metric("Release gates blocked", summary.releaseGatesBlocked || "2")}
+      <section class="admin-card full-admin">
+        <h2>Security assessments</h2>
+        <div class="table admin-table-4">
+          ${validation.assessments.map(securityAssessmentRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Attack simulations</h2>
+        <div class="table admin-table-4">
+          ${validation.attackSimulations.map(attackSimulationRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Bug-bounty intake</h2>
+        <div class="table admin-table-4">
+          ${validation.bountyIntake.map(bountyReportRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Remediation retests</h2>
+        <div class="table admin-table-4">
+          ${validation.remediationRetests.map(remediationRetestRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Release security gates</h2>
+        <div class="table admin-table-4">
+          ${validation.releaseGates.map(securityReleaseGateRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Security validation guardrails</h2>
+        <div class="admin-checklist">
+          ${validation.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminDlpOps() {
   const dlp = adminDlpOpsData();
   const summary = dlp.summary || {};
@@ -14677,6 +14813,7 @@ function bindEvents() {
       loadAdminThreatIntelOps(true);
       loadAdminSocOps(true);
       loadAdminVulnerabilityOps(true);
+      loadAdminSecurityValidationOps(true);
       loadAdminDlpOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);

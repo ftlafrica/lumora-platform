@@ -107,6 +107,7 @@ const {
   adminThreatIntelOpsOperations,
   adminSocOpsOperations,
   adminVulnerabilityOpsOperations,
+  adminSecurityValidationOpsOperations,
   adminDlpOpsOperations,
   adminConsentOpsOperations,
   adminSecretsOpsOperations,
@@ -233,6 +234,7 @@ assert.ok(accessSession.scopes.includes("sessions:risk"));
 assert.ok(accessSession.scopes.includes("threat:intel"));
 assert.ok(accessSession.scopes.includes("soc:operate"));
 assert.ok(accessSession.scopes.includes("vulnerability:operate"));
+assert.ok(accessSession.scopes.includes("security:validate"));
 assert.ok(accessSession.scopes.includes("dlp:operate"));
 assert.ok(accessSession.scopes.includes("consent:operate"));
 assert.ok(accessSession.scopes.includes("secrets:operate"));
@@ -343,6 +345,7 @@ const adminContracts = [
   ["threat intel", adminThreatIntelOpsOperations(), data => data.summary && Array.isArray(data.campaigns) && Array.isArray(data.threatSignals) && Array.isArray(data.modelProviderRisk)],
   ["soc ops", adminSocOpsOperations(), data => data.summary && Array.isArray(data.alertQueue) && Array.isArray(data.detectionCoverage) && Array.isArray(data.activeCases)],
   ["vulnerability ops", adminVulnerabilityOpsOperations(), data => data.summary && Array.isArray(data.exposureInventory) && Array.isArray(data.remediationQueue) && Array.isArray(data.scanCoverage)],
+  ["security validation", adminSecurityValidationOpsOperations(), data => data.summary && Array.isArray(data.assessments) && Array.isArray(data.attackSimulations) && Array.isArray(data.remediationRetests)],
   ["dlp ops", adminDlpOpsOperations(), data => data.summary && Array.isArray(data.sensitiveDataSignals) && Array.isArray(data.exportControls) && Array.isArray(data.redactionPipelines)],
   ["consent ops", adminConsentOpsOperations(), data => data.summary && Array.isArray(data.consentSurfaces) && Array.isArray(data.trainingEligibility) && Array.isArray(data.withdrawals)],
   ["secrets ops", adminSecretsOpsOperations(), data => data.summary && Array.isArray(data.secretInventory) && Array.isArray(data.rotations) && Array.isArray(data.kmsPosture)],
