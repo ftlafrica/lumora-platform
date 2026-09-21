@@ -109,6 +109,7 @@ const {
   adminVulnerabilityOpsOperations,
   adminSecurityValidationOpsOperations,
   adminSecurityArchitectureOpsOperations,
+  adminInsiderRiskOpsOperations,
   adminDlpOpsOperations,
   adminConsentOpsOperations,
   adminSecretsOpsOperations,
@@ -237,6 +238,7 @@ assert.ok(accessSession.scopes.includes("soc:operate"));
 assert.ok(accessSession.scopes.includes("vulnerability:operate"));
 assert.ok(accessSession.scopes.includes("security:validate"));
 assert.ok(accessSession.scopes.includes("security:architecture"));
+assert.ok(accessSession.scopes.includes("insider:risk"));
 assert.ok(accessSession.scopes.includes("dlp:operate"));
 assert.ok(accessSession.scopes.includes("consent:operate"));
 assert.ok(accessSession.scopes.includes("secrets:operate"));
@@ -349,6 +351,7 @@ const adminContracts = [
   ["vulnerability ops", adminVulnerabilityOpsOperations(), data => data.summary && Array.isArray(data.exposureInventory) && Array.isArray(data.remediationQueue) && Array.isArray(data.scanCoverage)],
   ["security validation", adminSecurityValidationOpsOperations(), data => data.summary && Array.isArray(data.assessments) && Array.isArray(data.attackSimulations) && Array.isArray(data.remediationRetests)],
   ["security architecture", adminSecurityArchitectureOpsOperations(), data => data.summary && Array.isArray(data.architectureReviews) && Array.isArray(data.threatModels) && Array.isArray(data.controlPatterns)],
+  ["insider risk", adminInsiderRiskOpsOperations(), data => data.summary && Array.isArray(data.riskSignals) && Array.isArray(data.caseQueue) && Array.isArray(data.privacyControls)],
   ["dlp ops", adminDlpOpsOperations(), data => data.summary && Array.isArray(data.sensitiveDataSignals) && Array.isArray(data.exportControls) && Array.isArray(data.redactionPipelines)],
   ["consent ops", adminConsentOpsOperations(), data => data.summary && Array.isArray(data.consentSurfaces) && Array.isArray(data.trainingEligibility) && Array.isArray(data.withdrawals)],
   ["secrets ops", adminSecretsOpsOperations(), data => data.summary && Array.isArray(data.secretInventory) && Array.isArray(data.rotations) && Array.isArray(data.kmsPosture)],

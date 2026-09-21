@@ -3800,6 +3800,46 @@ const securityArchitectureOpsOperations = {
   ]
 };
 
+const insiderRiskOpsOperations = {
+  summary: { activeCases: 6, highRiskSignals: 9, privilegedUsersMonitored: 42, casesWithinSla: "94%", falsePositiveRate: "7%" },
+  riskSignals: [
+    { signal: "Unusual bulk export", surface: "Admin Reports", severity: "High", cohort: "Privileged", status: "Contained" },
+    { signal: "After-hours permission changes", surface: "Tenant Ops", severity: "Medium", cohort: "Support", status: "Review" },
+    { signal: "Repeated restricted file access", surface: "Workspace", severity: "High", cohort: "Enterprise admin", status: "Investigating" },
+    { signal: "Source archive download", surface: "DevEx", severity: "Medium", cohort: "Engineering", status: "Verified work" }
+  ],
+  caseQueue: [
+    { case: "IR-1042", category: "Data movement", age: "38m", owner: "Security + HR", status: "Triage" },
+    { case: "IR-1039", category: "Privilege misuse", age: "3h", owner: "Identity", status: "Investigating" },
+    { case: "IR-1035", category: "Tenant access", age: "9h", owner: "Enterprise", status: "Contained" },
+    { case: "IR-1028", category: "Policy exception", age: "2d", owner: "Legal + Security", status: "Review" }
+  ],
+  privilegedCohorts: [
+    { cohort: "Seed administrators", members: 3, controls: "Passkey + dual approval", owner: "Security", status: "Protected" },
+    { cohort: "Production engineers", members: 14, controls: "JIT access + recording", owner: "Platform", status: "Healthy" },
+    { cohort: "Support elevation", members: 17, controls: "Time bound + case linked", owner: "Support Ops", status: "Watch" },
+    { cohort: "Language reviewers", members: 8, controls: "Masked samples + scoped export", owner: "Language QA", status: "Improving" }
+  ],
+  workforceEvents: [
+    { event: "Role transition", affectedAccess: "Finance + Reports", action: "Recertify", owner: "People + Identity", status: "Due today" },
+    { event: "Contract end", affectedAccess: "Reviewer portal", action: "Revoke", owner: "Language QA", status: "Scheduled" },
+    { event: "Extended leave", affectedAccess: "Production on-call", action: "Suspend", owner: "Platform", status: "Complete" },
+    { event: "Vendor offboarding", affectedAccess: "Integration sandbox", action: "Rotate + revoke", owner: "Vendor Ops", status: "In progress" }
+  ],
+  privacyControls: [
+    { control: "Purpose-limited monitoring", coverage: "100%", reviewer: "Privacy", owner: "Security", status: "Enforced" },
+    { control: "Dual-review case access", coverage: "96%", reviewer: "Legal/HR", owner: "People", status: "Healthy" },
+    { control: "Content minimization", coverage: "98%", reviewer: "DLP", owner: "Privacy", status: "Protected" },
+    { control: "Case retention expiry", coverage: "91%", reviewer: "Compliance", owner: "Legal", status: "Improving" }
+  ],
+  guardrails: [
+    "Insider-risk signals must be purpose limited, proportionate, explainable, and reviewed with Privacy, Legal, or People before adverse action.",
+    "Behavioral anomalies are investigative leads, not proof; legitimate regional work patterns, connectivity constraints, and role duties must be considered.",
+    "Case access requires least privilege, dual review, immutable audit logs, retention limits, and a documented appeal or correction path.",
+    "Insider Risk views must show aggregate posture and case metadata without exposing private messages, raw prompts, personal files, or unnecessary employee details."
+  ]
+};
+
 const dlpOpsOperations = {
   summary: { detectionsToday: 284, blockedExports: 19, redactionHealth: "96%", openViolations: 11, containmentSla: "22m" },
   sensitiveDataSignals: [
@@ -4541,6 +4581,10 @@ function adminSecurityArchitectureOpsOperations() {
   return securityArchitectureOpsOperations;
 }
 
+function adminInsiderRiskOpsOperations() {
+  return insiderRiskOpsOperations;
+}
+
 function adminDlpOpsOperations() {
   return dlpOpsOperations;
 }
@@ -4673,6 +4717,7 @@ function adminAccessSession(operator = "Seed Admin") {
       "vulnerability:operate",
       "security:validate",
       "security:architecture",
+      "insider:risk",
       "dlp:operate",
       "consent:operate",
       "secrets:operate",
@@ -5554,6 +5599,14 @@ async function handler(request, response) {
       return sendJson(response, 200, adminSecurityArchitectureOpsOperations());
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/admin/insider-risk") {
+      if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
+        return sendJson(response, 403, { error: "Seed admin access required" });
+      }
+      recordAdminEvent("insider_risk_viewed", "Insider Risk", "Critical", "Security/Privacy");
+      return sendJson(response, 200, adminInsiderRiskOpsOperations());
+    }
+
     if (request.method === "GET" && url.pathname === "/v1/admin/dlp") {
       if (request.headers["x-seed-admin-code"] !== SEED_ADMIN_CODE) {
         return sendJson(response, 403, { error: "Seed admin access required" });
@@ -5610,4 +5663,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminTranslationOperations, adminCreatorStudioOperations, adminClassroomLearningOperations, adminMarketCommerceOperations, adminMultimodalOperations, adminSearchRetrievalOperations, adminWorkspaceCollaborationOperations, adminLanguagePassportOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminWebOpsOperations, adminTelemetryOpsOperations, adminStatusOpsOperations, adminIncidentResponseOperations, adminAuditOpsOperations, adminChangeOpsOperations, adminBackupOpsOperations, adminAssetOpsOperations, adminTenantOpsOperations, adminCostOpsOperations, adminDataQualityOpsOperations, adminRegulatoryOpsOperations, adminComplianceAutomationOpsOperations, adminPolicyExceptionOpsOperations, adminAccessReviewOpsOperations, adminSessionRiskOpsOperations, adminThreatIntelOpsOperations, adminSocOpsOperations, adminVulnerabilityOpsOperations, adminSecurityValidationOpsOperations, adminSecurityArchitectureOpsOperations, adminDlpOpsOperations, adminConsentOpsOperations, adminSecretsOpsOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };
+module.exports = { createServer, detectTask, routeModel, simulateReply, adminMetrics, adminAccessSession, adminAuditTrail, adminPlatformControls, adminDevexCicdOperations, adminPaymentOperations, adminEntitlementOperations, adminRevenueAssuranceOperations, adminSubscriptionLifecycleOperations, adminResidencySovereigntyOperations, adminUserOperations, adminModelOperations, adminModelLicensingOperations, adminDatasetGovernanceOperations, adminSafetyOperations, adminPolicyGovernanceOperations, adminGrowthOperations, adminAccessOperations, adminInvestigationOperations, adminIdentityAuthOperations, adminActionOperations, adminApiOperations, adminKnowledgeOperations, adminSupportOperations, adminConversationOperations, adminPromptWorkflowOperations, adminCustomerExperienceOperations, adminFinanceOperations, adminUnitEconomicsOperations, adminAnalyticsOperations, adminLifecycleRetentionOperations, adminInfrastructureOperations, adminBusinessContinuityOperations, adminReliabilitySloOperations, adminObservabilityLogOperations, adminCapacityPlanningOperations, adminSecurityOperations, adminReportingOperations, adminWarehouseBiOperations, adminCommunicationsOperations, adminNotificationDeliveryOperations, adminLanguageOperations, adminCulturalQualityOperations, adminReviewerNetworkOperations, adminCorrectionImprovementOperations, adminVoiceSpeechOperations, adminTranslationOperations, adminCreatorStudioOperations, adminClassroomLearningOperations, adminMarketCommerceOperations, adminMultimodalOperations, adminSearchRetrievalOperations, adminWorkspaceCollaborationOperations, adminLanguagePassportOperations, adminLocalizationContentOperations, adminDataGovernanceOperations, adminMemoryPersonalizationOperations, adminPrivacyRequestOperations, adminDpiaOperations, adminIntegrationOperations, adminExperimentationOperations, adminModelEvaluationOperations, adminCustomerSuccessOperations, adminSalesOperations, adminRiskOperations, adminLegalOperations, adminPeopleOperations, adminVendorOperations, adminRegionalLaunchOperations, adminQaOperations, adminRoadmapOperations, adminCommunityOperations, adminComplianceEvidenceOperations, adminTrustCenterOperations, adminBoardGovernanceOperations, adminInvestorRelationsOperations, adminProcurementRevenueOperations, adminStrategicPartnershipOperations, adminLaunchReadinessOperations, adminExecutiveOkrOperations, adminOperatingRhythmOperations, adminDataRoomOperations, adminAiGovernanceOperations, adminModelRiskOperations, adminWebOpsOperations, adminTelemetryOpsOperations, adminStatusOpsOperations, adminIncidentResponseOperations, adminAuditOpsOperations, adminChangeOpsOperations, adminBackupOpsOperations, adminAssetOpsOperations, adminTenantOpsOperations, adminCostOpsOperations, adminDataQualityOpsOperations, adminRegulatoryOpsOperations, adminComplianceAutomationOpsOperations, adminPolicyExceptionOpsOperations, adminAccessReviewOpsOperations, adminSessionRiskOpsOperations, adminThreatIntelOpsOperations, adminSocOpsOperations, adminVulnerabilityOpsOperations, adminSecurityValidationOpsOperations, adminSecurityArchitectureOpsOperations, adminInsiderRiskOpsOperations, adminDlpOpsOperations, adminConsentOpsOperations, adminSecretsOpsOperations, adminMobileOpsOperations, adminFraudAbuseOperations, plans };

@@ -67,6 +67,7 @@ This is the first backend foundation for connecting the Web Platform, Enterprise
 - `GET /v1/admin/vulnerabilities`
 - `GET /v1/admin/security-validation`
 - `GET /v1/admin/security-architecture`
+- `GET /v1/admin/insider-risk`
 - `GET /v1/admin/dlp`
 - `GET /v1/admin/consent`
 - `GET /v1/admin/secrets`
@@ -189,6 +190,8 @@ It also exposes `GET /v1/admin/vulnerabilities` for exposure inventory, scan cov
 It also exposes `GET /v1/admin/security-validation` for penetration tests, attack simulations, bug-bounty intake, remediation retests, release security gates, and validation guardrails.
 
 It also exposes `GET /v1/admin/security-architecture` for threat models, architecture reviews, approved control patterns, cryptography posture, security decisions, and architecture guardrails.
+
+It also exposes `GET /v1/admin/insider-risk` for privileged behavior signals, case triage, workforce access events, privacy controls, and insider-risk guardrails.
 
 It also exposes `GET /v1/admin/dlp` for sensitive-data detection, export controls, redaction health, violation queues, containment actions, and DLP guardrails.
 

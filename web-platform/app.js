@@ -105,6 +105,7 @@ const ADMIN_SECTIONS = [
   { id: "vulnerabilityOps", label: "Vulnerability Ops", desc: "Exposure inventory, scan coverage, remediation SLAs, patch campaigns, and risk exceptions." },
   { id: "securityValidation", label: "Security Tests", desc: "Penetration tests, attack simulations, bug bounty, remediation retests, and release gates." },
   { id: "securityArchitecture", label: "Security Architecture", desc: "Threat models, architecture reviews, approved control patterns, cryptography, and design decisions." },
+  { id: "insiderRisk", label: "Insider Risk", desc: "Privileged behavior signals, case triage, workforce access events, and privacy-preserving controls." },
   { id: "dlpOps", label: "DLP Ops", desc: "Sensitive-data detection, export controls, redaction health, violations, and containment guardrails." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
@@ -360,6 +361,8 @@ const DEFAULT_STATE = {
   adminSecurityValidationOpsLoadedAt: null,
   adminSecurityArchitectureOps: null,
   adminSecurityArchitectureOpsLoadedAt: null,
+  adminInsiderRiskOps: null,
+  adminInsiderRiskOpsLoadedAt: null,
   adminDlpOps: null,
   adminDlpOpsLoadedAt: null,
   adminConsentOps: null,
@@ -1584,6 +1587,26 @@ async function loadAdminSecurityArchitectureOps(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminInsiderRiskOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminInsiderRiskOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/insider-risk`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Insider risk operations unavailable.");
+    state.adminInsiderRiskOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminInsiderRiskOpsLoadedAt = Date.now();
+  } catch {
+    state.adminInsiderRiskOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminDlpOps(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminDlpOpsLoadedAt || 0;
@@ -2712,7 +2735,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "soc:operate", "vulnerability:operate", "security:validate", "security:architecture", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "soc:operate", "vulnerability:operate", "security:validate", "security:architecture", "insider:risk", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -5878,6 +5901,48 @@ function adminSecurityArchitectureOpsData() {
   };
 }
 
+function adminInsiderRiskOpsData() {
+  return state.adminInsiderRiskOps || {
+    summary: { activeCases: 6, highRiskSignals: 9, privilegedUsersMonitored: 42, casesWithinSla: "94%", falsePositiveRate: "7%" },
+    riskSignals: [
+      { signal: "Unusual bulk export", surface: "Admin Reports", severity: "High", cohort: "Privileged", status: "Contained" },
+      { signal: "After-hours permission changes", surface: "Tenant Ops", severity: "Medium", cohort: "Support", status: "Review" },
+      { signal: "Repeated restricted file access", surface: "Workspace", severity: "High", cohort: "Enterprise admin", status: "Investigating" },
+      { signal: "Source archive download", surface: "DevEx", severity: "Medium", cohort: "Engineering", status: "Verified work" }
+    ],
+    caseQueue: [
+      { case: "IR-1042", category: "Data movement", age: "38m", owner: "Security + HR", status: "Triage" },
+      { case: "IR-1039", category: "Privilege misuse", age: "3h", owner: "Identity", status: "Investigating" },
+      { case: "IR-1035", category: "Tenant access", age: "9h", owner: "Enterprise", status: "Contained" },
+      { case: "IR-1028", category: "Policy exception", age: "2d", owner: "Legal + Security", status: "Review" }
+    ],
+    privilegedCohorts: [
+      { cohort: "Seed administrators", members: 3, controls: "Passkey + dual approval", owner: "Security", status: "Protected" },
+      { cohort: "Production engineers", members: 14, controls: "JIT access + recording", owner: "Platform", status: "Healthy" },
+      { cohort: "Support elevation", members: 17, controls: "Time bound + case linked", owner: "Support Ops", status: "Watch" },
+      { cohort: "Language reviewers", members: 8, controls: "Masked samples + scoped export", owner: "Language QA", status: "Improving" }
+    ],
+    workforceEvents: [
+      { event: "Role transition", affectedAccess: "Finance + Reports", action: "Recertify", owner: "People + Identity", status: "Due today" },
+      { event: "Contract end", affectedAccess: "Reviewer portal", action: "Revoke", owner: "Language QA", status: "Scheduled" },
+      { event: "Extended leave", affectedAccess: "Production on-call", action: "Suspend", owner: "Platform", status: "Complete" },
+      { event: "Vendor offboarding", affectedAccess: "Integration sandbox", action: "Rotate + revoke", owner: "Vendor Ops", status: "In progress" }
+    ],
+    privacyControls: [
+      { control: "Purpose-limited monitoring", coverage: "100%", reviewer: "Privacy", owner: "Security", status: "Enforced" },
+      { control: "Dual-review case access", coverage: "96%", reviewer: "Legal/HR", owner: "People", status: "Healthy" },
+      { control: "Content minimization", coverage: "98%", reviewer: "DLP", owner: "Privacy", status: "Protected" },
+      { control: "Case retention expiry", coverage: "91%", reviewer: "Compliance", owner: "Legal", status: "Improving" }
+    ],
+    guardrails: [
+      "Insider-risk signals must be purpose limited, proportionate, explainable, and reviewed with Privacy, Legal, or People before adverse action.",
+      "Behavioral anomalies are investigative leads, not proof; legitimate regional work patterns, connectivity constraints, and role duties must be considered.",
+      "Case access requires least privilege, dual review, immutable audit logs, retention limits, and a documented appeal or correction path.",
+      "Insider Risk views must show aggregate posture and case metadata without exposing private messages, raw prompts, personal files, or unnecessary employee details."
+    ]
+  };
+}
+
 function adminDlpOpsData() {
   return state.adminDlpOps || {
     summary: { detectionsToday: 284, blockedExports: 19, redactionHealth: "96%", openViolations: 11, containmentSla: "22m" },
@@ -8026,6 +8091,26 @@ function securityDecisionRow(item) {
   return `<div class="table-row"><strong>${item.decision}</strong><span>${item.requester}</span><span>${item.due}</span><span>${item.status}</span></div>`;
 }
 
+function insiderRiskSignalRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.surface}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
+function insiderCaseRow(item) {
+  return `<div class="table-row"><strong>${item.case}</strong><span>${item.category}</span><span>${item.age}</span><span>${item.status}</span></div>`;
+}
+
+function privilegedCohortRow(item) {
+  return `<div class="table-row"><strong>${item.cohort}</strong><span>${item.members}</span><span>${item.controls}</span><span>${item.status}</span></div>`;
+}
+
+function workforceEventRow(item) {
+  return `<div class="table-row"><strong>${item.event}</strong><span>${item.affectedAccess}</span><span>${item.action}</span><span>${item.status}</span></div>`;
+}
+
+function insiderPrivacyControlRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.coverage}</span><span>${item.reviewer}</span><span>${item.status}</span></div>`;
+}
+
 function sensitiveDataSignalRow(item) {
   return `<div class="table-row"><strong>${item.signal}</strong><span>${item.surface}</span><span>${item.count}</span><span>${item.status}</span></div>`;
 }
@@ -9397,6 +9482,7 @@ function adminView() {
   if (state.adminSection === "vulnerabilityOps") loadAdminVulnerabilityOps();
   if (state.adminSection === "securityValidation") loadAdminSecurityValidationOps();
   if (state.adminSection === "securityArchitecture") loadAdminSecurityArchitectureOps();
+  if (state.adminSection === "insiderRisk") loadAdminInsiderRiskOps();
   if (state.adminSection === "dlpOps") loadAdminDlpOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
@@ -9548,6 +9634,7 @@ function adminSectionView(section, readiness) {
     vulnerabilityOps: adminVulnerabilityOps,
     securityValidation: adminSecurityValidationOps,
     securityArchitecture: adminSecurityArchitectureOps,
+    insiderRisk: adminInsiderRiskOps,
     dlpOps: adminDlpOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
@@ -12678,6 +12765,55 @@ function adminSecurityArchitectureOps() {
   `;
 }
 
+function adminInsiderRiskOps() {
+  const insiderRisk = adminInsiderRiskOpsData();
+  const summary = insiderRisk.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Active cases", summary.activeCases || "6")}
+      ${metric("High-risk signals", summary.highRiskSignals || "9")}
+      ${metric("Privileged monitored", summary.privilegedUsersMonitored || "42")}
+      ${metric("Cases within SLA", summary.casesWithinSla || "94%")}
+      <section class="admin-card full-admin">
+        <h2>Risk signals</h2>
+        <div class="table admin-table-4">
+          ${insiderRisk.riskSignals.map(insiderRiskSignalRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Case queue</h2>
+        <div class="table admin-table-4">
+          ${insiderRisk.caseQueue.map(insiderCaseRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Privileged cohorts</h2>
+        <div class="table admin-table-4">
+          ${insiderRisk.privilegedCohorts.map(privilegedCohortRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Workforce access events</h2>
+        <div class="table admin-table-4">
+          ${insiderRisk.workforceEvents.map(workforceEventRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Privacy controls</h2>
+        <div class="table admin-table-4">
+          ${insiderRisk.privacyControls.map(insiderPrivacyControlRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Insider risk guardrails</h2>
+        <div class="admin-checklist">
+          ${insiderRisk.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminDlpOps() {
   const dlp = adminDlpOpsData();
   const summary = dlp.summary || {};
@@ -14951,6 +15087,7 @@ function bindEvents() {
       loadAdminVulnerabilityOps(true);
       loadAdminSecurityValidationOps(true);
       loadAdminSecurityArchitectureOps(true);
+      loadAdminInsiderRiskOps(true);
       loadAdminDlpOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);
