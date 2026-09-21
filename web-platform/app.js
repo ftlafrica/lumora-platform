@@ -104,6 +104,7 @@ const ADMIN_SECTIONS = [
   { id: "socOps", label: "SOC Ops", desc: "Live alert triage, detection coverage, active cases, response automation, and analyst workload." },
   { id: "vulnerabilityOps", label: "Vulnerability Ops", desc: "Exposure inventory, scan coverage, remediation SLAs, patch campaigns, and risk exceptions." },
   { id: "securityValidation", label: "Security Tests", desc: "Penetration tests, attack simulations, bug bounty, remediation retests, and release gates." },
+  { id: "securityArchitecture", label: "Security Architecture", desc: "Threat models, architecture reviews, approved control patterns, cryptography, and design decisions." },
   { id: "dlpOps", label: "DLP Ops", desc: "Sensitive-data detection, export controls, redaction health, violations, and containment guardrails." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
@@ -357,6 +358,8 @@ const DEFAULT_STATE = {
   adminVulnerabilityOpsLoadedAt: null,
   adminSecurityValidationOps: null,
   adminSecurityValidationOpsLoadedAt: null,
+  adminSecurityArchitectureOps: null,
+  adminSecurityArchitectureOpsLoadedAt: null,
   adminDlpOps: null,
   adminDlpOpsLoadedAt: null,
   adminConsentOps: null,
@@ -1561,6 +1564,26 @@ async function loadAdminSecurityValidationOps(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminSecurityArchitectureOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminSecurityArchitectureOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/security-architecture`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Security architecture unavailable.");
+    state.adminSecurityArchitectureOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminSecurityArchitectureOpsLoadedAt = Date.now();
+  } catch {
+    state.adminSecurityArchitectureOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminDlpOps(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminDlpOpsLoadedAt || 0;
@@ -2689,7 +2712,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "soc:operate", "vulnerability:operate", "security:validate", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "soc:operate", "vulnerability:operate", "security:validate", "security:architecture", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -5813,6 +5836,48 @@ function adminSecurityValidationOpsData() {
   };
 }
 
+function adminSecurityArchitectureOpsData() {
+  return state.adminSecurityArchitectureOps || {
+    summary: { reviewsOpen: 11, threatModelsCurrent: "86%", approvedPatterns: 24, cryptoCoverage: "97%", decisionsBlocked: 3 },
+    architectureReviews: [
+      { review: "Enterprise workspace sharing", domain: "Authorization", risk: "High", owner: "Security Architecture", status: "Changes required" },
+      { review: "Voice biometric controls", domain: "Voice + Privacy", risk: "High", owner: "Voice Ops", status: "Review" },
+      { review: "Regional model routing", domain: "AI + Residency", risk: "Medium", owner: "AI Platform", status: "Approved" },
+      { review: "Mobile offline history", domain: "Device storage", risk: "Medium", owner: "Mobile", status: "Design update" }
+    ],
+    threatModels: [
+      { system: "AI chat and tool gateway", lastReviewed: "Sep 18", coverage: "92%", owner: "AI Safety", status: "Current" },
+      { system: "Admin control plane", lastReviewed: "Sep 12", coverage: "96%", owner: "Security", status: "Current" },
+      { system: "Payments and entitlements", lastReviewed: "Aug 28", coverage: "88%", owner: "Revenue Ops", status: "Refresh due" },
+      { system: "Reviewer network portal", lastReviewed: "Aug 17", coverage: "74%", owner: "Language QA", status: "Overdue" }
+    ],
+    controlPatterns: [
+      { pattern: "Tenant-scoped authorization", appliesTo: "Teams + Enterprise", adoption: "91%", owner: "Identity", status: "Approved" },
+      { pattern: "Sensitive prompt redaction", appliesTo: "Chat + Voice + Files", adoption: "94%", owner: "Privacy", status: "Approved" },
+      { pattern: "Provider egress boundary", appliesTo: "Model routes", adoption: "87%", owner: "AI Platform", status: "Improving" },
+      { pattern: "Mobile secure storage", appliesTo: "Android + iOS", adoption: "83%", owner: "Mobile", status: "Required" }
+    ],
+    cryptographyPosture: [
+      { control: "Data at rest", standard: "AES-256 envelope", coverage: "99%", owner: "Infrastructure", status: "Healthy" },
+      { control: "Data in transit", standard: "TLS 1.3 preferred", coverage: "98%", owner: "Platform", status: "Healthy" },
+      { control: "Admin sessions", standard: "Signed + rotated keys", coverage: "100%", owner: "Identity", status: "Protected" },
+      { control: "Mobile local data", standard: "Hardware-backed keys", coverage: "89%", owner: "Mobile", status: "Watch" }
+    ],
+    decisionQueue: [
+      { decision: "Approve cross-region inference", requester: "AI Platform", due: "Today", approver: "Security + Privacy", status: "Blocked" },
+      { decision: "Adopt passkeys for admins", requester: "Identity", due: "Sep 23", approver: "Security", status: "Ready" },
+      { decision: "Release workspace guest links", requester: "Enterprise", due: "Sep 25", approver: "Security + Legal", status: "Changes required" },
+      { decision: "Enable offline voice drafts", requester: "Mobile", due: "Sep 27", approver: "Security + Voice", status: "Review" }
+    ],
+    guardrails: [
+      "High-risk architecture changes require a current threat model, documented trust boundaries, data-flow review, and named security owner before build approval.",
+      "Approved patterns should be reusable across web, mobile, API, admin, model, payment, voice, and reviewer systems without weakening tenant boundaries.",
+      "Cryptographic choices require managed key custody, rotation, recovery, regional constraints, and migration plans; custom cryptography is prohibited.",
+      "Architecture views must communicate decisions and control posture without exposing private diagrams, credentials, exploit paths, or customer data."
+    ]
+  };
+}
+
 function adminDlpOpsData() {
   return state.adminDlpOps || {
     summary: { detectionsToday: 284, blockedExports: 19, redactionHealth: "96%", openViolations: 11, containmentSla: "22m" },
@@ -7941,6 +8006,26 @@ function securityReleaseGateRow(item) {
   return `<div class="table-row"><strong>${item.release}</strong><span>${item.requiredTest}</span><span>${item.due}</span><span>${item.status}</span></div>`;
 }
 
+function architectureReviewRow(item) {
+  return `<div class="table-row"><strong>${item.review}</strong><span>${item.domain}</span><span>${item.risk}</span><span>${item.status}</span></div>`;
+}
+
+function threatModelRow(item) {
+  return `<div class="table-row"><strong>${item.system}</strong><span>${item.lastReviewed}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
+function controlPatternRow(item) {
+  return `<div class="table-row"><strong>${item.pattern}</strong><span>${item.appliesTo}</span><span>${item.adoption}</span><span>${item.status}</span></div>`;
+}
+
+function cryptographyPostureRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.standard}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
+function securityDecisionRow(item) {
+  return `<div class="table-row"><strong>${item.decision}</strong><span>${item.requester}</span><span>${item.due}</span><span>${item.status}</span></div>`;
+}
+
 function sensitiveDataSignalRow(item) {
   return `<div class="table-row"><strong>${item.signal}</strong><span>${item.surface}</span><span>${item.count}</span><span>${item.status}</span></div>`;
 }
@@ -9311,6 +9396,7 @@ function adminView() {
   if (state.adminSection === "socOps") loadAdminSocOps();
   if (state.adminSection === "vulnerabilityOps") loadAdminVulnerabilityOps();
   if (state.adminSection === "securityValidation") loadAdminSecurityValidationOps();
+  if (state.adminSection === "securityArchitecture") loadAdminSecurityArchitectureOps();
   if (state.adminSection === "dlpOps") loadAdminDlpOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
@@ -9461,6 +9547,7 @@ function adminSectionView(section, readiness) {
     socOps: adminSocOps,
     vulnerabilityOps: adminVulnerabilityOps,
     securityValidation: adminSecurityValidationOps,
+    securityArchitecture: adminSecurityArchitectureOps,
     dlpOps: adminDlpOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
@@ -12542,6 +12629,55 @@ function adminSecurityValidationOps() {
   `;
 }
 
+function adminSecurityArchitectureOps() {
+  const architecture = adminSecurityArchitectureOpsData();
+  const summary = architecture.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Reviews open", summary.reviewsOpen || "11")}
+      ${metric("Threat models current", summary.threatModelsCurrent || "86%")}
+      ${metric("Approved patterns", summary.approvedPatterns || "24")}
+      ${metric("Crypto coverage", summary.cryptoCoverage || "97%")}
+      <section class="admin-card full-admin">
+        <h2>Architecture reviews</h2>
+        <div class="table admin-table-4">
+          ${architecture.architectureReviews.map(architectureReviewRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Threat models</h2>
+        <div class="table admin-table-4">
+          ${architecture.threatModels.map(threatModelRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Approved control patterns</h2>
+        <div class="table admin-table-4">
+          ${architecture.controlPatterns.map(controlPatternRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Cryptography posture</h2>
+        <div class="table admin-table-4">
+          ${architecture.cryptographyPosture.map(cryptographyPostureRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Security decision queue</h2>
+        <div class="table admin-table-4">
+          ${architecture.decisionQueue.map(securityDecisionRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Architecture guardrails</h2>
+        <div class="admin-checklist">
+          ${architecture.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminDlpOps() {
   const dlp = adminDlpOpsData();
   const summary = dlp.summary || {};
@@ -14814,6 +14950,7 @@ function bindEvents() {
       loadAdminSocOps(true);
       loadAdminVulnerabilityOps(true);
       loadAdminSecurityValidationOps(true);
+      loadAdminSecurityArchitectureOps(true);
       loadAdminDlpOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);
