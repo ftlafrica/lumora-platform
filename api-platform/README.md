@@ -63,6 +63,7 @@ This is the first backend foundation for connecting the Web Platform, Enterprise
 - `GET /v1/admin/access-reviews`
 - `GET /v1/admin/session-risk`
 - `GET /v1/admin/threat-intel`
+- `GET /v1/admin/vulnerabilities`
 - `GET /v1/admin/dlp`
 - `GET /v1/admin/consent`
 - `GET /v1/admin/secrets`
@@ -177,6 +178,8 @@ It also exposes `GET /v1/admin/access-reviews` for access certifications, privil
 It also exposes `GET /v1/admin/session-risk` for live session risk, device trust, impossible travel, token revocation, step-up authentication queues, and session guardrails.
 
 It also exposes `GET /v1/admin/threat-intel` for threat campaigns, abuse signals, model/provider risk, infrastructure indicators, response briefings, and threat intelligence guardrails.
+
+It also exposes `GET /v1/admin/vulnerabilities` for exposure inventory, scan coverage, remediation SLAs, patch campaigns, risk exceptions, release blockers, and vulnerability guardrails.
 
 It also exposes `GET /v1/admin/dlp` for sensitive-data detection, export controls, redaction health, violation queues, containment actions, and DLP guardrails.
 
