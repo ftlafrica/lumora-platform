@@ -105,6 +105,7 @@ const {
   adminAccessReviewOpsOperations,
   adminSessionRiskOpsOperations,
   adminThreatIntelOpsOperations,
+  adminSocOpsOperations,
   adminVulnerabilityOpsOperations,
   adminDlpOpsOperations,
   adminConsentOpsOperations,
@@ -230,6 +231,7 @@ assert.ok(accessSession.scopes.includes("exceptions:manage"));
 assert.ok(accessSession.scopes.includes("access:review"));
 assert.ok(accessSession.scopes.includes("sessions:risk"));
 assert.ok(accessSession.scopes.includes("threat:intel"));
+assert.ok(accessSession.scopes.includes("soc:operate"));
 assert.ok(accessSession.scopes.includes("vulnerability:operate"));
 assert.ok(accessSession.scopes.includes("dlp:operate"));
 assert.ok(accessSession.scopes.includes("consent:operate"));
@@ -339,6 +341,7 @@ const adminContracts = [
   ["access reviews", adminAccessReviewOpsOperations(), data => data.summary && Array.isArray(data.reviewCampaigns) && Array.isArray(data.privilegedRoles) && Array.isArray(data.stalePermissions)],
   ["session risk", adminSessionRiskOpsOperations(), data => data.summary && Array.isArray(data.liveSessions) && Array.isArray(data.riskSignals) && Array.isArray(data.revocations)],
   ["threat intel", adminThreatIntelOpsOperations(), data => data.summary && Array.isArray(data.campaigns) && Array.isArray(data.threatSignals) && Array.isArray(data.modelProviderRisk)],
+  ["soc ops", adminSocOpsOperations(), data => data.summary && Array.isArray(data.alertQueue) && Array.isArray(data.detectionCoverage) && Array.isArray(data.activeCases)],
   ["vulnerability ops", adminVulnerabilityOpsOperations(), data => data.summary && Array.isArray(data.exposureInventory) && Array.isArray(data.remediationQueue) && Array.isArray(data.scanCoverage)],
   ["dlp ops", adminDlpOpsOperations(), data => data.summary && Array.isArray(data.sensitiveDataSignals) && Array.isArray(data.exportControls) && Array.isArray(data.redactionPipelines)],
   ["consent ops", adminConsentOpsOperations(), data => data.summary && Array.isArray(data.consentSurfaces) && Array.isArray(data.trainingEligibility) && Array.isArray(data.withdrawals)],

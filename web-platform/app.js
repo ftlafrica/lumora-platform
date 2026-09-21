@@ -101,6 +101,7 @@ const ADMIN_SECTIONS = [
   { id: "accessReviews", label: "Access Reviews", desc: "Access certifications, privileged roles, stale permissions, reviewer assignments, and remediation tracking." },
   { id: "sessionRisk", label: "Session Risk", desc: "Live session risk, device trust, impossible travel, token revocation, and step-up authentication queues." },
   { id: "threatIntel", label: "Threat Intel", desc: "Threat campaigns, abuse signals, model/provider risk, infrastructure indicators, and response briefings." },
+  { id: "socOps", label: "SOC Ops", desc: "Live alert triage, detection coverage, active cases, response automation, and analyst workload." },
   { id: "vulnerabilityOps", label: "Vulnerability Ops", desc: "Exposure inventory, scan coverage, remediation SLAs, patch campaigns, and risk exceptions." },
   { id: "dlpOps", label: "DLP Ops", desc: "Sensitive-data detection, export controls, redaction health, violations, and containment guardrails." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
@@ -349,6 +350,8 @@ const DEFAULT_STATE = {
   adminSessionRiskOpsLoadedAt: null,
   adminThreatIntelOps: null,
   adminThreatIntelOpsLoadedAt: null,
+  adminSocOps: null,
+  adminSocOpsLoadedAt: null,
   adminVulnerabilityOps: null,
   adminVulnerabilityOpsLoadedAt: null,
   adminDlpOps: null,
@@ -1490,6 +1493,26 @@ async function loadAdminThreatIntelOps(force = false) {
     state.adminThreatIntelOpsLoadedAt = Date.now();
   } catch {
     state.adminThreatIntelOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
+async function loadAdminSocOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminSocOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/soc`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("SOC operations unavailable.");
+    state.adminSocOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminSocOpsLoadedAt = Date.now();
+  } catch {
+    state.adminSocOpsLoadedAt = Date.now();
   }
   saveState();
   if (state.route === "admin") render();
@@ -2643,7 +2666,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "vulnerability:operate", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "soc:operate", "vulnerability:operate", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -5641,6 +5664,48 @@ function adminThreatIntelOpsData() {
   };
 }
 
+function adminSocOpsData() {
+  return state.adminSocOps || {
+    summary: { alertsToday: 1264, highPriorityOpen: 14, meanTriage: "6m", automationRate: "72%", analystsOnShift: 8 },
+    alertQueue: [
+      { alert: "Privileged login anomaly", source: "Identity", severity: "High", owner: "SOC West", status: "Investigating" },
+      { alert: "Prompt extraction pattern", source: "AI gateway", severity: "High", owner: "AI Safety", status: "Contained" },
+      { alert: "Payment webhook replay", source: "Billing", severity: "Critical", owner: "SOC East", status: "Escalated" },
+      { alert: "Bulk workspace download", source: "DLP", severity: "Medium", owner: "Privacy", status: "Triage" }
+    ],
+    detectionCoverage: [
+      { domain: "Identity and admin", techniques: "24/27", telemetry: "98%", owner: "Identity", status: "Healthy" },
+      { domain: "AI and model routes", techniques: "18/24", telemetry: "91%", owner: "AI Safety", status: "Improving" },
+      { domain: "Payments and subscriptions", techniques: "16/18", telemetry: "97%", owner: "Revenue Ops", status: "Healthy" },
+      { domain: "Mobile and device", techniques: "12/19", telemetry: "84%", owner: "Mobile", status: "Watch" }
+    ],
+    activeCases: [
+      { case: "SOC-2481", focus: "Credential stuffing cluster", age: "43m", owner: "Trust", status: "Contained" },
+      { case: "SOC-2478", focus: "Reviewer account takeover", age: "2h", owner: "Security", status: "Investigating" },
+      { case: "SOC-2472", focus: "API token enumeration", age: "5h", owner: "DevEx", status: "Monitoring" },
+      { case: "SOC-2469", focus: "Suspicious model scraping", age: "9h", owner: "AI Ops", status: "Escalated" }
+    ],
+    automationPlaybooks: [
+      { playbook: "Revoke risky session", trigger: "Identity risk > 85", executions: 38, owner: "Identity", status: "Active" },
+      { playbook: "Throttle hostile API source", trigger: "Abuse burst detected", executions: 112, owner: "DevEx", status: "Active" },
+      { playbook: "Quarantine sensitive export", trigger: "DLP high confidence", executions: 19, owner: "Privacy", status: "Active" },
+      { playbook: "Freeze payment instrument", trigger: "Card testing cluster", executions: 7, owner: "Fraud Ops", status: "Approval required" }
+    ],
+    analystWorkload: [
+      { shift: "West Africa", analysts: 3, openAlerts: 18, handoff: "14:00 WAT", status: "Balanced" },
+      { shift: "East Africa", analysts: 2, openAlerts: 15, handoff: "17:00 EAT", status: "Busy" },
+      { shift: "Southern Africa", analysts: 2, openAlerts: 9, handoff: "16:00 SAST", status: "Balanced" },
+      { shift: "Global on-call", analysts: 1, openAlerts: 6, handoff: "Follow-the-sun", status: "Ready" }
+    ],
+    guardrails: [
+      "SOC triage must combine identity, web, mobile, API, payments, DLP, model, voice, and reviewer-network telemetry in one auditable workflow.",
+      "Automation may contain clear threats, but destructive account, payment, tenant, or data actions require scoped approval and a reversible path.",
+      "Alerts need severity, evidence, owner, SLA, containment state, and escalation criteria before they can be closed.",
+      "SOC views must protect investigation details and never expose raw prompts, credentials, private files, payment data, or exploit instructions."
+    ]
+  };
+}
+
 function adminVulnerabilityOpsData() {
   return state.adminVulnerabilityOps || {
     summary: { criticalOpen: 7, scanCoverage: "97%", slaCompliance: "91%", activePatchCampaigns: 6, releaseBlockers: 3 },
@@ -7751,6 +7816,26 @@ function threatBriefingRow(item) {
   return `<div class="table-row"><strong>${item.briefing}</strong><span>${item.audience}</span><span>${item.due}</span><span>${item.status}</span></div>`;
 }
 
+function socAlertRow(item) {
+  return `<div class="table-row"><strong>${item.alert}</strong><span>${item.source}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
+function detectionCoverageRow(item) {
+  return `<div class="table-row"><strong>${item.domain}</strong><span>${item.techniques}</span><span>${item.telemetry}</span><span>${item.status}</span></div>`;
+}
+
+function socCaseRow(item) {
+  return `<div class="table-row"><strong>${item.case}</strong><span>${item.focus}</span><span>${item.age}</span><span>${item.status}</span></div>`;
+}
+
+function automationPlaybookRow(item) {
+  return `<div class="table-row"><strong>${item.playbook}</strong><span>${item.trigger}</span><span>${item.executions}</span><span>${item.status}</span></div>`;
+}
+
+function analystWorkloadRow(item) {
+  return `<div class="table-row"><strong>${item.shift}</strong><span>${item.analysts}</span><span>${item.openAlerts}</span><span>${item.status}</span></div>`;
+}
+
 function vulnerabilityExposureRow(item) {
   return `<div class="table-row"><strong>${item.asset}</strong><span>${item.exposure}</span><span>${item.findings}</span><span>${item.status}</span></div>`;
 }
@@ -9138,6 +9223,7 @@ function adminView() {
   if (state.adminSection === "accessReviews") loadAdminAccessReviewOps();
   if (state.adminSection === "sessionRisk") loadAdminSessionRiskOps();
   if (state.adminSection === "threatIntel") loadAdminThreatIntelOps();
+  if (state.adminSection === "socOps") loadAdminSocOps();
   if (state.adminSection === "vulnerabilityOps") loadAdminVulnerabilityOps();
   if (state.adminSection === "dlpOps") loadAdminDlpOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
@@ -9286,6 +9372,7 @@ function adminSectionView(section, readiness) {
     accessReviews: adminAccessReviewOps,
     sessionRisk: adminSessionRiskOps,
     threatIntel: adminThreatIntelOps,
+    socOps: adminSocOps,
     vulnerabilityOps: adminVulnerabilityOps,
     dlpOps: adminDlpOps,
     consentOps: adminConsentOps,
@@ -12221,6 +12308,55 @@ function adminThreatIntelOps() {
   `;
 }
 
+function adminSocOps() {
+  const soc = adminSocOpsData();
+  const summary = soc.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Alerts today", summary.alertsToday || "1,264")}
+      ${metric("High priority open", summary.highPriorityOpen || "14")}
+      ${metric("Mean triage", summary.meanTriage || "6m")}
+      ${metric("Automation rate", summary.automationRate || "72%")}
+      <section class="admin-card full-admin">
+        <h2>Live alert queue</h2>
+        <div class="table admin-table-4">
+          ${soc.alertQueue.map(socAlertRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Detection coverage</h2>
+        <div class="table admin-table-4">
+          ${soc.detectionCoverage.map(detectionCoverageRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Active cases</h2>
+        <div class="table admin-table-4">
+          ${soc.activeCases.map(socCaseRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Response automation</h2>
+        <div class="table admin-table-4">
+          ${soc.automationPlaybooks.map(automationPlaybookRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>Analyst workload</h2>
+        <div class="table admin-table-4">
+          ${soc.analystWorkload.map(analystWorkloadRow).join("")}
+        </div>
+      </section>
+      <section class="admin-card full-admin">
+        <h2>SOC guardrails</h2>
+        <div class="admin-checklist">
+          ${soc.guardrails.map(item => `<span>${item}</span>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function adminVulnerabilityOps() {
   const vulnerabilities = adminVulnerabilityOpsData();
   const summary = vulnerabilities.summary || {};
@@ -14539,6 +14675,7 @@ function bindEvents() {
       loadAdminAccessReviewOps(true);
       loadAdminSessionRiskOps(true);
       loadAdminThreatIntelOps(true);
+      loadAdminSocOps(true);
       loadAdminVulnerabilityOps(true);
       loadAdminDlpOps(true);
       loadAdminConsentOps(true);
