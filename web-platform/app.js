@@ -107,6 +107,7 @@ const ADMIN_SECTIONS = [
   { id: "securityArchitecture", label: "Security Architecture", desc: "Threat models, architecture reviews, approved control patterns, cryptography, and design decisions." },
   { id: "insiderRisk", label: "Insider Risk", desc: "Privileged behavior signals, case triage, workforce access events, and privacy-preserving controls." },
   { id: "securityAwareness", label: "Security Awareness", desc: "Role-based learning, simulations, attestations, risk cohorts, and incident-driven education." },
+  { id: "supplyChainSecurity", label: "Supply Chain", desc: "SBOMs, dependency provenance, signed artifacts, build attestations, and release exceptions." },
   { id: "dlpOps", label: "DLP Ops", desc: "Sensitive-data detection, export controls, redaction health, violations, and containment guardrails." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
@@ -366,6 +367,8 @@ const DEFAULT_STATE = {
   adminInsiderRiskOpsLoadedAt: null,
   adminSecurityAwarenessOps: null,
   adminSecurityAwarenessOpsLoadedAt: null,
+  adminSupplyChainSecurityOps: null,
+  adminSupplyChainSecurityOpsLoadedAt: null,
   adminDlpOps: null,
   adminDlpOpsLoadedAt: null,
   adminConsentOps: null,
@@ -1630,6 +1633,26 @@ async function loadAdminSecurityAwarenessOps(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminSupplyChainSecurityOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminSupplyChainSecurityOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/supply-chain-security`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Supply chain security unavailable.");
+    state.adminSupplyChainSecurityOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminSupplyChainSecurityOpsLoadedAt = Date.now();
+  } catch {
+    state.adminSupplyChainSecurityOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminDlpOps(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminDlpOpsLoadedAt || 0;
@@ -2758,7 +2781,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "soc:operate", "vulnerability:operate", "security:validate", "security:architecture", "insider:risk", "awareness:manage", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "soc:operate", "vulnerability:operate", "security:validate", "security:architecture", "insider:risk", "awareness:manage", "supplychain:secure", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -6008,6 +6031,48 @@ function adminSecurityAwarenessOpsData() {
   };
 }
 
+function adminSupplyChainSecurityOpsData() {
+  return state.adminSupplyChainSecurityOps || {
+    summary: { sbomCoverage: "96%", signedArtifacts: "94%", provenanceVerified: "91%", riskyDependencies: 13, blockedBuilds: 4 },
+    sbomInventory: [
+      { product: "Lumora Web", components: 428, freshness: "2h", owner: "Web Ops", status: "Current" },
+      { product: "Lumora API", components: 316, freshness: "1h", owner: "Platform", status: "Current" },
+      { product: "Android app", components: 189, freshness: "1d", owner: "Mobile", status: "Refresh due" },
+      { product: "Model serving images", components: 742, freshness: "5h", owner: "AI Ops", status: "Current" }
+    ],
+    provenanceChecks: [
+      { control: "Source commit attestation", surface: "Web + API", coverage: "98%", owner: "DevEx", status: "Healthy" },
+      { control: "Builder identity", surface: "CI runners", coverage: "100%", owner: "Platform", status: "Enforced" },
+      { control: "Model artifact origin", surface: "Hugging Face routes", coverage: "89%", owner: "AI Governance", status: "Improving" },
+      { control: "Mobile dependency origin", surface: "Android + iOS", coverage: "92%", owner: "Mobile", status: "Watch" }
+    ],
+    dependencyRisks: [
+      { dependency: "Legacy auth utility", ecosystem: "npm", severity: "High", owner: "Identity", status: "Upgrade testing" },
+      { dependency: "Speech preprocessing wheel", ecosystem: "Python", severity: "Medium", owner: "Voice Ops", status: "Pinned" },
+      { dependency: "Android analytics SDK", ecosystem: "Gradle", severity: "High", owner: "Mobile", status: "Replace" },
+      { dependency: "Model tokenizer package", ecosystem: "Python", severity: "Medium", owner: "AI Ops", status: "Review" }
+    ],
+    artifactSigning: [
+      { artifact: "Web production bundle", signer: "CI workload identity", coverage: "100%", verification: "Deploy gate", status: "Protected" },
+      { artifact: "API container images", signer: "Build service", coverage: "98%", verification: "Cluster admission", status: "Healthy" },
+      { artifact: "Android release", signer: "Hardware-backed key", coverage: "100%", verification: "Store upload", status: "Protected" },
+      { artifact: "Model checkpoints", signer: "AI release key", coverage: "82%", verification: "Router admission", status: "Improving" }
+    ],
+    exceptionQueue: [
+      { exception: "Unsigned research checkpoint", reason: "Evaluation only", expires: "Sep 29", owner: "AI Research", status: "Sandboxed" },
+      { exception: "Deprecated mobile SDK", reason: "Device compatibility", expires: "Oct 10", owner: "Mobile", status: "Migration active" },
+      { exception: "Partner binary dependency", reason: "Vendor release pending", expires: "Oct 03", owner: "Integrations", status: "Restricted" },
+      { exception: "Legacy build runner", reason: "Regional failover", expires: "Sep 26", owner: "DevEx", status: "Retiring" }
+    ],
+    guardrails: [
+      "Production releases require current SBOMs, trusted source and builder provenance, signed artifacts, and automated verification before deployment.",
+      "Model and dataset artifacts require the same provenance discipline as application code, including source, license, checksum, approval, and route restrictions.",
+      "Critical dependency, signing, or provenance failures must block release; exceptions require isolation, owner, expiry, evidence, and seed-admin approval.",
+      "Supply-chain views must expose component posture and evidence without revealing signing keys, private source, internal tokens, or exploitable package details."
+    ]
+  };
+}
+
 function adminDlpOpsData() {
   return state.adminDlpOps || {
     summary: { detectionsToday: 284, blockedExports: 19, redactionHealth: "96%", openViolations: 11, containmentSla: "22m" },
@@ -8196,6 +8261,26 @@ function learningActionRow(item) {
   return `<div class="table-row"><strong>${item.lesson}</strong><span>${item.source}</span><span>${item.due}</span><span>${item.status}</span></div>`;
 }
 
+function sbomInventoryRow(item) {
+  return `<div class="table-row"><strong>${item.product}</strong><span>${item.components}</span><span>${item.freshness}</span><span>${item.status}</span></div>`;
+}
+
+function provenanceCheckRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.surface}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
+function dependencyRiskRow(item) {
+  return `<div class="table-row"><strong>${item.dependency}</strong><span>${item.ecosystem}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
+function artifactSigningRow(item) {
+  return `<div class="table-row"><strong>${item.artifact}</strong><span>${item.signer}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
+function supplyChainExceptionRow(item) {
+  return `<div class="table-row"><strong>${item.exception}</strong><span>${item.reason}</span><span>${item.expires}</span><span>${item.status}</span></div>`;
+}
+
 function sensitiveDataSignalRow(item) {
   return `<div class="table-row"><strong>${item.signal}</strong><span>${item.surface}</span><span>${item.count}</span><span>${item.status}</span></div>`;
 }
@@ -9569,6 +9654,7 @@ function adminView() {
   if (state.adminSection === "securityArchitecture") loadAdminSecurityArchitectureOps();
   if (state.adminSection === "insiderRisk") loadAdminInsiderRiskOps();
   if (state.adminSection === "securityAwareness") loadAdminSecurityAwarenessOps();
+  if (state.adminSection === "supplyChainSecurity") loadAdminSupplyChainSecurityOps();
   if (state.adminSection === "dlpOps") loadAdminDlpOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
@@ -9722,6 +9808,7 @@ function adminSectionView(section, readiness) {
     securityArchitecture: adminSecurityArchitectureOps,
     insiderRisk: adminInsiderRiskOps,
     securityAwareness: adminSecurityAwarenessOps,
+    supplyChainSecurity: adminSupplyChainSecurityOps,
     dlpOps: adminDlpOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
@@ -12950,6 +13037,37 @@ function adminSecurityAwarenessOps() {
   `;
 }
 
+function adminSupplyChainSecurityOps() {
+  const supplyChain = adminSupplyChainSecurityOpsData();
+  const summary = supplyChain.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("SBOM coverage", summary.sbomCoverage || "96%")}
+      ${metric("Signed artifacts", summary.signedArtifacts || "94%")}
+      ${metric("Provenance verified", summary.provenanceVerified || "91%")}
+      ${metric("Blocked builds", summary.blockedBuilds || "4")}
+      <section class="admin-card full-admin"><h2>SBOM inventory</h2><div class="table admin-table-4">
+        ${supplyChain.sbomInventory.map(sbomInventoryRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Provenance checks</h2><div class="table admin-table-4">
+        ${supplyChain.provenanceChecks.map(provenanceCheckRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Dependency risks</h2><div class="table admin-table-4">
+        ${supplyChain.dependencyRisks.map(dependencyRiskRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Artifact signing</h2><div class="table admin-table-4">
+        ${supplyChain.artifactSigning.map(artifactSigningRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Supply-chain exceptions</h2><div class="table admin-table-4">
+        ${supplyChain.exceptionQueue.map(supplyChainExceptionRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Supply-chain guardrails</h2><div class="admin-checklist">
+        ${supplyChain.guardrails.map(item => `<span>${item}</span>`).join("")}
+      </div></section>
+    </div>
+  `;
+}
+
 function adminDlpOps() {
   const dlp = adminDlpOpsData();
   const summary = dlp.summary || {};
@@ -15225,6 +15343,7 @@ function bindEvents() {
       loadAdminSecurityArchitectureOps(true);
       loadAdminInsiderRiskOps(true);
       loadAdminSecurityAwarenessOps(true);
+      loadAdminSupplyChainSecurityOps(true);
       loadAdminDlpOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);
