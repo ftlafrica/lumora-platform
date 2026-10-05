@@ -70,6 +70,7 @@ This is the first backend foundation for connecting the Web Platform, Enterprise
 - `GET /v1/admin/insider-risk`
 - `GET /v1/admin/security-awareness`
 - `GET /v1/admin/supply-chain-security`
+- `GET /v1/admin/cloud-security`
 - `GET /v1/admin/dlp`
 - `GET /v1/admin/consent`
 - `GET /v1/admin/secrets`
@@ -198,6 +199,8 @@ It also exposes `GET /v1/admin/insider-risk` for privileged behavior signals, ca
 It also exposes `GET /v1/admin/security-awareness` for role-based learning, phishing simulations, policy attestations, risk cohorts, incident-driven education, and awareness guardrails.
 
 It also exposes `GET /v1/admin/supply-chain-security` for SBOMs, dependency provenance, signed artifacts, build attestations, package risk, release exceptions, and supply-chain guardrails.
+
+It also exposes `GET /v1/admin/cloud-security` for cloud account posture, configuration findings, IAM exposure, network boundaries, runtime controls, and cloud-security guardrails.
 
 It also exposes `GET /v1/admin/dlp` for sensitive-data detection, export controls, redaction health, violation queues, containment actions, and DLP guardrails.
 

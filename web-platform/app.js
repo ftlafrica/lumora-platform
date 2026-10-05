@@ -108,6 +108,7 @@ const ADMIN_SECTIONS = [
   { id: "insiderRisk", label: "Insider Risk", desc: "Privileged behavior signals, case triage, workforce access events, and privacy-preserving controls." },
   { id: "securityAwareness", label: "Security Awareness", desc: "Role-based learning, simulations, attestations, risk cohorts, and incident-driven education." },
   { id: "supplyChainSecurity", label: "Supply Chain", desc: "SBOMs, dependency provenance, signed artifacts, build attestations, and release exceptions." },
+  { id: "cloudSecurity", label: "Cloud Security", desc: "Cloud accounts, configuration drift, IAM exposure, network boundaries, and runtime controls." },
   { id: "dlpOps", label: "DLP Ops", desc: "Sensitive-data detection, export controls, redaction health, violations, and containment guardrails." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
@@ -369,6 +370,8 @@ const DEFAULT_STATE = {
   adminSecurityAwarenessOpsLoadedAt: null,
   adminSupplyChainSecurityOps: null,
   adminSupplyChainSecurityOpsLoadedAt: null,
+  adminCloudSecurityOps: null,
+  adminCloudSecurityOpsLoadedAt: null,
   adminDlpOps: null,
   adminDlpOpsLoadedAt: null,
   adminConsentOps: null,
@@ -1653,6 +1656,26 @@ async function loadAdminSupplyChainSecurityOps(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminCloudSecurityOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminCloudSecurityOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/cloud-security`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Cloud security operations unavailable.");
+    state.adminCloudSecurityOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminCloudSecurityOpsLoadedAt = Date.now();
+  } catch {
+    state.adminCloudSecurityOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminDlpOps(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminDlpOpsLoadedAt || 0;
@@ -2781,7 +2804,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "soc:operate", "vulnerability:operate", "security:validate", "security:architecture", "insider:risk", "awareness:manage", "supplychain:secure", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "soc:operate", "vulnerability:operate", "security:validate", "security:architecture", "insider:risk", "awareness:manage", "supplychain:secure", "cloud:secure", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -6073,6 +6096,48 @@ function adminSupplyChainSecurityOpsData() {
   };
 }
 
+function adminCloudSecurityOpsData() {
+  return state.adminCloudSecurityOps || {
+    summary: { cloudAccounts: 18, postureScore: "92%", criticalMisconfigurations: 5, publicExposures: 3, remediationSla: "89%" },
+    accountPosture: [
+      { account: "Production West Africa", provider: "Primary cloud", controls: "96%", owner: "Infrastructure", status: "Healthy" },
+      { account: "Production East Africa", provider: "Primary cloud", controls: "93%", owner: "Infrastructure", status: "Healthy" },
+      { account: "AI inference fleet", provider: "GPU provider", controls: "88%", owner: "AI Ops", status: "Watch" },
+      { account: "Research sandbox", provider: "Secondary cloud", controls: "79%", owner: "AI Research", status: "Restricted" }
+    ],
+    configurationFindings: [
+      { finding: "Over-broad storage policy", resource: "Evaluation artifacts", severity: "High", owner: "AI Governance", status: "Fix ready" },
+      { finding: "Unused public load balancer", resource: "Preview environment", severity: "Medium", owner: "DevEx", status: "Removing" },
+      { finding: "Legacy security group rule", resource: "Voice worker pool", severity: "High", owner: "Voice Ops", status: "Contained" },
+      { finding: "Missing log retention policy", resource: "Research sandbox", severity: "Medium", owner: "AI Research", status: "Review" }
+    ],
+    iamExposure: [
+      { identity: "Workload service roles", scope: "Production", excessiveGrants: 4, owner: "Identity", status: "Remediating" },
+      { identity: "Human administrators", scope: "Cloud control plane", excessiveGrants: 1, owner: "Security", status: "Review" },
+      { identity: "CI deployment roles", scope: "Web + API", excessiveGrants: 0, owner: "DevEx", status: "Healthy" },
+      { identity: "Vendor support roles", scope: "GPU provider", excessiveGrants: 2, owner: "Vendor Ops", status: "Time bound" }
+    ],
+    networkBoundaries: [
+      { boundary: "Internet to API edge", policy: "WAF + rate limit", coverage: "100%", owner: "Platform", status: "Protected" },
+      { boundary: "API to model workers", policy: "Private service identity", coverage: "97%", owner: "AI Ops", status: "Healthy" },
+      { boundary: "Admin to control plane", policy: "Zero trust + MFA", coverage: "100%", owner: "Security", status: "Protected" },
+      { boundary: "Partner webhook ingress", policy: "mTLS + allowlist", coverage: "91%", owner: "Integrations", status: "Improving" }
+    ],
+    runtimeControls: [
+      { control: "Container admission policy", surface: "Production clusters", coverage: "98%", owner: "Platform", status: "Healthy" },
+      { control: "Runtime threat detection", surface: "API + model workers", coverage: "94%", owner: "SOC", status: "Healthy" },
+      { control: "Immutable infrastructure", surface: "Web + API", coverage: "92%", owner: "DevEx", status: "Improving" },
+      { control: "Workload isolation", surface: "Shared GPU fleet", coverage: "86%", owner: "AI Ops", status: "Watch" }
+    ],
+    guardrails: [
+      "Cloud accounts, subscriptions, projects, regions, and providers must have named owners, baseline controls, centralized logs, and continuous posture monitoring.",
+      "Public exposure, privileged IAM, storage policy, network boundary, and runtime findings must be prioritized by data sensitivity and user impact.",
+      "Critical cloud misconfigurations require automated containment where safe, rapid owner notification, evidence capture, and verified remediation.",
+      "Cloud Security views must show posture and ownership without revealing account identifiers, network details, credentials, customer data, or exploitable configurations."
+    ]
+  };
+}
+
 function adminDlpOpsData() {
   return state.adminDlpOps || {
     summary: { detectionsToday: 284, blockedExports: 19, redactionHealth: "96%", openViolations: 11, containmentSla: "22m" },
@@ -8281,6 +8346,26 @@ function supplyChainExceptionRow(item) {
   return `<div class="table-row"><strong>${item.exception}</strong><span>${item.reason}</span><span>${item.expires}</span><span>${item.status}</span></div>`;
 }
 
+function cloudAccountRow(item) {
+  return `<div class="table-row"><strong>${item.account}</strong><span>${item.provider}</span><span>${item.controls}</span><span>${item.status}</span></div>`;
+}
+
+function cloudFindingRow(item) {
+  return `<div class="table-row"><strong>${item.finding}</strong><span>${item.resource}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
+function cloudIamRow(item) {
+  return `<div class="table-row"><strong>${item.identity}</strong><span>${item.scope}</span><span>${item.excessiveGrants}</span><span>${item.status}</span></div>`;
+}
+
+function networkBoundaryRow(item) {
+  return `<div class="table-row"><strong>${item.boundary}</strong><span>${item.policy}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
+function runtimeControlRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.surface}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
 function sensitiveDataSignalRow(item) {
   return `<div class="table-row"><strong>${item.signal}</strong><span>${item.surface}</span><span>${item.count}</span><span>${item.status}</span></div>`;
 }
@@ -9655,6 +9740,7 @@ function adminView() {
   if (state.adminSection === "insiderRisk") loadAdminInsiderRiskOps();
   if (state.adminSection === "securityAwareness") loadAdminSecurityAwarenessOps();
   if (state.adminSection === "supplyChainSecurity") loadAdminSupplyChainSecurityOps();
+  if (state.adminSection === "cloudSecurity") loadAdminCloudSecurityOps();
   if (state.adminSection === "dlpOps") loadAdminDlpOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
@@ -9809,6 +9895,7 @@ function adminSectionView(section, readiness) {
     insiderRisk: adminInsiderRiskOps,
     securityAwareness: adminSecurityAwarenessOps,
     supplyChainSecurity: adminSupplyChainSecurityOps,
+    cloudSecurity: adminCloudSecurityOps,
     dlpOps: adminDlpOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
@@ -13068,6 +13155,37 @@ function adminSupplyChainSecurityOps() {
   `;
 }
 
+function adminCloudSecurityOps() {
+  const cloud = adminCloudSecurityOpsData();
+  const summary = cloud.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Cloud accounts", summary.cloudAccounts || "18")}
+      ${metric("Posture score", summary.postureScore || "92%")}
+      ${metric("Critical misconfigurations", summary.criticalMisconfigurations || "5")}
+      ${metric("Public exposures", summary.publicExposures || "3")}
+      <section class="admin-card full-admin"><h2>Cloud account posture</h2><div class="table admin-table-4">
+        ${cloud.accountPosture.map(cloudAccountRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Configuration findings</h2><div class="table admin-table-4">
+        ${cloud.configurationFindings.map(cloudFindingRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>IAM exposure</h2><div class="table admin-table-4">
+        ${cloud.iamExposure.map(cloudIamRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Network boundaries</h2><div class="table admin-table-4">
+        ${cloud.networkBoundaries.map(networkBoundaryRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Runtime controls</h2><div class="table admin-table-4">
+        ${cloud.runtimeControls.map(runtimeControlRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Cloud security guardrails</h2><div class="admin-checklist">
+        ${cloud.guardrails.map(item => `<span>${item}</span>`).join("")}
+      </div></section>
+    </div>
+  `;
+}
+
 function adminDlpOps() {
   const dlp = adminDlpOpsData();
   const summary = dlp.summary || {};
@@ -15344,6 +15462,7 @@ function bindEvents() {
       loadAdminInsiderRiskOps(true);
       loadAdminSecurityAwarenessOps(true);
       loadAdminSupplyChainSecurityOps(true);
+      loadAdminCloudSecurityOps(true);
       loadAdminDlpOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);
