@@ -109,6 +109,7 @@ const ADMIN_SECTIONS = [
   { id: "securityAwareness", label: "Security Awareness", desc: "Role-based learning, simulations, attestations, risk cohorts, and incident-driven education." },
   { id: "supplyChainSecurity", label: "Supply Chain", desc: "SBOMs, dependency provenance, signed artifacts, build attestations, and release exceptions." },
   { id: "cloudSecurity", label: "Cloud Security", desc: "Cloud accounts, configuration drift, IAM exposure, network boundaries, and runtime controls." },
+  { id: "networkSecurity", label: "Network Security", desc: "Edge protection, WAF and DDoS posture, DNS/TLS health, segmentation, and private access." },
   { id: "endpointSecurity", label: "Endpoint Security", desc: "Managed devices, compliance posture, EDR signals, patch campaigns, and device response." },
   { id: "dlpOps", label: "DLP Ops", desc: "Sensitive-data detection, export controls, redaction health, violations, and containment guardrails." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
@@ -373,6 +374,8 @@ const DEFAULT_STATE = {
   adminSupplyChainSecurityOpsLoadedAt: null,
   adminCloudSecurityOps: null,
   adminCloudSecurityOpsLoadedAt: null,
+  adminNetworkSecurityOps: null,
+  adminNetworkSecurityOpsLoadedAt: null,
   adminEndpointSecurityOps: null,
   adminEndpointSecurityOpsLoadedAt: null,
   adminDlpOps: null,
@@ -1679,6 +1682,26 @@ async function loadAdminCloudSecurityOps(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminNetworkSecurityOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminNetworkSecurityOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/network-security`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Network security operations unavailable.");
+    state.adminNetworkSecurityOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminNetworkSecurityOpsLoadedAt = Date.now();
+  } catch {
+    state.adminNetworkSecurityOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminEndpointSecurityOps(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminEndpointSecurityOpsLoadedAt || 0;
@@ -2827,7 +2850,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "soc:operate", "vulnerability:operate", "security:validate", "security:architecture", "insider:risk", "awareness:manage", "supplychain:secure", "cloud:secure", "endpoint:secure", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "soc:operate", "vulnerability:operate", "security:validate", "security:architecture", "insider:risk", "awareness:manage", "supplychain:secure", "cloud:secure", "network:secure", "endpoint:secure", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -6161,6 +6184,54 @@ function adminCloudSecurityOpsData() {
   };
 }
 
+function adminNetworkSecurityOpsData() {
+  return state.adminNetworkSecurityOps || {
+    summary: { protectedSurfaces: 12, wafCoverage: "100%", dnsTlsHealth: "98%", activeIncidents: 3, privateAccessCoverage: "96%" },
+    edgeServices: [
+      { surface: "Web application edge", footprint: "Multi-region", protection: "CDN + WAF", status: "Protected" },
+      { surface: "Public API edge", footprint: "Multi-region", protection: "WAF + rate limits", status: "Protected" },
+      { surface: "Admin console edge", footprint: "Private access", protection: "Identity-aware proxy", status: "Restricted" },
+      { surface: "Media upload edge", footprint: "Regional ingress", protection: "Validation + isolation", status: "Healthy" }
+    ],
+    wafDdosPosture: [
+      { control: "Managed WAF policies", scope: "Web + API", coverage: "100%", status: "Enforced" },
+      { control: "Application-layer DDoS", scope: "Public endpoints", coverage: "100%", status: "Ready" },
+      { control: "Volumetric DDoS", scope: "Edge network", coverage: "100%", status: "Ready" },
+      { control: "Automated bot defense", scope: "Signup + login", coverage: "96%", status: "Tuning" }
+    ],
+    dnsTlsHealth: [
+      { asset: "Public application zones", protocol: "DNSSEC + CAA", freshness: "Current", status: "Healthy" },
+      { asset: "API service certificates", protocol: "TLS 1.3 preferred", freshness: "Auto-renewing", status: "Healthy" },
+      { asset: "Admin access certificates", protocol: "Mutual trust", freshness: "Current", status: "Protected" },
+      { asset: "Regional launch domains", protocol: "DNS verification", freshness: "2 pending", status: "Review" }
+    ],
+    segmentationPosture: [
+      { boundary: "Public edge to application", policy: "Authenticated service ingress", coverage: "100%", status: "Enforced" },
+      { boundary: "Application to model providers", policy: "Controlled egress + allowlist", coverage: "94%", status: "Watch" },
+      { boundary: "Admin plane to production", policy: "Private access + MFA", coverage: "100%", status: "Protected" },
+      { boundary: "Data services to analytics", policy: "Purpose-bound identities", coverage: "92%", status: "Improving" }
+    ],
+    activeNetworkEvents: [
+      { event: "Application-layer traffic surge", surface: "Public API edge", age: "18m", status: "Mitigated" },
+      { event: "Unexpected provider egress", surface: "Model routing", age: "42m", status: "Investigating" },
+      { event: "DNS change verification", surface: "Regional launch", age: "2h", status: "Review" },
+      { event: "Automated probing burst", surface: "Admin edge", age: "4h", status: "Blocked" }
+    ],
+    privateAccessControls: [
+      { route: "Seed-admin console", requirement: "Device trust + phishing-resistant MFA", adoption: "100%", status: "Enforced" },
+      { route: "Production engineering", requirement: "Just-in-time private access", adoption: "96%", status: "Healthy" },
+      { route: "Data operations", requirement: "Approved role + session recording", adoption: "94%", status: "Improving" },
+      { route: "Vendor support", requirement: "Sponsored time-bound access", adoption: "100%", status: "Restricted" }
+    ],
+    guardrails: [
+      "Internet-facing web, API, media, authentication, and admin surfaces require named owners, layered edge protection, and continuous availability monitoring.",
+      "Network policy changes require peer review, automated validation, staged rollout, rollback readiness, and immutable audit evidence.",
+      "Critical DDoS, WAF, DNS, TLS, segmentation, or egress events must trigger coordinated Security, Platform, Incident, and Communications response.",
+      "Network Security views must show aggregate posture and response state without exposing addresses, firewall rules, certificate material, credentials, or exploitable topology."
+    ]
+  };
+}
+
 function adminEndpointSecurityOpsData() {
   return state.adminEndpointSecurityOps || {
     summary: { managedEndpoints: 186, complianceRate: "94%", edrCoverage: "97%", criticalAlerts: 4, patchSla: "91%" },
@@ -8437,6 +8508,30 @@ function runtimeControlRow(item) {
   return `<div class="table-row"><strong>${item.control}</strong><span>${item.surface}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
 }
 
+function networkEdgeRow(item) {
+  return `<div class="table-row"><strong>${item.surface}</strong><span>${item.footprint}</span><span>${item.protection}</span><span>${item.status}</span></div>`;
+}
+
+function networkDefenseRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.scope}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
+function dnsTlsHealthRow(item) {
+  return `<div class="table-row"><strong>${item.asset}</strong><span>${item.protocol}</span><span>${item.freshness}</span><span>${item.status}</span></div>`;
+}
+
+function networkSegmentationRow(item) {
+  return `<div class="table-row"><strong>${item.boundary}</strong><span>${item.policy}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
+function networkEventRow(item) {
+  return `<div class="table-row"><strong>${item.event}</strong><span>${item.surface}</span><span>${item.age}</span><span>${item.status}</span></div>`;
+}
+
+function privateAccessControlRow(item) {
+  return `<div class="table-row"><strong>${item.route}</strong><span>${item.requirement}</span><span>${item.adoption}</span><span>${item.status}</span></div>`;
+}
+
 function endpointInventoryRow(item) {
   return `<div class="table-row"><strong>${item.cohort}</strong><span>${item.devices}</span><span>${item.platform}</span><span>${item.status}</span></div>`;
 }
@@ -9836,6 +9931,7 @@ function adminView() {
   if (state.adminSection === "securityAwareness") loadAdminSecurityAwarenessOps();
   if (state.adminSection === "supplyChainSecurity") loadAdminSupplyChainSecurityOps();
   if (state.adminSection === "cloudSecurity") loadAdminCloudSecurityOps();
+  if (state.adminSection === "networkSecurity") loadAdminNetworkSecurityOps();
   if (state.adminSection === "endpointSecurity") loadAdminEndpointSecurityOps();
   if (state.adminSection === "dlpOps") loadAdminDlpOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
@@ -9992,6 +10088,7 @@ function adminSectionView(section, readiness) {
     securityAwareness: adminSecurityAwarenessOps,
     supplyChainSecurity: adminSupplyChainSecurityOps,
     cloudSecurity: adminCloudSecurityOps,
+    networkSecurity: adminNetworkSecurityOps,
     endpointSecurity: adminEndpointSecurityOps,
     dlpOps: adminDlpOps,
     consentOps: adminConsentOps,
@@ -13283,6 +13380,40 @@ function adminCloudSecurityOps() {
   `;
 }
 
+function adminNetworkSecurityOps() {
+  const network = adminNetworkSecurityOpsData();
+  const summary = network.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Protected surfaces", summary.protectedSurfaces || "12")}
+      ${metric("WAF coverage", summary.wafCoverage || "100%")}
+      ${metric("DNS/TLS health", summary.dnsTlsHealth || "98%")}
+      ${metric("Active incidents", summary.activeIncidents || "3")}
+      <section class="admin-card full-admin"><h2>Protected edge services</h2><div class="table admin-table-4">
+        ${network.edgeServices.map(networkEdgeRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>WAF and DDoS posture</h2><div class="table admin-table-4">
+        ${network.wafDdosPosture.map(networkDefenseRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>DNS and TLS health</h2><div class="table admin-table-4">
+        ${network.dnsTlsHealth.map(dnsTlsHealthRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Segmentation and egress</h2><div class="table admin-table-4">
+        ${network.segmentationPosture.map(networkSegmentationRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Active network events</h2><div class="table admin-table-4">
+        ${network.activeNetworkEvents.map(networkEventRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Private access controls</h2><div class="table admin-table-4">
+        ${network.privateAccessControls.map(privateAccessControlRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Network security guardrails</h2><div class="admin-checklist">
+        ${network.guardrails.map(item => `<span>${item}</span>`).join("")}
+      </div></section>
+    </div>
+  `;
+}
+
 function adminEndpointSecurityOps() {
   const endpoints = adminEndpointSecurityOpsData();
   const summary = endpoints.summary || {};
@@ -15594,6 +15725,7 @@ function bindEvents() {
       loadAdminSecurityAwarenessOps(true);
       loadAdminSupplyChainSecurityOps(true);
       loadAdminCloudSecurityOps(true);
+      loadAdminNetworkSecurityOps(true);
       loadAdminEndpointSecurityOps(true);
       loadAdminDlpOps(true);
       loadAdminConsentOps(true);
