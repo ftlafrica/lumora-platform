@@ -109,6 +109,7 @@ const ADMIN_SECTIONS = [
   { id: "securityAwareness", label: "Security Awareness", desc: "Role-based learning, simulations, attestations, risk cohorts, and incident-driven education." },
   { id: "supplyChainSecurity", label: "Supply Chain", desc: "SBOMs, dependency provenance, signed artifacts, build attestations, and release exceptions." },
   { id: "cloudSecurity", label: "Cloud Security", desc: "Cloud accounts, configuration drift, IAM exposure, network boundaries, and runtime controls." },
+  { id: "endpointSecurity", label: "Endpoint Security", desc: "Managed devices, compliance posture, EDR signals, patch campaigns, and device response." },
   { id: "dlpOps", label: "DLP Ops", desc: "Sensitive-data detection, export controls, redaction health, violations, and containment guardrails." },
   { id: "consentOps", label: "Consent Ops", desc: "Consent surfaces, training eligibility, withdrawals, policy coverage, and audit trail." },
   { id: "secretsOps", label: "Secrets", desc: "API tokens, provider keys, KMS posture, certificate expiry, rotations, and leak response." },
@@ -372,6 +373,8 @@ const DEFAULT_STATE = {
   adminSupplyChainSecurityOpsLoadedAt: null,
   adminCloudSecurityOps: null,
   adminCloudSecurityOpsLoadedAt: null,
+  adminEndpointSecurityOps: null,
+  adminEndpointSecurityOpsLoadedAt: null,
   adminDlpOps: null,
   adminDlpOpsLoadedAt: null,
   adminConsentOps: null,
@@ -1676,6 +1679,26 @@ async function loadAdminCloudSecurityOps(force = false) {
   if (state.route === "admin") render();
 }
 
+async function loadAdminEndpointSecurityOps(force = false) {
+  if (!state.adminUnlocked) return;
+  const lastLoaded = state.adminEndpointSecurityOpsLoadedAt || 0;
+  if (!force && lastLoaded && Date.now() - lastLoaded < 60_000) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/endpoint-security`, {
+      headers: { "X-Seed-Admin-Code": SEED_ADMIN_CODE }
+    });
+    if (!response.ok) throw new Error("Endpoint security operations unavailable.");
+    state.adminEndpointSecurityOps = await response.json();
+    state.adminApiStatus = "connected";
+    state.adminEndpointSecurityOpsLoadedAt = Date.now();
+  } catch {
+    state.adminEndpointSecurityOpsLoadedAt = Date.now();
+  }
+  saveState();
+  if (state.route === "admin") render();
+}
+
 async function loadAdminDlpOps(force = false) {
   if (!state.adminUnlocked) return;
   const lastLoaded = state.adminDlpOpsLoadedAt || 0;
@@ -2804,7 +2827,7 @@ function localAdminSession() {
     role: "Seed Admin",
     issuedAt,
     expiresInMinutes: 60,
-    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "soc:operate", "vulnerability:operate", "security:validate", "security:architecture", "insider:risk", "awareness:manage", "supplychain:secure", "cloud:secure", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
+    scopes: ["executive:read", "growth:read", "payments:read", "entitlements:manage", "revenue:assure", "subscriptions:manage", "users:read", "models:operate", "licensing:review", "datasets:govern", "safety:review", "policy:govern", "fraud:review", "platform:operate", "devex:operate", "access:grant", "investigations:review", "identity:operate", "api:manage", "knowledge:operate", "support:review", "conversations:operate", "prompts:govern", "cx:review", "finance:read", "unit:economics", "analytics:read", "lifecycle:manage", "infrastructure:operate", "continuity:manage", "slo:manage", "observability:operate", "capacity:plan", "security:operate", "reporting:export", "warehouse:operate", "risk:review", "legal:review", "people:read", "vendors:manage", "regional:launch", "qa:review", "roadmap:manage", "community:manage", "compliance:evidence", "trust:center", "board:governance", "investor:relations", "procurement:revenue", "partnerships:manage", "launch:readiness", "okr:manage", "operating:rhythm", "data:room", "ai:governance", "model:risk", "web:operate", "telemetry:operate", "status:operate", "incident:respond", "audit:operate", "change:manage", "backup:operate", "asset:manage", "tenant:operate", "cost:operate", "dataquality:operate", "regulatory:operate", "compliance:automate", "exceptions:manage", "access:review", "sessions:risk", "threat:intel", "soc:operate", "vulnerability:operate", "security:validate", "security:architecture", "insider:risk", "awareness:manage", "supplychain:secure", "cloud:secure", "endpoint:secure", "dlp:operate", "consent:operate", "secrets:operate", "mobile:operate", "communications:send", "notifications:operate", "language:review", "culture:review", "reviewers:manage", "corrections:improve", "voice:operate", "translation:operate", "creator:operate", "classroom:operate", "market:operate", "multimodal:operate", "search:operate", "workspace:operate", "passport:operate", "localization:manage", "data:govern", "memory:govern", "residency:manage", "privacy:operate", "dpia:review", "integrations:manage", "experiments:operate", "evals:review", "success:manage", "sales:manage"],
     audit: [
       { time: issuedAt, action: "preview_seed_admin_session", area: "Access", severity: "Preview" },
       { time: issuedAt, action: "api_unavailable_local_unlock", area: "Web", severity: "Info" }
@@ -6138,6 +6161,54 @@ function adminCloudSecurityOpsData() {
   };
 }
 
+function adminEndpointSecurityOpsData() {
+  return state.adminEndpointSecurityOps || {
+    summary: { managedEndpoints: 186, complianceRate: "94%", edrCoverage: "97%", criticalAlerts: 4, patchSla: "91%" },
+    endpointInventory: [
+      { cohort: "Engineering workstations", devices: 48, platform: "Windows/macOS/Linux", owner: "DevEx", status: "Healthy" },
+      { cohort: "Leadership devices", devices: 14, platform: "Windows/macOS/iOS", owner: "Security", status: "Protected" },
+      { cohort: "Support operations", devices: 39, platform: "Windows/Android", owner: "Support Ops", status: "Watch" },
+      { cohort: "Language reviewers", devices: 85, platform: "Android/Web", owner: "Language QA", status: "Improving" }
+    ],
+    compliancePosture: [
+      { control: "Disk encryption", coverage: "98%", exceptions: 3, owner: "IT", status: "Healthy" },
+      { control: "Screen lock and biometrics", coverage: "96%", exceptions: 7, owner: "Identity", status: "Healthy" },
+      { control: "Supported operating system", coverage: "91%", exceptions: 16, owner: "IT", status: "Remediating" },
+      { control: "Secure browser baseline", coverage: "94%", exceptions: 11, owner: "Security", status: "Watch" }
+    ],
+    edrSignals: [
+      { signal: "Suspicious script execution", cohort: "Engineering", severity: "High", owner: "SOC", status: "Contained" },
+      { signal: "Credential-dumping behavior", cohort: "Support", severity: "Critical", owner: "Security", status: "Isolated" },
+      { signal: "Unsigned application launch", cohort: "Reviewer", severity: "Medium", owner: "Language QA", status: "Review" },
+      { signal: "Unusual removable media", cohort: "Leadership", severity: "Medium", owner: "Security", status: "Verified" }
+    ],
+    patchCampaigns: [
+      { campaign: "October OS security update", scope: "All managed endpoints", progress: "92%", owner: "IT", status: "Rolling" },
+      { campaign: "Browser zero-day patch", scope: "Workforce browsers", progress: "98%", owner: "Security", status: "Urgent" },
+      { campaign: "Reviewer Android baseline", scope: "Reviewer network", progress: "76%", owner: "Mobile", status: "In progress" },
+      { campaign: "Developer toolchain refresh", scope: "Engineering", progress: "88%", owner: "DevEx", status: "Testing" }
+    ],
+    deviceResponse: [
+      { event: "Lost leadership phone", action: "Remote lock + token revoke", age: "18m", owner: "Security", status: "Contained" },
+      { event: "Reviewer device compromise", action: "Session revoke + re-enrol", age: "2h", owner: "Language QA", status: "Investigating" },
+      { event: "Departing contractor laptop", action: "Access revoke + wipe", age: "4h", owner: "People/IT", status: "Scheduled" },
+      { event: "Unmanaged support device", action: "Block privileged access", age: "1d", owner: "Identity", status: "Enforced" }
+    ],
+    privilegedDeviceControls: [
+      { control: "Hardware-backed passkeys", cohort: "Seed admins", coverage: "100%", owner: "Identity", status: "Protected" },
+      { control: "Endpoint health attestation", cohort: "Production engineers", coverage: "96%", owner: "Platform", status: "Healthy" },
+      { control: "JIT admin elevation", cohort: "Support leads", coverage: "93%", owner: "Security", status: "Improving" },
+      { control: "Clipboard and export controls", cohort: "Language reviewers", coverage: "87%", owner: "DLP", status: "Watch" }
+    ],
+    guardrails: [
+      "Privileged access to production, payments, admin, model controls, and sensitive support tools requires a managed and compliant device.",
+      "Endpoint controls must remain practical for African connectivity, shared-device realities, reviewer accessibility, and low-bandwidth recovery.",
+      "Lost, stolen, compromised, or offboarded devices require rapid session revocation, remote containment, evidence capture, and verified recovery.",
+      "Endpoint Security views must show cohort posture and response state without exposing personal files, private communications, precise locations, or device secrets."
+    ]
+  };
+}
+
 function adminDlpOpsData() {
   return state.adminDlpOps || {
     summary: { detectionsToday: 284, blockedExports: 19, redactionHealth: "96%", openViolations: 11, containmentSla: "22m" },
@@ -8366,6 +8437,30 @@ function runtimeControlRow(item) {
   return `<div class="table-row"><strong>${item.control}</strong><span>${item.surface}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
 }
 
+function endpointInventoryRow(item) {
+  return `<div class="table-row"><strong>${item.cohort}</strong><span>${item.devices}</span><span>${item.platform}</span><span>${item.status}</span></div>`;
+}
+
+function endpointComplianceRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.coverage}</span><span>${item.exceptions}</span><span>${item.status}</span></div>`;
+}
+
+function edrSignalRow(item) {
+  return `<div class="table-row"><strong>${item.signal}</strong><span>${item.cohort}</span><span>${item.severity}</span><span>${item.status}</span></div>`;
+}
+
+function endpointPatchRow(item) {
+  return `<div class="table-row"><strong>${item.campaign}</strong><span>${item.scope}</span><span>${item.progress}</span><span>${item.status}</span></div>`;
+}
+
+function deviceResponseRow(item) {
+  return `<div class="table-row"><strong>${item.event}</strong><span>${item.action}</span><span>${item.age}</span><span>${item.status}</span></div>`;
+}
+
+function privilegedDeviceControlRow(item) {
+  return `<div class="table-row"><strong>${item.control}</strong><span>${item.cohort}</span><span>${item.coverage}</span><span>${item.status}</span></div>`;
+}
+
 function sensitiveDataSignalRow(item) {
   return `<div class="table-row"><strong>${item.signal}</strong><span>${item.surface}</span><span>${item.count}</span><span>${item.status}</span></div>`;
 }
@@ -9741,6 +9836,7 @@ function adminView() {
   if (state.adminSection === "securityAwareness") loadAdminSecurityAwarenessOps();
   if (state.adminSection === "supplyChainSecurity") loadAdminSupplyChainSecurityOps();
   if (state.adminSection === "cloudSecurity") loadAdminCloudSecurityOps();
+  if (state.adminSection === "endpointSecurity") loadAdminEndpointSecurityOps();
   if (state.adminSection === "dlpOps") loadAdminDlpOps();
   if (state.adminSection === "consentOps") loadAdminConsentOps();
   if (state.adminSection === "secretsOps") loadAdminSecretsOps();
@@ -9896,6 +9992,7 @@ function adminSectionView(section, readiness) {
     securityAwareness: adminSecurityAwarenessOps,
     supplyChainSecurity: adminSupplyChainSecurityOps,
     cloudSecurity: adminCloudSecurityOps,
+    endpointSecurity: adminEndpointSecurityOps,
     dlpOps: adminDlpOps,
     consentOps: adminConsentOps,
     secretsOps: adminSecretsOps,
@@ -13186,6 +13283,40 @@ function adminCloudSecurityOps() {
   `;
 }
 
+function adminEndpointSecurityOps() {
+  const endpoints = adminEndpointSecurityOpsData();
+  const summary = endpoints.summary || {};
+  return `
+    <div class="admin-grid">
+      ${metric("Managed endpoints", summary.managedEndpoints || "186")}
+      ${metric("Compliance rate", summary.complianceRate || "94%")}
+      ${metric("EDR coverage", summary.edrCoverage || "97%")}
+      ${metric("Critical alerts", summary.criticalAlerts || "4")}
+      <section class="admin-card full-admin"><h2>Endpoint inventory</h2><div class="table admin-table-4">
+        ${endpoints.endpointInventory.map(endpointInventoryRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Compliance posture</h2><div class="table admin-table-4">
+        ${endpoints.compliancePosture.map(endpointComplianceRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>EDR signals</h2><div class="table admin-table-4">
+        ${endpoints.edrSignals.map(edrSignalRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Patch campaigns</h2><div class="table admin-table-4">
+        ${endpoints.patchCampaigns.map(endpointPatchRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Device response</h2><div class="table admin-table-4">
+        ${endpoints.deviceResponse.map(deviceResponseRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Privileged-device controls</h2><div class="table admin-table-4">
+        ${endpoints.privilegedDeviceControls.map(privilegedDeviceControlRow).join("")}
+      </div></section>
+      <section class="admin-card full-admin"><h2>Endpoint security guardrails</h2><div class="admin-checklist">
+        ${endpoints.guardrails.map(item => `<span>${item}</span>`).join("")}
+      </div></section>
+    </div>
+  `;
+}
+
 function adminDlpOps() {
   const dlp = adminDlpOpsData();
   const summary = dlp.summary || {};
@@ -15463,6 +15594,7 @@ function bindEvents() {
       loadAdminSecurityAwarenessOps(true);
       loadAdminSupplyChainSecurityOps(true);
       loadAdminCloudSecurityOps(true);
+      loadAdminEndpointSecurityOps(true);
       loadAdminDlpOps(true);
       loadAdminConsentOps(true);
       loadAdminSecretsOps(true);

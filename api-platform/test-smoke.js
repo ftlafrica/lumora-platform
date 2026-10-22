@@ -113,6 +113,7 @@ const {
   adminSecurityAwarenessOpsOperations,
   adminSupplyChainSecurityOpsOperations,
   adminCloudSecurityOpsOperations,
+  adminEndpointSecurityOpsOperations,
   adminDlpOpsOperations,
   adminConsentOpsOperations,
   adminSecretsOpsOperations,
@@ -245,6 +246,7 @@ assert.ok(accessSession.scopes.includes("insider:risk"));
 assert.ok(accessSession.scopes.includes("awareness:manage"));
 assert.ok(accessSession.scopes.includes("supplychain:secure"));
 assert.ok(accessSession.scopes.includes("cloud:secure"));
+assert.ok(accessSession.scopes.includes("endpoint:secure"));
 assert.ok(accessSession.scopes.includes("dlp:operate"));
 assert.ok(accessSession.scopes.includes("consent:operate"));
 assert.ok(accessSession.scopes.includes("secrets:operate"));
@@ -361,6 +363,7 @@ const adminContracts = [
   ["security awareness", adminSecurityAwarenessOpsOperations(), data => data.summary && Array.isArray(data.trainingPrograms) && Array.isArray(data.phishingSimulations) && Array.isArray(data.attestations)],
   ["supply chain security", adminSupplyChainSecurityOpsOperations(), data => data.summary && Array.isArray(data.sbomInventory) && Array.isArray(data.provenanceChecks) && Array.isArray(data.artifactSigning)],
   ["cloud security", adminCloudSecurityOpsOperations(), data => data.summary && Array.isArray(data.accountPosture) && Array.isArray(data.configurationFindings) && Array.isArray(data.runtimeControls)],
+  ["endpoint security", adminEndpointSecurityOpsOperations(), data => data.summary && Array.isArray(data.endpointInventory) && Array.isArray(data.compliancePosture) && Array.isArray(data.edrSignals)],
   ["dlp ops", adminDlpOpsOperations(), data => data.summary && Array.isArray(data.sensitiveDataSignals) && Array.isArray(data.exportControls) && Array.isArray(data.redactionPipelines)],
   ["consent ops", adminConsentOpsOperations(), data => data.summary && Array.isArray(data.consentSurfaces) && Array.isArray(data.trainingEligibility) && Array.isArray(data.withdrawals)],
   ["secrets ops", adminSecretsOpsOperations(), data => data.summary && Array.isArray(data.secretInventory) && Array.isArray(data.rotations) && Array.isArray(data.kmsPosture)],
